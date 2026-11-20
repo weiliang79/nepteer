@@ -230,6 +230,7 @@ mod tests {
             Capabilities::decl(),
             Device::decl(),
             Snapshot::decl(),
+            crate::quick_access::Status::decl(),
         ];
         format!(
             "// Generated from Rust by `pnpm bindings`. Do not edit.\n{}\n",

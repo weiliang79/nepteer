@@ -17,3 +17,4 @@ capturedAtUnixMs: number, device: Device, capabilities: Capabilities, batteryPer
  * Sanitized, non-identifying diagnostics for partial read failures.
  */
 issues: Array<string>, cpuTemperatureCelsius: Celsius | null, gpuTemperatureCelsius: Celsius | null, fanRpm: Rpm | null, };
+export type Status = { visible: boolean, shortcutAvailable: boolean, shortcutHint: string, notice: string | null, };

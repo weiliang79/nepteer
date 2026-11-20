@@ -2,6 +2,11 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
+import { showQuickAccess, quickAccessStatus } from "./lib/quick-access";
+vi.mock("./lib/quick-access", () => ({
+  showQuickAccess: vi.fn(),
+  quickAccessStatus: vi.fn(),
+}));
 import { getTelemetry, temperature } from "./lib/telemetry";
 import type { Snapshot } from "./lib/bindings";
 vi.mock("./lib/telemetry", async (original) => ({
@@ -33,6 +38,19 @@ const fixture: Snapshot = {
   fanRpm: 2800,
 };
 beforeEach(() => {
+  vi.mocked(quickAccessStatus).mockResolvedValue({
+    visible: false,
+    shortcutAvailable: true,
+    shortcutHint: "Ctrl + Alt + Q",
+    notice: null,
+  });
+  vi.mocked(showQuickAccess).mockReset();
+  vi.mocked(showQuickAccess).mockResolvedValue({
+    visible: true,
+    shortcutAvailable: true,
+    shortcutHint: "Ctrl + Alt + Q",
+    notice: null,
+  });
   localStorage.clear();
   vi.mocked(getTelemetry).mockReset();
   vi.mocked(getTelemetry).mockResolvedValue(structuredClone(fixture));
@@ -65,8 +83,10 @@ test("settings persist units and theme; planned pages are explicit", async () =>
   });
   await user.click(screen.getByRole("button", { name: /Dashboard/ }));
   expect(screen.getByText("129 °F")).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: /Quick Access/ }));
-  expect(screen.getByText("PLANNED · FUTURE MILESTONE")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Quick Access" }));
+  expect(
+    screen.getByRole("heading", { name: "A panel within reach." }),
+  ).toBeInTheDocument();
 });
 test("loading and IPC rejection are recoverable", async () => {
   vi.mocked(getTelemetry).mockRejectedValueOnce(new Error("IPC failed"));
@@ -217,4 +237,19 @@ test("no battery and unknown percentage are distinct from zero", async () => {
   await user.click(screen.getByRole("button", { name: "Refresh snapshot" }));
   expect(await screen.findByText(/Percentage unknown/)).toBeInTheDocument();
   expect(screen.queryByText("0 %")).not.toBeInTheDocument();
+});
+
+test("dashboard opens QAM through Rust and reports an activation failure", async () => {
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByText("78 %");
+  await user.click(screen.getByRole("button", { name: "Open Quick Access" }));
+  expect(showQuickAccess).toHaveBeenCalledTimes(1);
+  vi.mocked(showQuickAccess).mockRejectedValueOnce(
+    new Error("Window activation failed"),
+  );
+  await user.click(screen.getByRole("button", { name: "Open Quick Access" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Window activation failed",
+  );
 });

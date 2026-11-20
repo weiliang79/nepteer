@@ -1,15 +1,82 @@
+pub mod quick_access;
 pub mod telemetry;
+use std::sync::Mutex;
+use tauri::{Emitter, Manager};
+struct SessionMode(Mutex<ProviderMode>);
 use telemetry::{provider_for, ProviderMode, Snapshot};
 
 #[tauri::command]
-async fn get_telemetry(mode: Option<ProviderMode>) -> Result<Snapshot, String> {
-    tauri::async_runtime::spawn_blocking(move || provider_for(mode.unwrap_or_default()).snapshot())
+async fn get_telemetry<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    mode: Option<ProviderMode>,
+) -> Result<Snapshot, String> {
+    if mode.is_some() && window.label() != "main" {
+        return Err("Only the dashboard may select the telemetry provider.".into());
+    }
+    let selected = {
+        let state = app.state::<SessionMode>();
+        let mut selected = state
+            .0
+            .lock()
+            .map_err(|_| "Provider session is unavailable.")?;
+        if let Some(mode) = mode {
+            if *selected != mode {
+                *selected = mode;
+                let _ = app.emit_to(quick_access::LABEL, "provider-changed", ());
+            }
+        }
+        *selected
+    };
+    tauri::async_runtime::spawn_blocking(move || provider_for(selected).snapshot())
         .await
         .map_err(|_| "Telemetry worker failed; try refreshing.".to_string())?
 }
 
+async fn qam_operation<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    action: quick_access::Action,
+) -> Result<quick_access::Status, String> {
+    tauri::async_runtime::spawn_blocking(move || quick_access::perform(&app, action))
+        .await
+        .map_err(|_| "Quick Access worker failed.".to_string())?
+}
+#[tauri::command]
+async fn show_quick_access<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<quick_access::Status, String> {
+    qam_operation(app, quick_access::Action::Show).await
+}
+#[tauri::command]
+async fn hide_quick_access<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<quick_access::Status, String> {
+    qam_operation(app, quick_access::Action::Hide).await
+}
+#[tauri::command]
+async fn toggle_quick_access<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<quick_access::Status, String> {
+    qam_operation(app, quick_access::Action::Toggle).await
+}
+#[tauri::command]
+async fn quick_access_status<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<quick_access::Status, String> {
+    qam_operation(app, quick_access::Action::Query).await
+}
+
 fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
-    builder.invoke_handler(tauri::generate_handler![get_telemetry])
+    builder
+        .manage(SessionMode(Mutex::new(ProviderMode::Auto)))
+        .manage(quick_access::State::default())
+        .invoke_handler(tauri::generate_handler![
+            get_telemetry,
+            show_quick_access,
+            hide_quick_access,
+            toggle_quick_access,
+            quick_access_status
+        ])
 }
 
 fn context<R: tauri::Runtime>() -> tauri::Context<R> {
@@ -17,9 +84,48 @@ fn context<R: tauri::Runtime>() -> tauri::Context<R> {
 }
 
 pub fn run() {
-    configure(tauri::Builder::default())
-        .run(context())
+    use tauri_plugin_global_shortcut::{
+        Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
+    };
+    let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyQ);
+    let app = configure(tauri::Builder::default())
+        .setup(move |app| {
+            // Failure to create the initial hidden panel is recoverable through the dashboard.
+            if quick_access::initialize(app.handle()).is_err() {
+                quick_access::initialization_failed(app.handle());
+            }
+            let result = app
+                .handle()
+                .plugin(
+                    tauri_plugin_global_shortcut::Builder::new()
+                        .with_handler(move |app, pressed, event| {
+                            if pressed == &shortcut && event.state() == ShortcutState::Pressed {
+                                quick_access::queue(app, quick_access::Action::Toggle);
+                            }
+                        })
+                        .build(),
+                )
+                .map_err(|e| e.to_string())
+                .and_then(|_| {
+                    app.global_shortcut()
+                        .register(shortcut)
+                        .map_err(|e| e.to_string())
+                });
+            quick_access::shortcut_result(app.handle(), result);
+            Ok(())
+        })
+        .on_window_event(quick_access::events)
+        .build(context())
         .expect("Nepteer could not start");
+    app.run(|app, event| {
+        if matches!(event, tauri::RunEvent::Exit) {
+            if let Some(shortcuts) =
+                app.try_state::<tauri_plugin_global_shortcut::GlobalShortcut<tauri::Wry>>()
+            {
+                let _ = shortcuts.unregister_all();
+            }
+        }
+    });
 }
 
 #[cfg(test)]
@@ -52,6 +158,24 @@ mod tests {
         assert_eq!(response["batteryPercent"], 78);
         assert!(response["gpuTemperatureCelsius"].is_null());
         assert!(tauri::test::get_ipc_response(&other, request()).is_err());
+        let qam = tauri::WebviewWindowBuilder::new(&app, "quick-access", Default::default())
+            .visible(false)
+            .build()
+            .unwrap();
+        let mut read = request();
+        read.body = tauri::ipc::InvokeBody::Json(serde_json::json!({}));
+        let response = tauri::test::get_ipc_response(&qam, read)
+            .unwrap()
+            .deserialize::<serde_json::Value>()
+            .unwrap();
+        assert_eq!(response["source"], "mock"); // same explicit main session selection
+        assert!(tauri::test::get_ipc_response(&qam, request()).is_err()); // cannot select a provider
+        let mut show = request();
+        show.cmd = "show_quick_access".into();
+        assert!(tauri::test::get_ipc_response(&qam, show).is_err());
+        let mut query = request();
+        query.cmd = "quick_access_status".into();
+        assert!(tauri::test::get_ipc_response(&qam, query).is_ok());
         let mut remote_request = request();
         remote_request.url = "https://example.com".parse().unwrap();
         assert!(tauri::test::get_ipc_response(&main, remote_request).is_err());
