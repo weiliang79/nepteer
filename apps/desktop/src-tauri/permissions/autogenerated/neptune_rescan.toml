@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-neptune-rescan"
+description = "Enables the neptune_rescan command without any pre-configured scope."
+commands.allow = ["neptune_rescan"]
+
+[[permission]]
+identifier = "deny-neptune-rescan"
+description = "Denies the neptune_rescan command without any pre-configured scope."
+commands.deny = ["neptune_rescan"]
