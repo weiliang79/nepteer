@@ -21,13 +21,22 @@ export type Status = { visible: boolean, shortcutAvailable: boolean, shortcutHin
 export type DiagnosticsMode = "native" | "simulated";
 export type InputSource = "windows" | "simulated" | "unsupported";
 export type DiscoveryPhase = "not_scanned" | "scanning" | "candidates" | "not_found" | "unsupported" | "error";
-export type MonitorPhase = "stopped" | "starting" | "awaiting_reports" | "raw_input_only" | "access_denied" | "device_busy" | "disconnected" | "unsupported_report_format" | "read_error";
+export type MonitorPhase = "stopped" | "starting" | "awaiting_reports" | "raw_input_only" | "simulated_input" | "access_denied" | "device_busy" | "disconnected" | "unsupported_report_format" | "read_error";
 export type InputErrorKind = "enumeration" | "metadata_unavailable" | "access_denied" | "device_busy" | "disconnected" | "unsupported_interface" | "unsupported_platform" | "unsupported_report_format" | "read_error" | "session_limit" | "internal";
 export type InputFailure = { kind: InputErrorKind, message: string, };
 export type InputCapabilities = { passiveReadEligible: boolean, buttonDecoding: boolean, };
 export type Candidate = { id: string, vendorId: number, productId: number, usagePage: number | null, usage: number | null, interfaceNumber: number | null, manufacturer: string | null, product: string | null, attributesVerified: boolean, inputReportLength: number | null, capabilities: InputCapabilities, issue: InputFailure | null, };
 export type ControllerControl = "steam" | "quick_access" | "a" | "b" | "x" | "y" | "dpad_up" | "dpad_down" | "dpad_left" | "dpad_right" | "l1" | "r1" | "l2" | "r2" | "l4" | "l5" | "r4" | "r5" | "left_stick_click" | "right_stick_click" | "left_trackpad_touch" | "right_trackpad_touch" | "left_trackpad_click" | "right_trackpad_click";
-export type ControlObservation = { control: ControllerControl, pressed: boolean | null, };
-export type ButtonTransition = { control: ControllerControl, pressed: boolean, };
-export type MonitorStatus = { phase: MonitorPhase, candidateId: string | null, opened: boolean, reportCount: number, lastReportLength: number | null, lastReportAtUnixMs: number | null, issue: InputFailure | null, buttonDecodingSupported: boolean, controls: Array<ControlObservation>, transitions: Array<ButtonTransition>, };
+export type ReportFormat = "deck_v1_bare64" | "deck_v1_zero_prefixed65";
+export type ReportRecognition = "not_observed" | "candidate" | "unsupported" | "malformed";
+export type ParseIssue = "unsupported_prefix" | "unsupported_version" | "unsupported_message" | "truncated" | "oversized" | "invalid_declared_length";
+export type MappingVerification = "unavailable" | "candidate" | "simulated" | "button_verified";
+export type ReportDiagnostics = { recognition: ReportRecognition, format: ReportFormat | null,
+/**
+ * Zero only for the matching zero-prefixed candidate; bare message has no identified HID ID.
+ */
+reportId: number | null, messageType: number | null, framingVerified: boolean, physicalButtonsVerified: boolean, candidateReportCount: number, unsupportedReportCount: number, malformedReportCount: number, lastIssue: ParseIssue | null, };
+export type ControlObservation = { control: ControllerControl, pressed: boolean | null, verification: MappingVerification, };
+export type ButtonTransition = { sequence: number, atSessionMs: number, source: InputSource, control: ControllerControl, pressed: boolean, };
+export type MonitorStatus = { phase: MonitorPhase, candidateId: string | null, opened: boolean, reportCount: number, lastReportLength: number | null, lastReportAtUnixMs: number | null, issue: InputFailure | null, buttonDecodingSupported: boolean, report: ReportDiagnostics, controls: Array<ControlObservation>, transitions: Array<ButtonTransition>, };
 export type DiagnosticsSnapshot = { source: InputSource, discovery: DiscoveryPhase, candidates: Array<Candidate>, discoveryIssue: InputFailure | null, monitor: MonitorStatus, };

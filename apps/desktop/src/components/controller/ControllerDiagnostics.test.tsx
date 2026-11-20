@@ -27,9 +27,21 @@ const base: DiagnosticsSnapshot = {
     lastReportAtUnixMs: null,
     issue: null,
     buttonDecodingSupported: false,
+    report: {
+      recognition: "not_observed",
+      format: null,
+      reportId: null,
+      messageType: null,
+      framingVerified: false,
+      physicalButtonsVerified: false,
+      candidateReportCount: 0,
+      unsupportedReportCount: 0,
+      malformedReportCount: 0,
+      lastIssue: null,
+    },
     controls: [
-      { control: "steam", pressed: null },
-      { control: "quick_access", pressed: null },
+      { control: "steam", pressed: null, verification: "unavailable" },
+      { control: "quick_access", pressed: null, verification: "unavailable" },
     ],
     transitions: [],
   },
@@ -233,3 +245,129 @@ test("native unsupported and unavailable controls are honest; keyboard can reach
   ).toHaveFocus();
   expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(1);
 });
+
+test("simulated states and ordered transitions render, and native stop clears stale highlights", async () => {
+  const simulated: DiagnosticsSnapshot = {
+    ...running,
+    source: "simulated",
+    monitor: {
+      ...running.monitor,
+      phase: "simulated_input",
+      buttonDecodingSupported: true,
+      report: {
+        ...base.monitor.report,
+        recognition: "candidate",
+        format: "deck_v1_bare64",
+        messageType: 9,
+        candidateReportCount: 10,
+      },
+      controls: [
+        { control: "a", pressed: true, verification: "simulated" },
+        { control: "b", pressed: false, verification: "simulated" },
+        { control: "l4", pressed: null, verification: "unavailable" },
+      ],
+      transitions: [
+        {
+          sequence: 1,
+          atSessionMs: 500,
+          source: "simulated",
+          control: "a",
+          pressed: true,
+        },
+        {
+          sequence: 2,
+          atSessionMs: 1000,
+          source: "simulated",
+          control: "b",
+          pressed: false,
+        },
+      ],
+    },
+  };
+  vi.mocked(api.listCandidates).mockResolvedValue(simulated);
+  render(<ControllerDiagnostics />);
+  expect(await screen.findByText("SIMULATED INPUT")).toBeInTheDocument();
+  expect(screen.getByLabelText("A: pressed")).toHaveClass("input-pressed");
+  expect(screen.getByLabelText("B: released")).not.toHaveClass("input-pressed");
+  expect(screen.getByLabelText("L4: unavailable")).toBeInTheDocument();
+  expect(screen.getByText("A · Press")).toBeInTheDocument();
+  expect(screen.getByText("0.50s · Simulated")).toBeInTheDocument();
+  // Even a stale pressed DTO cannot remain highlighted after a terminal native event.
+  act(() =>
+    emit({ ...simulated, monitor: { ...simulated.monitor, phase: "stopped" } }),
+  );
+  expect(screen.getByLabelText("A: unavailable")).not.toHaveClass(
+    "input-pressed",
+  );
+  expect(screen.queryByText("A · Press")).not.toBeInTheDocument();
+});
+test("candidate physical bits never render as pressed or verified transitions", async () => {
+  vi.mocked(api.listCandidates).mockResolvedValue({
+    ...running,
+    monitor: {
+      ...running.monitor,
+      buttonDecodingSupported: true,
+      report: {
+        ...base.monitor.report,
+        recognition: "candidate",
+        format: "deck_v1_zero_prefixed65",
+        reportId: 0,
+        messageType: 9,
+      },
+      controls: [{ control: "a", pressed: true, verification: "candidate" }],
+      transitions: [
+        {
+          sequence: 1,
+          atSessionMs: 10,
+          source: "windows",
+          control: "a",
+          pressed: true,
+        },
+      ],
+    },
+  });
+  render(<ControllerDiagnostics />);
+  expect(
+    await screen.findByText("Published candidate · Unverified"),
+  ).toBeInTheDocument();
+  expect(screen.getByLabelText("A: unavailable")).not.toHaveClass(
+    "input-pressed",
+  );
+  expect(screen.getByText("Unverified mapping")).toBeInTheDocument();
+  expect(screen.queryByText("A · Press")).not.toBeInTheDocument();
+  expect(screen.getByText("0x00")).toBeInTheDocument();
+  expect(screen.getByText("0x09")).toBeInTheDocument();
+  expect(screen.queryByText("SIMULATED INPUT")).not.toBeInTheDocument();
+});
+test.each(["unsupported", "malformed"] as const)(
+  "%s content stays observable with safe parser diagnostics",
+  async (recognition) => {
+    vi.mocked(api.listCandidates).mockResolvedValue({
+      ...running,
+      monitor: {
+        ...running.monitor,
+        report: {
+          ...base.monitor.report,
+          recognition,
+          lastIssue:
+            recognition === "malformed"
+              ? "invalid_declared_length"
+              : "unsupported_message",
+        },
+      },
+    });
+    render(<ControllerDiagnostics />);
+    expect(
+      await screen.findByText(
+        recognition === "malformed"
+          ? "Malformed candidate packet"
+          : "Unsupported format",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Parser diagnostic:/)).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Stop Monitoring" }),
+    ).toBeEnabled();
+  },
+);

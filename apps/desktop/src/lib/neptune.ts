@@ -23,7 +23,12 @@ export const startMonitoring = (candidateId: string) =>
 export const stopMonitoring = () => native("neptune_stop");
 export const monitoringStatus = () => native("neptune_status");
 export const diagnosticsActive = (phase: MonitorPhase) =>
-  ["starting", "awaiting_reports", "raw_input_only"].includes(phase);
+  [
+    "starting",
+    "awaiting_reports",
+    "raw_input_only",
+    "simulated_input",
+  ].includes(phase);
 export const onDiagnostics = (
   callback: (snapshot: DiagnosticsSnapshot) => void,
 ): Promise<UnlistenFn> =>
