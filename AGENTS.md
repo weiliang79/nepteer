@@ -1,11 +1,17 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.1.0-alpha foundation, not hardware control.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.2.0-alpha Windows read-only telemetry, not hardware control.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 1 — Foundation
+## Current milestone: Step 2 — Windows read-only telemetry
+
+Step 1 is complete: native macOS/Windows CI passed and the user reported all eight Windows Steam Deck smoke tests passed. Step 2 introduces Windows battery percentage/charging status using `GetSystemPowerStatus`, and non-identifying manufacturer/model via a narrowly selected native WMI query. Windows defaults to the real provider; macOS retains mock development. Explicit session-only mock selection is visible in Settings. Reads must never silently fall back to simulated values. Missing/unknown readings remain unavailable, zero remains valid, and no serial numbers or other unique identifiers are queried, persisted or logged. LCD/OLED classification remains unverified.
+
+Keep the existing shared read-only trait, one typed IPC command, generated bindings, cross-platform tests and native Windows packaging. CPU/GPU temperatures and fan RPM stay unavailable in the real provider. No hardware writes, input mapping/injection, overlays, drivers or new services. Work on `feat/windows-telemetry`, commit/push to that branch as authorized, and do not merge to `main` before review. Report new hardware verification separately from the completed Step 1 smoke test.
+
+## Completed milestone: Step 1 — Foundation
 Produce a genuinely runnable Tauri **v2** desktop application with **Rust, React, TypeScript, Vite, pnpm, Tailwind CSS, and shadcn/ui**. macOS is the primary authoring environment; Windows x86_64 is the primary shipping target. Use a **mock-only hardware provider** to demonstrate a safe UI-to-Rust data path. Add CI that verifies the project on Windows and macOS (where supported by hosted runners).
 
 ### Required acceptance criteria

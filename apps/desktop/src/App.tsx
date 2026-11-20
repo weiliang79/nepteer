@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getTelemetry, temperature } from "@/lib/telemetry";
-import type { Snapshot } from "@/lib/bindings";
+import type { ProviderMode, Snapshot } from "@/lib/bindings";
 
 const sections = [
   "Dashboard",
@@ -29,6 +29,7 @@ function loadPreferences(): Preferences {
 export default function App() {
   const [section, setSection] = useState<Section>("Dashboard");
   const [preferences, setPreferences] = useState(loadPreferences);
+  const [mode, setMode] = useState<ProviderMode>("auto");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,7 +49,7 @@ export default function App() {
   }
   useEffect(() => {
     let active = true;
-    getTelemetry()
+    getTelemetry(mode)
       .then((value) => {
         if (active) setSnapshot(value);
       })
@@ -62,12 +63,25 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [request]);
+  }, [request, mode]);
   function refresh() {
     setLoading(true);
     setError(null);
     setSnapshot(null);
     setRequest((n) => n + 1);
+  }
+  const isMock = snapshot?.source === "mock";
+  const isWindows = snapshot?.source === "windows";
+  const sourceLabel = isMock
+    ? "MOCK DATA"
+    : isWindows
+      ? "LIVE WINDOWS"
+      : loading
+        ? "READING PROVIDER"
+        : "SOURCE UNAVAILABLE";
+  function selectMode(next: ProviderMode) {
+    setMode(next);
+    refresh();
   }
   return (
     <div className="app-shell">
@@ -104,15 +118,15 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-footer">
-          <span className="status-dot" /> Mock provider only
-          <small>v0.1.0-alpha · Foundation</small>
+          <span className="status-dot" /> {sourceLabel}
+          <small>v0.2.0-alpha · Read only</small>
         </div>
       </aside>
       <main id="main" tabIndex={-1}>
         <header className="topbar">
           <span>NEPTEER / {section.toUpperCase()}</span>
           <span className="source-pill">
-            <span className="status-dot" /> MOCK DATA
+            <span className="status-dot" /> {sourceLabel}
           </span>
         </header>
         <div className="content">
@@ -130,7 +144,7 @@ export default function App() {
             </div>
             {section === "Dashboard" && (
               <Button variant="outline" onClick={refresh} disabled={loading}>
-                {loading ? "Reading…" : "Refresh mock snapshot"}
+                {loading ? "Reading…" : "Refresh snapshot"}
               </Button>
             )}
           </div>
@@ -139,10 +153,19 @@ export default function App() {
               i
             </span>
             <div>
-              <strong>Foundation preview · Mock telemetry</strong>
+              <strong>
+                {isMock
+                  ? "Development preview · Mock telemetry"
+                  : isWindows
+                    ? "Windows telemetry · Read only"
+                    : "Read-only telemetry"}
+              </strong>
               <p>
-                All readings are fixed sample values. No hardware is monitored
-                or controlled.
+                {isMock
+                  ? "All readings are fixed sample values. No hardware is monitored or controlled."
+                  : isWindows
+                    ? "Battery and device information come from Windows. Unsupported sensors remain unavailable. No hardware settings are changed."
+                    : "Reading the selected provider. Automatic mode uses Windows telemetry on Windows and mock samples on other hosts."}
               </p>
             </div>
           </div>
@@ -150,7 +173,7 @@ export default function App() {
             <>
               {loading && (
                 <p role="status" className="state-message">
-                  Reading the Rust mock provider…
+                  Reading the selected Rust provider…
                 </p>
               )}
               {error && (
@@ -166,11 +189,24 @@ export default function App() {
                 <>
                   <section
                     className="device-strip"
-                    aria-label="Simulated device"
+                    aria-label={isMock ? "Simulated device" : "Detected device"}
                   >
                     <div>
-                      <p className="eyebrow">SIMULATED DEVICE</p>
-                      <h2>{snapshot.device.model}</h2>
+                      <p className="eyebrow">
+                        {isMock
+                          ? "SIMULATED DEVICE"
+                          : "WINDOWS DEVICE INFORMATION"}
+                      </p>
+                      <h2>{snapshot.device.model ?? "Unknown model"}</h2>
+                      <p className="muted">
+                        Manufacturer:{" "}
+                        {snapshot.device.manufacturer ?? "Unknown"}
+                      </p>
+                      {!isMock && (
+                        <p className="muted">
+                          Steam Deck LCD/OLED identification: Unverified
+                        </p>
+                      )}
                       <p className="muted">
                         {snapshot.device.platform} · App host:{" "}
                         {snapshot.device.hostPlatform}
@@ -180,9 +216,29 @@ export default function App() {
                       SOURCE: {snapshot.source.toUpperCase()}
                     </span>
                   </section>
-                  <section className="metrics" aria-label="Mock telemetry">
+                  {snapshot.issues.length > 0 && (
+                    <div role="status" className="notice">
+                      <div>
+                        <strong>Some Windows information is unavailable</strong>
+                        <ul>
+                          {snapshot.issues.map((issue, index) => (
+                            <li key={index}>{issue}</li>
+                          ))}
+                        </ul>
+                        <p>
+                          Use Refresh snapshot to retry. The provider has not
+                          changed.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <section
+                    className="metrics"
+                    aria-label={isMock ? "Mock telemetry" : "Windows telemetry"}
+                  >
                     <Metric
                       label="Battery"
+                      source={isMock ? "MOCK" : "WINDOWS"}
                       value={
                         snapshot.capabilities.battery &&
                         snapshot.batteryPercent !== null
@@ -190,39 +246,62 @@ export default function App() {
                           : "Unavailable"
                       }
                       detail={
-                        snapshot.capabilities.battery
-                          ? `Mock · ${snapshot.chargeState}`
-                          : "Unsupported in this provider"
+                        snapshot.batteryStatus === "no_battery"
+                          ? "No system battery"
+                          : `${snapshot.chargeState} · ${snapshot.batteryStatus === "error" ? "Read failed" : snapshot.batteryStatus === "unknown" ? "Percentage unknown" : isMock ? "Mock sample" : "Windows power status"}`
                       }
                     />
                     <Metric
                       label="CPU temperature"
+                      source={
+                        snapshot.capabilities.cpuTemperature
+                          ? isMock
+                            ? "MOCK"
+                            : "WINDOWS"
+                          : "UNSUPPORTED"
+                      }
                       value={temperature(
                         snapshot.capabilities.cpuTemperature
                           ? snapshot.cpuTemperatureCelsius
                           : null,
                         preferences.unit,
                       )}
-                      detail="Mock sample · CPU package"
+                      detail={
+                        isMock
+                          ? "Mock sample · CPU package"
+                          : "Unavailable · Not implemented"
+                      }
                     />
                     <Metric
                       label="GPU temperature"
+                      source="UNSUPPORTED"
                       value={temperature(
                         snapshot.capabilities.gpuTemperature
                           ? snapshot.gpuTemperatureCelsius
                           : null,
                         preferences.unit,
                       )}
-                      detail="Unsupported in this mock provider"
+                      detail="Unsupported in this provider"
                     />
                     <Metric
                       label="Fan speed"
+                      source={
+                        snapshot.capabilities.fanRpm
+                          ? isMock
+                            ? "MOCK"
+                            : "WINDOWS"
+                          : "UNSUPPORTED"
+                      }
                       value={
                         snapshot.capabilities.fanRpm && snapshot.fanRpm !== null
                           ? `${snapshot.fanRpm.toLocaleString()} RPM`
                           : "Unavailable"
                       }
-                      detail="Mock sample · Read only"
+                      detail={
+                        isMock
+                          ? "Mock sample · Read only"
+                          : "Unavailable · Not implemented"
+                      }
                     />
                   </section>
                   <div className="lower-grid">
@@ -230,8 +309,9 @@ export default function App() {
                       <p className="eyebrow">PROVIDER CAPABILITIES</p>
                       <h2>Know what’s available</h2>
                       <p className="muted">
-                        Capabilities describe this mock provider, not detected
-                        hardware.
+                        Capabilities describe implemented reads in this
+                        provider. Availability is reported separately for each
+                        snapshot.
                       </p>
                       <dl className="capabilities">
                         {Object.entries(snapshot.capabilities).map(
@@ -251,7 +331,11 @@ export default function App() {
                                 }
                               </dt>
                               <dd className={enabled ? "available" : "muted"}>
-                                {enabled ? "Mock available" : "Unavailable"}
+                                {enabled
+                                  ? isMock
+                                    ? "Mock available"
+                                    : "Read supported"
+                                  : "Unavailable"}
                               </dd>
                             </div>
                           ),
@@ -278,9 +362,11 @@ export default function App() {
                     </section>
                   </div>
                   <p className="snapshot-time">
-                    Mock snapshot retrieved{" "}
-                    {new Date(snapshot.capturedAtUnixMs).toLocaleString()} ·
-                    Refresh repeats the same samples.
+                    {isMock ? "Mock snapshot" : "Windows snapshot"} retrieved{" "}
+                    {new Date(snapshot.capturedAtUnixMs).toLocaleString()} ·{" "}
+                    {isMock
+                      ? "Refresh repeats the same samples."
+                      : "Manual refresh only; no background polling."}
                   </p>
                 </>
               )}
@@ -329,10 +415,27 @@ export default function App() {
                 </p>
               )}
               <div className="settings-note">
-                <strong>Data source: Mock</strong>
+                <strong>Data source: {sourceLabel}</strong>
+                <label>
+                  Telemetry provider
+                  <select
+                    value={mode}
+                    disabled={loading}
+                    onChange={(event) =>
+                      selectMode(event.target.value as ProviderMode)
+                    }
+                  >
+                    <option value="auto">
+                      Automatic (Windows live / other hosts mock)
+                    </option>
+                    <option value="mock">Mock samples (development)</option>
+                  </select>
+                </label>
                 <p className="muted">
-                  The provider is fixed for Step 1. Live telemetry and hardware
-                  controls are future work.
+                  Provider selection applies to this session only and resets to
+                  Automatic on restart. Windows read failures never select mock
+                  mode. Switching providers reads a new snapshot; nothing
+                  changes hardware settings.
                 </p>
               </div>
             </section>
@@ -372,16 +475,18 @@ function Metric({
   label,
   value,
   detail,
+  source,
 }: {
   label: string;
   value: string;
   detail: string;
+  source: string;
 }) {
   return (
     <article className="metric">
       <p className="metric-label">
         {label}
-        <span>MOCK</span>
+        <span>{source}</span>
       </p>
       <p
         className={`metric-value ${value === "Unavailable" ? "unavailable" : ""}`}

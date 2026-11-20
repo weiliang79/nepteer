@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 import { getTelemetry, temperature } from "./lib/telemetry";
@@ -12,6 +12,7 @@ const fixture: Snapshot = {
   source: "mock",
   capturedAtUnixMs: 1700000000000,
   device: {
+    manufacturer: "Valve (simulated)",
     model: "Steam Deck LCD (simulated)",
     platform: "Windows 11 (simulated)",
     hostPlatform: "macos",
@@ -25,6 +26,8 @@ const fixture: Snapshot = {
   },
   batteryPercent: 78,
   chargeState: "discharging",
+  batteryStatus: "available",
+  issues: [],
   cpuTemperatureCelsius: 54,
   gpuTemperatureCelsius: null,
   fanRpm: 2800,
@@ -42,9 +45,7 @@ test("renders mock readings, unavailable values and refreshes through the IPC wr
   expect(screen.getByText("2,800 RPM")).toBeInTheDocument();
   expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
   expect(screen.getByText(/No hardware is monitored/)).toBeInTheDocument();
-  await user.click(
-    screen.getByRole("button", { name: "Refresh mock snapshot" }),
-  );
+  await user.click(screen.getByRole("button", { name: "Refresh snapshot" }));
   await waitFor(() => expect(getTelemetry).toHaveBeenCalledTimes(2));
 });
 test("settings persist units and theme; planned pages are explicit", async () => {
@@ -96,4 +97,124 @@ test("corrupt preferences fall back to defaults", async () => {
   localStorage.setItem("nepteer.preferences", "not json");
   render(<App />);
   expect(await screen.findByText("54 °C")).toBeInTheDocument();
+});
+
+const liveFixture: Snapshot = {
+  ...fixture,
+  source: "windows",
+  device: {
+    manufacturer: "Valve",
+    model: "Jupiter",
+    platform: "Windows",
+    hostPlatform: "windows",
+  },
+  cpuTemperatureCelsius: null,
+  gpuTemperatureCelsius: null,
+  fanRpm: null,
+  capabilities: {
+    ...fixture.capabilities,
+    cpuTemperature: false,
+    fanRpm: false,
+  },
+};
+test("live Windows source, identity and battery render with unsupported sensors", async () => {
+  vi.mocked(getTelemetry).mockResolvedValue(liveFixture);
+  render(<App />);
+  expect(await screen.findByText("78 %")).toBeInTheDocument();
+  expect(screen.getAllByText("LIVE WINDOWS")).toHaveLength(2);
+  expect(screen.queryByText("MOCK DATA")).not.toBeInTheDocument();
+  expect(screen.getByText("Manufacturer: Valve")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Jupiter" })).toBeInTheDocument();
+  expect(screen.getByText(/identification: Unverified/)).toBeInTheDocument();
+  for (const label of ["CPU temperature", "GPU temperature", "Fan speed"]) {
+    const card = screen.getAllByText(label)[0].closest("article")!;
+    expect(within(card).getByText("Unavailable")).toBeInTheDocument();
+  }
+  expect(
+    screen.getByText(/discharging · Windows power status/),
+  ).toBeInTheDocument();
+});
+test("Windows errors and unknown identity stay unavailable without mock fallback; refresh retries", async () => {
+  const user = userEvent.setup();
+  vi.mocked(getTelemetry)
+    .mockResolvedValueOnce({
+      ...liveFixture,
+      batteryPercent: null,
+      batteryStatus: "error",
+      chargeState: "unknown",
+      device: { ...liveFixture.device, model: null, manufacturer: null },
+      issues: ["Battery: GetSystemPowerStatus failed (Windows error 5)."],
+    })
+    .mockResolvedValue(liveFixture);
+  render(<App />);
+  expect(
+    await screen.findByRole("heading", { name: "Unknown model" }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Manufacturer: Unknown")).toBeInTheDocument();
+  expect(screen.getByText(/GetSystemPowerStatus failed/)).toBeInTheDocument();
+  expect(screen.queryByText("78 %")).not.toBeInTheDocument();
+  expect(screen.queryByText("MOCK DATA")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Refresh snapshot" }));
+  expect(await screen.findByText("78 %")).toBeInTheDocument();
+  expect(getTelemetry).toHaveBeenLastCalledWith("auto");
+});
+test("a failed refresh clears previous live readings and retry stays in automatic mode", async () => {
+  const user = userEvent.setup();
+  vi.mocked(getTelemetry)
+    .mockResolvedValueOnce(liveFixture)
+    .mockRejectedValueOnce(new Error("Request failed"))
+    .mockResolvedValue(liveFixture);
+  render(<App />);
+  await screen.findByText("78 %");
+  await user.click(screen.getByRole("button", { name: "Refresh snapshot" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Request failed");
+  expect(screen.queryByText("78 %")).not.toBeInTheDocument();
+  expect(screen.queryByText("MOCK DATA")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Try again" }));
+  expect(await screen.findByText("78 %")).toBeInTheDocument();
+  expect(getTelemetry).toHaveBeenLastCalledWith("auto");
+});
+test("mock selection is deliberate and resets on restart without affecting preferences", async () => {
+  const user = userEvent.setup();
+  vi.mocked(getTelemetry).mockImplementation(async (mode) =>
+    mode === "mock" ? fixture : liveFixture,
+  );
+  const view = render(<App />);
+  await screen.findByText("78 %");
+  await user.click(screen.getByRole("button", { name: /Settings/ }));
+  await user.selectOptions(screen.getByLabelText("Telemetry provider"), "mock");
+  await waitFor(() =>
+    expect(screen.getByText("Data source: MOCK DATA")).toBeInTheDocument(),
+  );
+  expect(getTelemetry).toHaveBeenLastCalledWith("mock");
+  expect(localStorage.getItem("nepteer.preferences") ?? "").not.toContain(
+    "mock",
+  );
+  view.unmount();
+  render(<App />);
+  await screen.findByText("78 %");
+  expect(getTelemetry).toHaveBeenLastCalledWith("auto");
+  expect(screen.getAllByText("LIVE WINDOWS")).toHaveLength(2);
+});
+test("no battery and unknown percentage are distinct from zero", async () => {
+  const user = userEvent.setup();
+  vi.mocked(getTelemetry)
+    .mockResolvedValueOnce({
+      ...liveFixture,
+      batteryPercent: null,
+      batteryStatus: "no_battery",
+      chargeState: "unknown",
+    })
+    .mockResolvedValueOnce({
+      ...liveFixture,
+      batteryPercent: null,
+      batteryStatus: "unknown",
+      chargeState: "unknown",
+    });
+  render(<App />);
+  expect(await screen.findByText("No system battery")).toBeInTheDocument();
+  expect(screen.queryByText("0 %")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Refresh snapshot" }));
+  expect(await screen.findByText(/Percentage unknown/)).toBeInTheDocument();
+  expect(screen.queryByText("0 %")).not.toBeInTheDocument();
 });

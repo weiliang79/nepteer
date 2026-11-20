@@ -1,4 +1,7 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+#[cfg(any(windows, test))]
+mod windows;
 use std::time::{SystemTime, UNIX_EPOCH};
 use ts_rs::TS;
 
@@ -17,6 +20,42 @@ pub enum ChargeState {
     Discharging,
     Full,
     Unknown,
+}
+
+/// Deliberate per-request selection, never persisted or inferred from a read failure.
+#[derive(Debug, Default, Clone, Copy, Deserialize, Serialize, TS, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderMode {
+    #[default]
+    Auto,
+    Mock,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, TS, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum BatteryStatus {
+    Available,
+    Unknown,
+    NoBattery,
+    Error,
+}
+
+pub fn selected_source(mode: ProviderMode, host_is_windows: bool) -> DataSource {
+    match (mode, host_is_windows) {
+        (ProviderMode::Auto, true) => DataSource::Windows,
+        _ => DataSource::Mock,
+    }
+}
+
+pub fn provider_for(mode: ProviderMode) -> Box<dyn TelemetryProvider> {
+    #[cfg(windows)]
+    if selected_source(mode, true) == DataSource::Windows {
+        return Box::new(windows::WindowsProvider);
+    }
+    // Every non-Windows host deliberately uses the development mock provider.
+    #[cfg(not(windows))]
+    let _ = mode;
+    Box::new(MockProvider)
 }
 
 // Private fields prevent construction without validation. Units serialize as numbers.
@@ -59,7 +98,8 @@ pub struct Capabilities {
 #[derive(Debug, Clone, Serialize, TS, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Device {
-    pub model: String,
+    pub manufacturer: Option<String>,
+    pub model: Option<String>,
     pub platform: String,
     pub host_platform: String,
 }
@@ -75,6 +115,9 @@ pub struct Snapshot {
     pub capabilities: Capabilities,
     pub battery_percent: Option<Percent>,
     pub charge_state: ChargeState,
+    pub battery_status: BatteryStatus,
+    /// Sanitized, non-identifying diagnostics for partial read failures.
+    pub issues: Vec<String>,
     pub cpu_temperature_celsius: Option<Celsius>,
     pub gpu_temperature_celsius: Option<Celsius>,
     pub fan_rpm: Option<Rpm>,
@@ -87,15 +130,12 @@ pub trait TelemetryProvider: Send + Sync {
 pub struct MockProvider;
 impl TelemetryProvider for MockProvider {
     fn snapshot(&self) -> Result<Snapshot, String> {
-        let elapsed = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| "system clock precedes Unix epoch".to_string())?;
         Ok(Snapshot {
             source: DataSource::Mock,
-            captured_at_unix_ms: u64::try_from(elapsed.as_millis())
-                .map_err(|_| "timestamp exceeds supported range".to_string())?,
+            captured_at_unix_ms: timestamp()?,
             device: Device {
-                model: "Steam Deck LCD (simulated)".into(),
+                manufacturer: Some("Valve (simulated)".into()),
+                model: Some("Steam Deck LCD (simulated)".into()),
                 platform: "Windows 11 (simulated)".into(),
                 host_platform: std::env::consts::OS.into(),
             },
@@ -108,11 +148,20 @@ impl TelemetryProvider for MockProvider {
             },
             battery_percent: Some(Percent::new(78)?),
             charge_state: ChargeState::Discharging,
+            battery_status: BatteryStatus::Available,
+            issues: Vec::new(),
             cpu_temperature_celsius: Some(Celsius::new(54.0)?),
             gpu_temperature_celsius: None,
             fan_rpm: Some(Rpm(2800)),
         })
     }
+}
+
+fn timestamp() -> Result<u64, String> {
+    let elapsed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| "system clock precedes Unix epoch".to_string())?;
+    u64::try_from(elapsed.as_millis()).map_err(|_| "timestamp exceeds supported range".to_string())
 }
 
 #[cfg(test)]
@@ -144,10 +193,37 @@ mod tests {
         assert_eq!(Percent::new(0).unwrap(), Percent(0));
         assert_eq!(serde_json::to_value(Some(Rpm(0))).unwrap(), 0);
     }
+    #[test]
+    fn selection_is_explicit_on_windows_and_macos() {
+        assert_eq!(
+            selected_source(ProviderMode::Auto, true),
+            DataSource::Windows
+        );
+        assert_eq!(selected_source(ProviderMode::Mock, true), DataSource::Mock);
+        assert_eq!(selected_source(ProviderMode::Auto, false), DataSource::Mock);
+        assert_eq!(selected_source(ProviderMode::Mock, false), DataSource::Mock);
+        assert_eq!(
+            provider_for(ProviderMode::Mock).snapshot().unwrap().source,
+            DataSource::Mock
+        );
+        #[cfg(not(windows))]
+        assert_eq!(
+            provider_for(ProviderMode::Auto).snapshot().unwrap().source,
+            DataSource::Mock
+        );
+        #[cfg(windows)]
+        assert_eq!(
+            provider_for(ProviderMode::Auto).snapshot().unwrap().source,
+            DataSource::Windows
+        );
+    }
+
     fn bindings_text() -> String {
         let declarations = [
             DataSource::decl(),
             ChargeState::decl(),
+            ProviderMode::decl(),
+            BatteryStatus::decl(),
             Percent::decl(),
             Celsius::decl(),
             Rpm::decl(),
