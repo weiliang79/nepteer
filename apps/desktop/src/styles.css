@@ -517,3 +517,13 @@ select:focus-visible {
     transition: none !important;
   }
 }
+
+.settings select {
+  max-width: 100%;
+  min-width: 0;
+}
+@media (max-width: 850px) {
+  .settings label {
+    flex-wrap: wrap;
+  }
+}

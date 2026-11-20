@@ -1,8 +1,10 @@
-# Nepteer · v0.1.0-alpha
+# Nepteer · v0.2.0-alpha
 
-An independently implemented handheld companion foundation for **Steam Deck LCD running Windows 11**. This milestone is a real Tauri 2 desktop app backed exclusively by a read-only **mock** Rust provider.
+An independently implemented, read-only handheld companion targeting **Windows 11 on Steam Deck LCD**, developable on macOS with Tauri 2, Rust, React and TypeScript.
 
-The dashboard displays fixed battery, CPU temperature and fan samples. GPU temperature is deliberately unavailable. Navigation, theme and temperature-unit preferences work; Quick Access, Performance and Controller pages describe future work. Nothing reads or changes physical hardware.
+Windows defaults to **LIVE WINDOWS**: actual battery percentage/charging status from `GetSystemPowerStatus` and manufacturer/model from a local WMI query selecting only those fields. Missing, unknown and failed readings remain unavailable; zero remains a valid value. CPU/GPU temperatures and fan RPM are not implemented in the real provider. LCD/OLED identification remains unverified.
+
+macOS uses the preserved **MOCK DATA** provider. On any host, Settings → Telemetry provider → Mock samples deliberately selects fixed development samples. This selection resets to Automatic at restart; it is never a fallback for failed Windows reads. Theme/units persist separately. Refresh is manual: no timer, subprocess, service, driver, unique-identifier collection or hardware write is added.
 
 ## Run on macOS
 
@@ -31,15 +33,15 @@ pnpm build --bundles app
 
 ## Windows CI and testing
 
-[Foundation CI](https://github.com/weiliang79/nepteer/actions/workflows/ci.yml) validates macOS and Windows and compiles an actual x86_64 Windows application. After a successful run, download **nepteer-windows-x86_64-&lt;commit&gt;** from the run's Artifacts section. It contains a per-user NSIS installer and standalone `nepteer.exe`. Microsoft Edge WebView2 must already be installed; the installer deliberately skips runtime installation to avoid requesting privilege. No Visual Studio is needed to run the artifact.
+[Desktop CI](https://github.com/weiliang79/nepteer/actions/workflows/ci.yml) validates macOS and Windows and compiles an actual x86_64 Windows application. After a successful run, download **nepteer-windows-x86_64-&lt;commit&gt;** from the run's Artifacts section. It contains a per-user NSIS installer and standalone `nepteer.exe`. Microsoft Edge WebView2 must already be installed; the installer deliberately skips runtime installation to avoid requesting privilege. No Visual Studio is needed to run the artifact.
 
-Native macOS and Windows x86_64 CI builds passed for the stabilization code; see the [handoff](docs/HANDOFF.md) for run and artifact URLs. Steam Deck hardware verification remains **pending**. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
+Step 1 native CI and all eight Windows Steam Deck smoke tests passed (hardware results reported by the user). Step 2 battery/device hardware verification remains **pending**. See the [handoff](docs/HANDOFF.md) for this branch's exact validation results and artifact URLs. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
 
 ## Layout
 
 ```text
 apps/desktop/src/            React dashboard, settings, UI tests, generated DTOs
-apps/desktop/src-tauri/      Tauri shell, Rust models/provider, one read command
+apps/desktop/src-tauri/      Tauri shell, Rust models/provider, one shared read command
 .github/workflows/ci.yml     Native macOS and Windows validation/builds
 scripts/                    Dependency license inventory
  docs/                      Architecture, safety, development, handoff

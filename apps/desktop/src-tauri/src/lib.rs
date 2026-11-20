@@ -1,15 +1,15 @@
 pub mod telemetry;
-use telemetry::{MockProvider, Snapshot, TelemetryProvider};
+use telemetry::{provider_for, ProviderMode, Snapshot};
 
 #[tauri::command]
-fn get_telemetry(provider: tauri::State<'_, MockProvider>) -> Result<Snapshot, String> {
-    provider.snapshot()
+async fn get_telemetry(mode: Option<ProviderMode>) -> Result<Snapshot, String> {
+    tauri::async_runtime::spawn_blocking(move || provider_for(mode.unwrap_or_default()).snapshot())
+        .await
+        .map_err(|_| "Telemetry worker failed; try refreshing.".to_string())?
 }
 
 fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
-    builder
-        .manage(MockProvider)
-        .invoke_handler(tauri::generate_handler![get_telemetry])
+    builder.invoke_handler(tauri::generate_handler![get_telemetry])
 }
 
 fn context<R: tauri::Runtime>() -> tauri::Context<R> {
@@ -40,7 +40,7 @@ mod tests {
             callback: tauri::ipc::CallbackFn(0),
             error: tauri::ipc::CallbackFn(1),
             url: app.config().build.dev_url.clone().unwrap(),
-            body: tauri::ipc::InvokeBody::default(),
+            body: tauri::ipc::InvokeBody::Json(serde_json::json!({ "mode": "mock" })),
             headers: Default::default(),
             invoke_key: tauri::test::INVOKE_KEY.to_string(),
         };

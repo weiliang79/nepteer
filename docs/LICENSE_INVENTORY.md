@@ -1,6 +1,6 @@
 # Dependency license inventory
 
-Declared package metadata reviewed during Step 1. This records every resolved package reported on the macOS authoring host, including development dependencies. It is not a complete distribution notice bundle or legal clearance. JavaScript platform-specific optional binaries on Windows must be inventoried again on Windows CI. Rust lists the entire locked graph, including target-only packages that are not shipped on macOS/Windows. Local Nepteer licensing is not selected.
+Declared package metadata reviewed during v0.2.0-alpha. This records resolved packages reported on the macOS authoring host, including development dependencies. It is not a complete distribution notice bundle or legal clearance. JavaScript platform-specific optional binaries must be reviewed from Windows CI. Rust lists the entire locked graph, including target-only packages. Local Nepteer licensing is not selected.
 
 Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bundled dependencies and preserve full upstream notices before public distribution.
 
@@ -317,9 +317,9 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | cairo-rs                     | 0.18.5                        | MIT                                                 |
 | cairo-sys-rs                 | 0.18.2                        | MIT                                                 |
 | camino                       | 1.2.6                         | MIT OR Apache-2.0                                   |
-| cargo-platform               | 0.1.9                         | MIT OR Apache-2.0                                   |
 | cargo_metadata               | 0.19.2                        | MIT                                                 |
 | cargo_toml                   | 1.0.1                         | Apache-2.0 OR MIT                                   |
+| cargo-platform               | 0.1.9                         | MIT OR Apache-2.0                                   |
 | cc                           | 1.11.2                        | MIT OR Apache-2.0                                   |
 | cesu8                        | 1.1.0                         | Apache-2.0/MIT                                      |
 | cfb                          | 0.14.0                        | MIT                                                 |
@@ -366,8 +366,8 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | dtoa-short                   | 0.3.5                         | MPL-2.0                                             |
 | dunce                        | 1.0.5                         | CC0-1.0 OR MIT-0 OR Apache-2.0                      |
 | dyn-clone                    | 1.0.20                        | MIT OR Apache-2.0                                   |
-| embed-resource               | 3.0.12                        | MIT                                                 |
 | embed_plist                  | 1.2.2                         | MIT OR Apache-2.0                                   |
+| embed-resource               | 3.0.12                        | MIT                                                 |
 | equivalent                   | 1.0.3                         | Apache-2.0 OR MIT                                   |
 | erased-serde                 | 0.4.11                        | MIT OR Apache-2.0                                   |
 | fastrand                     | 2.5.0                         | Apache-2.0 OR MIT                                   |
@@ -381,6 +381,7 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | foreign-types-macros         | 0.2.4                         | MIT/Apache-2.0                                      |
 | foreign-types-shared         | 0.3.1                         | MIT/Apache-2.0                                      |
 | form_urlencoded              | 1.2.2                         | MIT OR Apache-2.0                                   |
+| futures                      | 0.3.34                        | MIT OR Apache-2.0                                   |
 | futures-channel              | 0.3.34                        | MIT OR Apache-2.0                                   |
 | futures-core                 | 0.3.34                        | MIT OR Apache-2.0                                   |
 | futures-executor             | 0.3.34                        | MIT OR Apache-2.0                                   |
@@ -483,12 +484,12 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | ndk                          | 0.9.0                         | MIT OR Apache-2.0                                   |
 | ndk-context                  | 0.1.1                         | MIT OR Apache-2.0                                   |
 | ndk-sys                      | 0.6.0+11769913                | MIT OR Apache-2.0                                   |
-| nepteer                      | 0.1.0-alpha.0                 | Not selected (local project)                        |
+| nepteer                      | 0.2.0-alpha.0                 | Not selected (local project)                        |
 | new_debug_unreachable        | 1.0.6                         | MIT                                                 |
-| num-conv                     | 0.2.2                         | MIT OR Apache-2.0                                   |
-| num-traits                   | 0.2.19                        | MIT OR Apache-2.0                                   |
 | num_enum                     | 0.7.6                         | BSD-3-Clause OR MIT OR Apache-2.0                   |
 | num_enum_derive              | 0.7.6                         | BSD-3-Clause OR MIT OR Apache-2.0                   |
+| num-conv                     | 0.2.2                         | MIT OR Apache-2.0                                   |
+| num-traits                   | 0.2.19                        | MIT OR Apache-2.0                                   |
 | objc2                        | 0.6.5                         | MIT                                                 |
 | objc2-app-kit                | 0.3.2                         | Zlib OR Apache-2.0 OR MIT                           |
 | objc2-cloud-kit              | 0.3.2                         | Zlib OR Apache-2.0 OR MIT                           |
@@ -551,8 +552,8 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | regex-automata               | 0.4.19                        | MIT OR Apache-2.0                                   |
 | regex-syntax                 | 0.8.12                        | MIT OR Apache-2.0                                   |
 | reqwest                      | 0.13.5                        | MIT OR Apache-2.0                                   |
-| rustc-hash                   | 2.1.3                         | Apache-2.0 OR MIT                                   |
 | rustc_version                | 0.4.1                         | MIT OR Apache-2.0                                   |
+| rustc-hash                   | 2.1.3                         | Apache-2.0 OR MIT                                   |
 | rustversion                  | 1.0.23                        | MIT OR Apache-2.0                                   |
 | same-file                    | 1.0.6                         | Unlicense/MIT                                       |
 | schemars                     | 0.8.22                        | MIT                                                 |
@@ -564,7 +565,6 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | selectors                    | 0.41.0                        | MPL-2.0                                             |
 | semver                       | 1.0.28                        | MIT OR Apache-2.0                                   |
 | serde                        | 1.0.229                       | MIT OR Apache-2.0                                   |
-| serde-untagged               | 0.1.9                         | MIT OR Apache-2.0                                   |
 | serde_core                   | 1.0.229                       | MIT OR Apache-2.0                                   |
 | serde_derive                 | 1.0.229                       | MIT OR Apache-2.0                                   |
 | serde_derive_internals       | 0.29.1                        | MIT OR Apache-2.0                                   |
@@ -574,6 +574,7 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | serde_spanned                | 1.1.3                         | MIT OR Apache-2.0                                   |
 | serde_with                   | 3.25.0                        | MIT OR Apache-2.0                                   |
 | serde_with_macros            | 3.25.0                        | MIT OR Apache-2.0                                   |
+| serde-untagged               | 0.1.9                         | MIT OR Apache-2.0                                   |
 | serialize-to-javascript      | 0.1.2                         | MIT OR Apache-2.0                                   |
 | serialize-to-javascript-impl | 0.1.2                         | MIT OR Apache-2.0                                   |
 | servo_arc                    | 0.4.3                         | MIT OR Apache-2.0                                   |
@@ -652,11 +653,11 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | unicode-segmentation         | 1.13.3                        | MIT OR Apache-2.0                                   |
 | url                          | 2.5.8                         | MIT OR Apache-2.0                                   |
 | urlpattern                   | 0.6.0                         | MIT                                                 |
-| utf8_iter                    | 1.1.0                         | Apache-2.0 OR MIT                                   |
 | utf_types                    | 1.0.0                         | Apache-2.0 OR MIT                                   |
+| utf8_iter                    | 1.1.0                         | Apache-2.0 OR MIT                                   |
 | uuid                         | 1.29.3                        | Apache-2.0 OR MIT                                   |
-| version-compare              | 0.2.1                         | MIT                                                 |
 | version_check                | 0.9.5                         | MIT/Apache-2.0                                      |
+| version-compare              | 0.2.1                         | MIT                                                 |
 | vswhom                       | 0.1.0                         | MIT                                                 |
 | vswhom-sys                   | 0.1.3                         | MIT                                                 |
 | walkdir                      | 2.5.0                         | Unlicense/MIT                                       |
@@ -669,10 +670,10 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | wasm-bindgen-macro-support   | 0.2.130                       | MIT OR Apache-2.0                                   |
 | wasm-bindgen-shared          | 0.2.130                       | MIT OR Apache-2.0                                   |
 | wasm-streams                 | 0.5.0                         | MIT OR Apache-2.0                                   |
-| web-sys                      | 0.3.107                       | MIT OR Apache-2.0                                   |
-| web-time                     | 1.1.0                         | MIT OR Apache-2.0                                   |
 | web_atoms                    | 0.2.6                         | MIT OR Apache-2.0                                   |
 | web_atoms                    | 0.3.0                         | MIT OR Apache-2.0                                   |
+| web-sys                      | 0.3.107                       | MIT OR Apache-2.0                                   |
+| web-time                     | 1.1.0                         | MIT OR Apache-2.0                                   |
 | webkit2gtk                   | 2.0.2                         | MIT                                                 |
 | webkit2gtk-sys               | 2.0.2                         | MIT                                                 |
 | webview2-com                 | 0.39.1                        | MIT                                                 |
@@ -684,6 +685,13 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | winapi-x86_64-pc-windows-gnu | 0.4.0                         | MIT/Apache-2.0                                      |
 | window-vibrancy              | 0.8.1                         | Apache-2.0 OR MIT                                   |
 | windows                      | 0.62.2                        | MIT OR Apache-2.0                                   |
+| windows_aarch64_gnullvm      | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_aarch64_msvc         | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_i686_gnu             | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_i686_msvc            | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_x86_64_gnu           | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_x86_64_gnullvm       | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_x86_64_msvc          | 0.42.2                        | MIT OR Apache-2.0                                   |
 | windows-collections          | 0.3.2                         | MIT OR Apache-2.0                                   |
 | windows-core                 | 0.62.2                        | MIT OR Apache-2.0                                   |
 | windows-future               | 0.3.2                         | MIT OR Apache-2.0                                   |
@@ -698,17 +706,11 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | windows-targets              | 0.42.2                        | MIT OR Apache-2.0                                   |
 | windows-threading            | 0.2.1                         | MIT OR Apache-2.0                                   |
 | windows-version              | 0.1.7                         | MIT OR Apache-2.0                                   |
-| windows_aarch64_gnullvm      | 0.42.2                        | MIT OR Apache-2.0                                   |
-| windows_aarch64_msvc         | 0.42.2                        | MIT OR Apache-2.0                                   |
-| windows_i686_gnu             | 0.42.2                        | MIT OR Apache-2.0                                   |
-| windows_i686_msvc            | 0.42.2                        | MIT OR Apache-2.0                                   |
-| windows_x86_64_gnu           | 0.42.2                        | MIT OR Apache-2.0                                   |
-| windows_x86_64_gnullvm       | 0.42.2                        | MIT OR Apache-2.0                                   |
-| windows_x86_64_msvc          | 0.42.2                        | MIT OR Apache-2.0                                   |
 | winnow                       | 0.5.40                        | MIT                                                 |
 | winnow                       | 1.0.5                         | MIT                                                 |
 | winreg                       | 0.56.0                        | MIT                                                 |
 | wit-bindgen                  | 0.57.1                        | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
+| wmi                          | 0.18.4                        | MIT OR Apache-2.0                                   |
 | writeable                    | 0.6.4                         | Unicode-3.0                                         |
 | wry                          | 0.57.3                        | Apache-2.0 OR MIT                                   |
 | x11                          | 2.21.0                        | MIT                                                 |
