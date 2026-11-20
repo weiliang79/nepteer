@@ -2,7 +2,13 @@ name: Desktop CI
 on:
   push:
     branches:
-      [main, feat/foundation, feat/windows-telemetry, feat/quick-access-menu]
+      [
+        main,
+        feat/foundation,
+        feat/windows-telemetry,
+        feat/quick-access-menu,
+        feat/neptune-discovery,
+      ]
   pull_request:
   workflow_dispatch:
 permissions:

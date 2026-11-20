@@ -2,6 +2,13 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
+import * as diagnostics from "./lib/neptune";
+vi.mock("./lib/neptune", async (original) => ({
+  ...(await original<typeof import("./lib/neptune")>()),
+  listCandidates: vi.fn(),
+  stopMonitoring: vi.fn(),
+  onDiagnostics: vi.fn(),
+}));
 import { showQuickAccess, quickAccessStatus } from "./lib/quick-access";
 vi.mock("./lib/quick-access", () => ({
   showQuickAccess: vi.fn(),
@@ -252,4 +259,45 @@ test("dashboard opens QAM through Rust and reports an activation failure", async
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "Window activation failed",
   );
+});
+
+test("Controller is a practical diagnostics page; leaving stops observation and preserves dashboard", async () => {
+  vi.mocked(diagnostics.onDiagnostics).mockResolvedValue(() => {});
+  vi.mocked(diagnostics.listCandidates).mockResolvedValue({
+    source: "unsupported",
+    discovery: "not_scanned",
+    candidates: [],
+    discoveryIssue: null,
+    monitor: {
+      phase: "stopped",
+      candidateId: null,
+      opened: false,
+      reportCount: 0,
+      lastReportLength: null,
+      lastReportAtUnixMs: null,
+      issue: null,
+      buttonDecodingSupported: false,
+      controls: [],
+      transitions: [],
+    },
+  });
+  vi.mocked(diagnostics.stopMonitoring).mockResolvedValue(
+    await diagnostics.listCandidates(),
+  );
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByText("78 %");
+  await user.click(screen.getByRole("button", { name: /Controller/ }));
+  expect(
+    await screen.findByRole("region", { name: "Controller diagnostics" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Start Monitoring" }),
+  ).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: /Dashboard/ }));
+  expect(diagnostics.stopMonitoring).toHaveBeenCalled();
+  expect(screen.getByText("78 %")).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Open Quick Access" }),
+  ).toBeInTheDocument();
 });

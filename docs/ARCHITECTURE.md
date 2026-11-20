@@ -1,6 +1,6 @@
 # Architecture
 
-Nepteer v0.3.0-alpha.0 retains one pnpm desktop package: Tauri 2 + Rust, React/TypeScript/Vite, Tailwind and the local shadcn/ui Button. Small Rust modules keep the shared DTO/provider contract beside the shell. No service or extra crate is introduced.
+Nepteer v0.4.0-alpha.0 retains one pnpm desktop package: Tauri 2 + Rust, React/TypeScript/Vite, Tailwind and the local shadcn/ui Button. Small Rust modules keep the shared DTO/provider contract beside the shell. No service or extra crate is introduced.
 
 ```text
 React → getTelemetry(mode: auto | mock) → get_telemetry
@@ -29,7 +29,7 @@ The snapshot stays source `windows` on partial/API failures, with null unavailab
 
 ## Contract and rendering
 
-Rust owns the DTOs. `ts-rs` generates committed TypeScript declarations via `pnpm bindings`; normal tests and `pnpm bindings:check` compare without writing. Nullable manufacturer/model, battery availability, diagnostics and provider selection are the only model extensions. The timestamp means snapshot retrieval completion, not simultaneous physical sensor sampling.
+Rust owns the DTOs. `ts-rs` generates committed TypeScript declarations via `pnpm bindings`; normal tests and `pnpm bindings:check` compare without writing. Telemetry, QAM and controller diagnostic DTOs all use the same explicit generator and no-write drift check. The timestamp means snapshot retrieval completion, not simultaneous physical sensor sampling.
 
 The UI identifies returned snapshots as LIVE WINDOWS or MOCK DATA. During initial connection/failure it shows reading/source unavailable rather than guessing the source. Refresh clears old readings while loading and after a transport failure. Partial native failures remain visible with a manual retry button. Unsupported sensors stay unavailable. There is no automatic retry/polling. Theme and unit settings retain validated localStorage persistence; telemetry/device information is not persisted by the app.
 
@@ -56,3 +56,21 @@ Sources: [Tauri window builder limitations](https://docs.rs/tauri/latest/tauri/w
 Sources: [GetSystemPowerStatus](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getsystempowerstatus), [SYSTEM_POWER_STATUS](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-system_power_status), [Win32_ComputerSystem](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-computersystem), [WMI Rust wrapper](https://docs.rs/wmi/0.18.4/wmi/struct.WMIConnection.html).
 
 QAM navigation is explicitly restricted in its native builder to the local bundled entry page (or the exact configured Vite origin during development). Remote origins, other local pages and non-app URL schemes are rejected; this does not broaden CSP.
+
+## Neptune observation subsystem (Step 4)
+
+`neptune/mod.rs` owns Rust DTOs, a small coordinator and a read-only transport trait, independent of TelemetryProvider. `windows.rs` conditionally compiles native SetupAPI/HID calls; `monitor.rs` owns the worker/read loop; `reports.rs` validates bounded lengths and deliberately does not decode bytes. No new crate or frontend framework is introduced. Public research and dependency choices are recorded in [NEPTUNE_RESEARCH.md](NEPTUNE_RESEARCH.md).
+
+Five main-only commands are `neptune_list` (cached candidates), `neptune_rescan(mode)`, `neptune_start(candidateId)`, `neptune_stop`, and `neptune_status` (cached current state). Querying or opening the page never scans or opens a device. Rescan and stop/start coordination run on blocking workers; one operation mutex serializes them. Rescan stops/joins before replacing session-private paths. IDs such as scan2-candidate1 are opaque, not persistent identities. No serial API or unique instance property is used. Paths have no Debug/Serialize/TS implementation and never cross IPC. Safe descriptions, VID/PID, optional usage/interface/descriptor length and sanitized failure kinds are public.
+
+Native enumeration queries present HID interfaces, conservatively filters the known USB VID/PID path pattern, opens candidates with desired access zero, then verifies HID attributes and cached descriptor caps. Missing metadata stays unavailable. All matching collections may appear, but only confirmed vendor-defined usages (page >= 0xFF00, nonzero usage, bounded nonzero input length) are eligible for an attempted read. Mouse/keyboard/unknown collections are excluded. This policy can miss a nonstandard transport/path; it never broadens to arbitrary devices.
+
+Discovery states are not_scanned/scanning/candidates/not_found/unsupported/error. Monitor states are stopped/starting/awaiting_reports/raw_input_only/access_denied/device_busy/disconnected/unsupported_report_format/read_error. Detected, handle-open and reports-observed remain separate. Readable report bytes do not imply a verified protocol. All controls have null state, decoding=false and transitions empty. Report lengths are checked against the descriptor and 4096-byte cap; unknown content is counted without parsing.
+
+Start validates a cached ID and eligibility, then creates one named worker. It opens GENERIC_READ with FILE_SHARE_READ|FILE_SHARE_WRITE, revalidates VID/PID/caps and performs one overlapped ReadFile at a time. No write, feature, exclusive fallback or configuration API exists on the read transport. Waits are at most 100 ms; pending reads survive timeout without issuing duplicate reads. Cancellation calls CancelIoEx and waits for I/O completion before freeing the OVERLAPPED/buffer or closing handles. Driver completion is outside application control: a broken kernel driver can delay cancellation/shutdown, and Nepteer does not free in-flight memory or force-kill a worker to hide that limitation.
+
+Repeated Start for the current active ID is idempotent; another ID requires stop. Stop cancels and joins, clears held/transition state, and retains labeled historical report totals/time. Errors are terminal with no auto-reconnect; rescan/start are deliberate recovery. The worker expires after five minutes, closes resources before publishing terminal state, keeps no unbounded report queue, and emits summaries at most four times per second plus lifecycle transitions. Raw buffers are ephemeral and cleared on normal completion. No report stream or button history is persisted.
+
+Events target only main (`neptune-diagnostics`), using generated DTOs. React subscribes before reading cached state, ignores command results superseded by newer events and requests stop on page departure (including completion of an in-flight action). A failed cleanup/webview crash is still bounded by the native five-minute session. Main close/normal ExitRequested blocks new starts and joins off the native UI thread before final process exit; repeated exit requests cannot bypass the join. QAM coordination is independent and keeps its existing shortcut/focus behavior; opening QAM does not start or stop observation.
+
+The explicit simulated backend exercises the same coordinator, with a synthetic vendor collection and reports, always source=simulated and without any hardware API. macOS native requests return unsupported. Main alone gains five command grants and event listen/unlisten; QAM, unknown windows and remote URLs are denied by capability/runtime checks. CSP and remote navigation restrictions are unchanged. Tests cover these boundaries without claiming actual Windows HID coexistence.

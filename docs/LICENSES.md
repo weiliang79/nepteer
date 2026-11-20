@@ -47,3 +47,7 @@ In particular, confirm MPL file-level source/notice obligations for any shipped 
 ## shadcn/ui notice
 
 The local Button is a simplified adaptation of [shadcn/ui](https://github.com/shadcn-ui/ui), using a native button without the optional polymorphic Slot API. Its utility class composition follows the same source-available component pattern. The upstream MIT notice is preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Step 4 native HID review
+
+No new crate, frontend dependency, copied protocol implementation or native redistributable is added. Existing windows-sys 0.61.2 remains MIT OR Apache-2.0; newly enabled binding features cover SetupAPI, HID, file I/O, threading and security types. Windows supplies the linked OS DLLs. No hidapi/libusb DLL or replacement driver is packaged. Dependency license metadata is unchanged apart from the local Nepteer version. See NEPTUNE_RESEARCH.md for the investigated hidapi/SDL references; neither source is bundled or translated. No Neptune report parser is implemented. Existing distribution-notice review remains required; this is not a project-wide license compatibility certification.

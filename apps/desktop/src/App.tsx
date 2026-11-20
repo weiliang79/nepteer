@@ -1,3 +1,4 @@
+import ControllerDiagnostics from "@/components/controller/ControllerDiagnostics";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getTelemetry, temperature } from "@/lib/telemetry";
@@ -130,9 +131,12 @@ export default function App() {
                 0{index + 1}
               </span>
               {item}
-              {!["Dashboard", "Settings", "Quick Access"].includes(item) && (
-                <span className="planned-tag">Planned</span>
-              )}
+              {![
+                "Dashboard",
+                "Settings",
+                "Quick Access",
+                "Controller",
+              ].includes(item) && <span className="planned-tag">Planned</span>}
             </Button>
           ))}
         </nav>
@@ -400,6 +404,7 @@ export default function App() {
               )}
             </>
           )}
+          {section === "Controller" && <ControllerDiagnostics />}
           {section === "Quick Access" && (
             <section className="panel">
               <h2>A panel within reach.</h2>
@@ -483,7 +488,9 @@ export default function App() {
               </div>
             </section>
           )}
-          {!["Dashboard", "Settings", "Quick Access"].includes(section) && (
+          {!["Dashboard", "Settings", "Quick Access", "Controller"].includes(
+            section,
+          ) && (
             <section className="panel planned-page">
               <span className="planned-tag">PLANNED · FUTURE MILESTONE</span>
               <h2>
