@@ -1,4 +1,4 @@
-# Nepteer · v0.3.0-alpha.0
+# Nepteer · v0.4.0-alpha.0
 
 An independently implemented, read-only handheld companion targeting **Windows 11 on Steam Deck LCD**, developable on macOS with Tauri 2, Rust, React and TypeScript.
 
@@ -11,6 +11,14 @@ macOS uses the preserved **MOCK DATA** provider. On any host, Settings → Telem
 Use **Open Quick Access** in the dashboard or **Ctrl + Alt + Q** on Windows (**Control + Option + Q** on macOS). The separate panel starts hidden and shows battery/source information from the same session provider. Escape or Close hides it; clicking outside hides it after activation. Closing the dashboard exits the app and panel. No tray/startup persistence is added.
 
 The opaque, borderless panel fits the display work area and sits above ordinary desktop windows while visible. Shortcut conflicts leave the dashboard button available. Windows focus return is best effort and respects OS restrictions; outside clicks do not force focus back. macOS uses the pointer's display and returns focus to the dashboard on explicit hide; external-app/Spaces restoration is not implemented. Exclusive fullscreen is not guaranteed. Performance/controller/display rows remain informational. No game hooks or hardware controls are added.
+
+## Read-only controller diagnostics
+
+Open **Controller** in the main dashboard, then **Rescan interfaces**. Windows enumerates candidate Valve 0x28DE / 0x1205 HID collections and displays safe metadata only. Select an eligible vendor-defined collection and explicitly press **Start Monitoring** to attempt shared, read-only input. Discovery is not proof of readability. Steam Input may prevent access or no reports may arrive; Nepteer never takes exclusive ownership or sends configuration commands.
+
+Reports are counted and length/time summarized; **no button decoding is verified or implemented**. Steam/⋯, sticks, triggers and trackpads remain unavailable. Raw input is not saved or sent to React. Stop is explicit, leaving Controller requests stop, and sessions expire after five minutes. Closing main joins the worker before exiting. No startup scan/open, auto-reconnect or controller-driven QAM action exists.
+
+On macOS, native input discovery is unavailable. Select **Simulated diagnostics (development)** and rescan to test the complete UI/worker lifecycle without hardware. This is independent of telemetry mock selection and always labeled SIMULATED INPUT. Read failures never choose simulation. See [research and limitations](docs/NEPTUNE_RESEARCH.md).
 
 ## Run on macOS
 
@@ -41,13 +49,13 @@ pnpm build --bundles app
 
 [Desktop CI](https://github.com/weiliang79/nepteer/actions/workflows/ci.yml) validates macOS and Windows and compiles an actual x86_64 Windows application. After a successful run, download **nepteer-windows-x86_64-&lt;commit&gt;** from the run's Artifacts section. It contains a per-user NSIS installer and standalone `nepteer.exe`. Microsoft Edge WebView2 must already be installed; the installer deliberately skips runtime installation to avoid requesting privilege. No Visual Studio is needed to run the artifact.
 
-Steps 1 and 2 passed native CI and user-reported Windows Steam Deck hardware smoke tests. **Step 3 QAM hardware verification remains pending.** See the [handoff](docs/HANDOFF.md) for this branch's validation, CI and artifacts. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
+Steps 1–3 passed native CI and user-reported Windows Steam Deck tests, including 14 Step 3 tests. **Step 4 HID and coexistence verification remains pending.** See the [handoff](docs/HANDOFF.md) for this branch's validation, CI and artifacts. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
 
 ## Layout
 
 ```text
 apps/desktop/src/            React dashboard, settings, UI tests, generated DTOs
-apps/desktop/src-tauri/      Tauri shell, Rust models/provider, one shared read command
+apps/desktop/src-tauri/      Tauri shell, telemetry provider, QAM and HID diagnostics
 .github/workflows/ci.yml     Native macOS and Windows validation/builds
 scripts/                    Dependency license inventory
  docs/                      Architecture, safety, development, handoff

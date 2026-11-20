@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-neptune-start"
+description = "Enables the neptune_start command without any pre-configured scope."
+commands.allow = ["neptune_start"]
+
+[[permission]]
+identifier = "deny-neptune-start"
+description = "Denies the neptune_start command without any pre-configured scope."
+commands.deny = ["neptune_start"]

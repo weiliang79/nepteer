@@ -6,6 +6,11 @@ fn main() {
             "hide_quick_access",
             "toggle_quick_access",
             "quick_access_status",
+            "neptune_list",
+            "neptune_rescan",
+            "neptune_start",
+            "neptune_stop",
+            "neptune_status",
         ]));
 
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")

@@ -338,8 +338,11 @@ pub fn events<R: Runtime>(window: &tauri::Window<R>, event: &tauri::WindowEvent)
             api.prevent_close();
             queue(window.app_handle(), Action::Hide);
         }
-        tauri::WindowEvent::CloseRequested { .. } if close_behavior(window.label()) == "exit" => {
-            window.app_handle().exit(0)
+        tauri::WindowEvent::CloseRequested { api, .. }
+            if close_behavior(window.label()) == "exit" =>
+        {
+            api.prevent_close();
+            crate::request_exit(window.app_handle());
         }
         tauri::WindowEvent::Focused(false) if window.label() == LABEL => {
             queue(window.app_handle(), Action::Blur)

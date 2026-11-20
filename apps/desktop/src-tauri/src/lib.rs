@@ -1,3 +1,4 @@
+pub mod neptune;
 pub mod quick_access;
 pub mod telemetry;
 use std::sync::Mutex;
@@ -66,16 +67,112 @@ async fn quick_access_status<R: tauri::Runtime>(
     qam_operation(app, quick_access::Action::Query).await
 }
 
+fn ensure_diagnostics_window<R: tauri::Runtime>(
+    window: &tauri::WebviewWindow<R>,
+) -> Result<(), String> {
+    if window.label() == "main" {
+        Ok(())
+    } else {
+        Err("Controller diagnostics are available only in the main dashboard.".into())
+    }
+}
+#[tauri::command]
+async fn neptune_list<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+) -> Result<neptune::DiagnosticsSnapshot, String> {
+    ensure_diagnostics_window(&window)?;
+    app.state::<neptune::Diagnostics>().snapshot()
+}
+#[tauri::command]
+async fn neptune_status<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+) -> Result<neptune::DiagnosticsSnapshot, String> {
+    ensure_diagnostics_window(&window)?;
+    app.state::<neptune::Diagnostics>().snapshot()
+}
+#[tauri::command]
+async fn neptune_rescan<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    mode: neptune::DiagnosticsMode,
+) -> Result<neptune::DiagnosticsSnapshot, String> {
+    ensure_diagnostics_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = app.state::<neptune::Diagnostics>().rescan(mode);
+        if let Ok(data) = &result {
+            let _ = app.emit_to("main", neptune::EVENT, data);
+        }
+        result
+    })
+    .await
+    .map_err(|_| "Discovery worker failed.".to_string())?
+}
+#[tauri::command]
+async fn neptune_start<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    candidate_id: String,
+) -> Result<neptune::DiagnosticsSnapshot, String> {
+    ensure_diagnostics_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let events = app.clone();
+        app.state::<neptune::Diagnostics>().start(
+            &candidate_id,
+            std::sync::Arc::new(move |data| {
+                let _ = events.emit_to("main", neptune::EVENT, data);
+            }),
+        )
+    })
+    .await
+    .map_err(|_| "Monitor startup worker failed.".to_string())?
+}
+#[tauri::command]
+async fn neptune_stop<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+) -> Result<neptune::DiagnosticsSnapshot, String> {
+    ensure_diagnostics_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = app.state::<neptune::Diagnostics>().stop();
+        if let Ok(data) = &result {
+            let _ = app.emit_to("main", neptune::EVENT, data);
+        }
+        result
+    })
+    .await
+    .map_err(|_| "Monitor stop worker failed.".to_string())?
+}
+pub fn request_exit<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    let state = app.state::<neptune::Diagnostics>();
+    if state.shutdown_complete() {
+        app.exit(0);
+    } else if state.claim_shutdown() {
+        let app = app.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            app.state::<neptune::Diagnostics>().shutdown();
+            app.exit(0);
+        });
+    }
+}
+
 fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     builder
         .manage(SessionMode(Mutex::new(ProviderMode::Auto)))
         .manage(quick_access::State::default())
+        .manage(neptune::Diagnostics::default())
         .invoke_handler(tauri::generate_handler![
             get_telemetry,
             show_quick_access,
             hide_quick_access,
             toggle_quick_access,
-            quick_access_status
+            quick_access_status,
+            neptune_list,
+            neptune_rescan,
+            neptune_start,
+            neptune_stop,
+            neptune_status
         ])
 }
 
@@ -118,6 +215,12 @@ pub fn run() {
         .build(context())
         .expect("Nepteer could not start");
     app.run(|app, event| {
+        if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+            if !app.state::<neptune::Diagnostics>().shutdown_complete() {
+                api.prevent_exit();
+                request_exit(app);
+            }
+        }
         if matches!(event, tauri::RunEvent::Exit) {
             if let Some(shortcuts) =
                 app.try_state::<tauri_plugin_global_shortcut::GlobalShortcut<tauri::Wry>>()
@@ -176,6 +279,41 @@ mod tests {
         let mut query = request();
         query.cmd = "quick_access_status".into();
         assert!(tauri::test::get_ipc_response(&qam, query).is_ok());
+        for command in [
+            "neptune_list",
+            "neptune_rescan",
+            "neptune_start",
+            "neptune_stop",
+            "neptune_status",
+        ] {
+            let mut diagnostic = request();
+            diagnostic.cmd = command.into();
+            diagnostic.body = tauri::ipc::InvokeBody::Json(
+                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1"}),
+            );
+            assert!(tauri::test::get_ipc_response(&qam, diagnostic).is_err());
+            let mut forbidden = request();
+            forbidden.cmd = command.into();
+            forbidden.body = tauri::ipc::InvokeBody::Json(
+                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1"}),
+            );
+            assert!(tauri::test::get_ipc_response(&other, forbidden).is_err());
+            let mut remote = request();
+            remote.cmd = command.into();
+            remote.url = "https://example.com".parse().unwrap();
+            remote.body = tauri::ipc::InvokeBody::Json(
+                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1"}),
+            );
+            assert!(tauri::test::get_ipc_response(&main, remote).is_err());
+        }
+        let mut cached = request();
+        cached.cmd = "neptune_list".into();
+        let result = tauri::test::get_ipc_response(&main, cached)
+            .unwrap()
+            .deserialize::<serde_json::Value>()
+            .unwrap();
+        assert_eq!(result["discovery"], "not_scanned");
+        assert_eq!(result["monitor"]["phase"], "stopped");
         let mut remote_request = request();
         remote_request.url = "https://example.com".parse().unwrap();
         assert!(tauri::test::get_ipc_response(&main, remote_request).is_err());

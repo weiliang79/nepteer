@@ -219,7 +219,7 @@ mod tests {
     }
 
     fn bindings_text() -> String {
-        let declarations = [
+        let mut declarations = vec![
             DataSource::decl(),
             ChargeState::decl(),
             ProviderMode::decl(),
@@ -232,6 +232,7 @@ mod tests {
             Snapshot::decl(),
             crate::quick_access::Status::decl(),
         ];
+        declarations.extend(crate::neptune::declarations());
         format!(
             "// Generated from Rust by `pnpm bindings`. Do not edit.\n{}\n",
             declarations

@@ -1,17 +1,29 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.3.0-alpha.0 Quick Access Menu foundation, not hardware control.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.4.0-alpha.0 Neptune read-only discovery and diagnostics, not hardware control.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 3 — Quick Access Menu foundation
+## Current milestone: Step 4 — Neptune discovery and read-only diagnostics
+
+Work on `feat/neptune-discovery` from updated main after Step 3 merge `42bf0f4834df61d255b58dad6caab6acc25c30a7`. Steps 1–3 passed native CI and user-reported Windows Deck tests; the user reports 14 Step 3 tests passed. This evidence does not validate Step 4. Commit/push focused changes to the feature branch, verify native CI/artifacts, and do not merge until reviewed and hardware-tested.
+
+Implement opt-in Windows HID candidate enumeration for VID 0x28DE / PID 0x1205, with safe metadata and manual rescan. Identifiers indicate candidates only. Never assume the first collection, a keyboard/mouse collection or a virtual Xbox controller is the physical controller input interface. Missing attributes/caps mean discovery-only. macOS native discovery remains unavailable; explicit simulation is labeled and never a read-failure fallback.
+
+Use existing Windows bindings for SetupAPI/HID metadata and shared GENERIC_READ input only. Metadata opens request access zero. No output/feature reports, write access, exclusive fallback, device reconfiguration, detachment, driver changes or arbitrary keyboard observation. No auto-open at startup. Keep private paths in memory behind scan-local opaque IDs, never serials, instance IDs, path logging/IPC or raw report recording.
+
+Rust owns a single worker, cancellation and actual status. Keep reads off the UI thread, timeouts bounded, notifications aggregated, stop/join deterministic, retries manual and sessions visibly bounded. Close main must stop/join monitoring before exit without blocking the native event loop. Only the main local window receives diagnostics commands/events; QAM gains no device permissions. Keep telemetry independent. Unknown report bytes never become buttons; raw readability is distinct from verified decoding. All button states remain unavailable until independently evidenced parser work is explicitly authorized.
+
+No Steam/⋯ QAM action, controller navigation/remapping, virtual output, Lizard Mode, haptics/LED/firmware commands, input injection, hardware writes/sensors, services, startup persistence, admin, game hooks or anti-cheat interaction. Do not take ownership away from Steam Input or claim universal simultaneous access. Preserve all earlier architectural and safety requirements; prior milestone exclusions below describe their historical scopes.
+
+## Completed milestone: Step 3 — Quick Access Menu foundation
 
 Steps 1 and 2 passed native CI and user-reported Windows Steam Deck smoke tests. Step 2 merged at `dcc5fc4b589dbf5cd8f50150b26b6c6a4e0b5adb`. Work on `feat/quick-access-menu` from latest main. Commit/push reviewable changes to that branch, validate native macOS/Windows CI and upload Windows artifacts; do not merge to main without review.
 
 Add exactly one separate `quick-access` window: hidden on startup, borderless, opaque, right-aligned within the selected display work area, on top while visible and absent from the Windows taskbar. Rust owns actual visibility, show/hide/toggle/query, close-to-hide and main-close-to-exit behavior. Reuse the existing telemetry provider and Rust DTOs. QAM may read the session provider but only main may change it. Keep permissions label-specific and minimal; no frontend window creation or arbitrary shortcut registration.
 
-Use the official global-shortcut plugin with Ctrl+Alt+Q (Control+Option+Q on macOS) and a dashboard Open Quick Access fallback. Handle conflicts without crashing and clean up registration on exit. Windows foreground identity may be retained in memory solely for best-effort focus return; never read titles or log handles. Do not synthesize input, repeatedly force focus, attach input threads, bypass activation restrictions or inject into games. Outside-click blur must not steal focus back. Document macOS/Spaces and exclusive-fullscreen limitations and keep hardware verification pending until the user tests Step 3.
+Use the official global-shortcut plugin with Ctrl+Alt+Q (Control+Option+Q on macOS) and a dashboard Open Quick Access fallback. Handle conflicts without crashing and clean up registration on exit. Windows foreground identity may be retained in memory solely for best-effort focus return; never read titles or log handles. Do not synthesize input, repeatedly force focus, attach input threads, bypass activation restrictions or inject into games. Outside-click blur must not steal focus back. Document macOS/Spaces and exclusive-fullscreen limitations and record new verification separately from the user-reported 14 successful Step 3 tests.
 
 No new sensors, TDP/fan/clock writes, controller interception/mapping, virtual controllers, trackpad access, Neptune HID, Steam/⋯ interception, RTSS, drivers, services, startup persistence, game hooks or anti-cheat interaction. The QAM is the only overlay authorized in this milestone. Preserve the safety and architecture rules below; prior milestone exclusions describe their historical scope.
 
