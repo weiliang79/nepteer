@@ -1,11 +1,21 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.4.0-alpha.0 Neptune read-only discovery and diagnostics, not hardware control.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.5.0-alpha.0 candidate Neptune input decoding and diagnostics, not hardware control.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 4 — Neptune discovery and read-only diagnostics
+## Current milestone: Step 5A — Evidence-gated Neptune input decoding
+
+Work on `feat/neptune-input-decoding` from latest main after Step 4 merge `fdafc925451d2ae2753e54ad6b188d9b728c2bbd`. The user reports Step 4 hardware checks passed. No Windows report IDs, lengths, framing or physical-button correlations were supplied for Step 5A; those remain unverified. Commit/push focused changes to the feature branch, confirm native macOS/Windows CI/artifacts, and do not merge before code review and hardware testing.
+
+Implement a small original safe Rust candidate parser based on primary published protocol facts, with explicit ID/framing/length/version validation and deterministic synthetic tests. Keep published candidate (Level 1), hardware framing verification (Level 2) and per-control physical verification (Level 3) separate. Synthetic tests, matching bytes and CI cannot promote evidence. With no verified physical mapping allowlist, native controls must stay unavailable and emit no transitions. Simulation is explicit and labeled, never an access-failure fallback. Only Phase 1 candidate buttons are implemented; other controls remain unavailable.
+
+First valid state is a baseline, repeated held state creates no duplicate edge, and invalid packets/timeouts never become releases. Format/interface/session switches reset tracking. Keep history bounded, session-only and in memory; clear displayed input/history on stop, disconnect, expiry and shutdown. Parse only private borrowed bytes in the existing worker and emit bounded summaries at the existing rate. No raw-report export, serial/path exposure or disk input logging. Document a safe physical validation procedure and the missing evidence; do not enable physical mappings before independent validation.
+
+Preserve Step 4 native shared GENERIC_READ, opt-in manual lifecycle, one worker, bounded waits/cancellation, five-minute limit, main-only permissions and Steam Input coexistence. Do not change native reader, capabilities or CSP without a verified need. No device writes/configuration, output/feature reports, exclusive takeover, admin, drivers, input injection/remapping, game hooks, services, sensors/power controls or physical Steam/⋯ QAM action. Step 5B behavior is not authorized by this milestone. Do not copy/translate Steam Deck Tools. Record SDL facts, immutable primary source links and applicable attribution/notices; add no dependency without need and license review.
+
+## Completed milestone: Step 4 — Neptune discovery and read-only diagnostics
 
 Work on `feat/neptune-discovery` from updated main after Step 3 merge `42bf0f4834df61d255b58dad6caab6acc25c30a7`. Steps 1–3 passed native CI and user-reported Windows Deck tests; the user reports 14 Step 3 tests passed. This evidence does not validate Step 4. Commit/push focused changes to the feature branch, verify native CI/artifacts, and do not merge until reviewed and hardware-tested.
 

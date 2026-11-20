@@ -1,4 +1,4 @@
-# Nepteer · v0.4.0-alpha.0
+# Nepteer · v0.5.0-alpha.0
 
 An independently implemented, read-only handheld companion targeting **Windows 11 on Steam Deck LCD**, developable on macOS with Tauri 2, Rust, React and TypeScript.
 
@@ -16,9 +16,9 @@ The opaque, borderless panel fits the display work area and sits above ordinary 
 
 Open **Controller** in the main dashboard, then **Rescan interfaces**. Windows enumerates candidate Valve 0x28DE / 0x1205 HID collections and displays safe metadata only. Select an eligible vendor-defined collection and explicitly press **Start Monitoring** to attempt shared, read-only input. Discovery is not proof of readability. Steam Input may prevent access or no reports may arrive; Nepteer never takes exclusive ownership or sends configuration commands.
 
-Reports are counted and length/time summarized; **no button decoding is verified or implemented**. Steam/⋯, sticks, triggers and trackpads remain unavailable. Raw input is not saved or sent to React. Stop is explicit, leaving Controller requests stop, and sessions expire after five minutes. Closing main joins the worker before exiting. No startup scan/open, auto-reconnect or controller-driven QAM action exists.
+Reports are counted and length/time summarized. A safe candidate parser recognizes a published 64-byte Deck message or its proposed zero-prefixed 65-byte Windows framing. **No physical framing or button mapping is verified; native button states stay unavailable and physical decoding is disabled.** Recognition never promotes verification. Raw input is not saved or sent to React. Stop is explicit, leaving Controller requests stop, and sessions expire after five minutes. Closing main joins the worker before exiting. No startup scan/open, auto-reconnect or controller-driven QAM action exists.
 
-On macOS, native input discovery is unavailable. Select **Simulated diagnostics (development)** and rescan to test the complete UI/worker lifecycle without hardware. This is independent of telemetry mock selection and always labeled SIMULATED INPUT. Read failures never choose simulation. See [research and limitations](docs/NEPTUNE_RESEARCH.md).
+On macOS, native input discovery is unavailable. Select **Simulated diagnostics (development)** and rescan to test the complete UI/worker lifecycle without hardware. Simulation runs deterministic press/hold/release sequences through the candidate parser and transition detector: Phase 1 A/B/X/Y, D-pad, L1/R1, Steam and ⋯; it shows current simulated state and at most 32 recent transitions. Triggers, rear buttons, sticks and trackpads remain unavailable. This is independent of telemetry mock selection and always labeled SIMULATED INPUT. Read failures never choose simulation. See [research and limitations](docs/NEPTUNE_RESEARCH.md).
 
 ## Run on macOS
 
@@ -49,7 +49,7 @@ pnpm build --bundles app
 
 [Desktop CI](https://github.com/weiliang79/nepteer/actions/workflows/ci.yml) validates macOS and Windows and compiles an actual x86_64 Windows application. After a successful run, download **nepteer-windows-x86_64-&lt;commit&gt;** from the run's Artifacts section. It contains a per-user NSIS installer and standalone `nepteer.exe`. Microsoft Edge WebView2 must already be installed; the installer deliberately skips runtime installation to avoid requesting privilege. No Visual Studio is needed to run the artifact.
 
-Steps 1–3 passed native CI and user-reported Windows Steam Deck tests, including 14 Step 3 tests. **Step 4 HID and coexistence verification remains pending.** See the [handoff](docs/HANDOFF.md) for this branch's validation, CI and artifacts. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
+Steps 1–4 passed native CI and user-reported Windows Steam Deck checks, including 14 Step 3 tests. **Step 5A framing and physical-button verification remain pending.** See the [handoff](docs/HANDOFF.md) for this branch's validation, CI and artifacts. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
 
 ## Layout
 
