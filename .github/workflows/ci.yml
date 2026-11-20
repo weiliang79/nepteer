@@ -39,6 +39,28 @@ jobs:
       - name: Build native Windows x86_64 installer
         if: runner.os == 'Windows'
         run: pnpm build --target x86_64-pc-windows-msvc --bundles nsis
+      - name: Verify Windows outputs
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $release = "target/x86_64-pc-windows-msvc/release"
+          Get-Item "$release/nepteer.exe" -ErrorAction Stop
+          $installers = @(Get-ChildItem "$release/bundle/nsis/*-setup.exe" -ErrorAction Stop)
+          if ($installers.Count -eq 0) { throw "NSIS installer was not produced" }
+          $installers | Format-Table Name, Length
+          $manifestTool = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/mt.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $manifestTool) { throw "Windows SDK manifest tool not found" }
+          $exe = (Resolve-Path "$release/nepteer.exe").Path
+          $manifestPath = "$env:RUNNER_TEMP/nepteer.manifest"
+          & $manifestTool.FullName "-inputresource:$exe;#1" "-out:$manifestPath"
+          if ($LASTEXITCODE -ne 0) { throw "Failed to extract executable manifest" }
+          [xml]$manifest = Get-Content $manifestPath -Raw
+          $execution = $manifest.SelectSingleNode("//*[local-name()='requestedExecutionLevel']")
+          if ($execution.level -ne "asInvoker" -or $execution.uiAccess -ne "false") {
+            throw "Executable must run asInvoker with uiAccess=false"
+          }
+          Write-Host "Verified executable manifest: asInvoker, uiAccess=false"
       - name: Build macOS application bundle
         if: runner.os == 'macOS'
         run: pnpm build --bundles app
@@ -53,7 +75,7 @@ jobs:
           name: nepteer-windows-x86_64-${{ github.sha }}
           if-no-files-found: error
           path: |
-            target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe
             target/x86_64-pc-windows-msvc/release/nepteer.exe
       - uses: actions/upload-artifact@v4
         with:

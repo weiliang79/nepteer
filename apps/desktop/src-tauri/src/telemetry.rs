@@ -144,8 +144,7 @@ mod tests {
         assert_eq!(Percent::new(0).unwrap(), Percent(0));
         assert_eq!(serde_json::to_value(Some(Rpm(0))).unwrap(), 0);
     }
-    #[test]
-    fn export_bindings() {
+    fn bindings_text() -> String {
         let declarations = [
             DataSource::decl(),
             ChargeState::decl(),
@@ -156,7 +155,7 @@ mod tests {
             Device::decl(),
             Snapshot::decl(),
         ];
-        let output = format!(
+        format!(
             "// Generated from Rust by `pnpm bindings`. Do not edit.\n{}\n",
             declarations
                 .iter()
@@ -166,16 +165,25 @@ mod tests {
                 ))
                 .collect::<Vec<_>>()
                 .join("\n")
+        )
+    }
+
+    fn bindings_path() -> std::path::PathBuf {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/lib/bindings.ts")
+    }
+
+    #[test]
+    fn bindings_are_current() {
+        assert_eq!(
+            std::fs::read_to_string(bindings_path()).expect("bindings must be committed"),
+            bindings_text(),
+            "Rust DTOs changed; run pnpm bindings locally"
         );
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/lib/bindings.ts");
-        if std::env::var_os("CI").is_some() {
-            assert_eq!(
-                std::fs::read_to_string(path).expect("bindings must be committed"),
-                output,
-                "Rust DTOs changed; run pnpm bindings locally"
-            );
-        } else {
-            std::fs::write(path, output).unwrap();
-        }
+    }
+
+    #[test]
+    #[ignore = "explicit generator; run pnpm bindings"]
+    fn export_bindings() {
+        std::fs::write(bindings_path(), bindings_text()).unwrap();
     }
 }

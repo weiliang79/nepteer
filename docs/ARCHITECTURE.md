@@ -12,7 +12,7 @@ React → getTelemetry() → Tauri invoke("get_telemetry")
                   Rust Snapshot → JSON → UI
 ```
 
-Rust owns the models. `ts-rs` generates the committed DTO declarations through `pnpm bindings`; CI compares them with Rust's output. TypeScript uses `invoke<Snapshot>`, never a second runtime mock provider. The provider trait is read-only, Send + Sync, and reusable without OS dependencies. Separate control traits can be designed when there is a validated need. There is no service or Windows adapter in this milestone.
+Rust owns the models. `ts-rs` generates the committed DTO declarations through `pnpm bindings`; ordinary Rust tests compare them with Rust's output on every host without writing files. Only the explicit `pnpm bindings` command runs the ignored generator test. TypeScript uses `invoke<Snapshot>`, never a second runtime mock provider. The provider trait is read-only, Send + Sync, and reusable without OS dependencies. Separate control traits can be designed when there is a validated need. There is no service or Windows adapter in this milestone.
 
 `Percent` and `Celsius` validate construction and serialize transparently. RPM uses an unsigned unit wrapper. Unsupported readings are `Option<T>` / JSON null. Capability flags describe the provider, not detected hardware. Source is explicit (`mock`, `windows`, `unsupported`); the only implementation returns `mock`. Model and target platform are labeled simulated; host platform describes the actual compile host. Battery 78%, CPU 54°C and fan 2800 RPM remain fixed. GPU temperature is unsupported. The Unix millisecond timestamp records retrieval, not sensor sampling.
 

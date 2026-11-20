@@ -15,9 +15,10 @@
     "rust:check": "cargo check --workspace --locked",
     "rust:test": "cargo test --workspace --locked",
     "rust:lint": "cargo clippy --workspace --all-targets --locked -- -D warnings",
-    "bindings": "cargo test --workspace export_bindings",
+    "bindings": "cargo test -p nepteer --lib telemetry::tests::export_bindings -- --ignored --exact",
     "licenses:js": "pnpm --recursive --include-workspace-root licenses list --json",
-    "licenses:rust": "node scripts/rust-licenses.mjs"
+    "licenses:rust": "node scripts/rust-licenses.mjs",
+    "bindings:check": "cargo test -p nepteer --lib telemetry::tests::bindings_are_current -- --exact"
   },
   "devDependencies": {
     "prettier": "^3.6.0"
