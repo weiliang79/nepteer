@@ -57,7 +57,14 @@ Local outputs: `target/release/nepteer` and `target/release/bundle/macos/Nepteer
 
 ## Native CI and Windows artifacts
 
-Pending push/native CI inspection. This section will record the validated runtime commit, macOS/Windows run/job URLs and matching Windows artifact. Expected artifact `nepteer-windows-x86_64-<commit>` contains `nepteer.exe` and `bundle/nsis/Nepteer_0.5.0-alpha.0_x64-setup.exe`, built under `target/x86_64-pc-windows-msvc/release/`. Existing checks must verify asInvoker/uiAccess=false, both executable and NSIS outputs, and all validation steps. Installer remains currentUser with existing WebView2 required. CI cannot verify physical input behavior.
+Implementation commit: `9510f1f`; research/CI/handoff commit: [`c2c76faea110a35c83e8c1f095b178dfc352eb75`](https://github.com/weiliang79/nepteer/commit/c2c76faea110a35c83e8c1f095b178dfc352eb75). [Native CI run 44786198786](https://github.com/weiliang79/nepteer/actions/runs/44786198786) **passed on macOS and Windows**. Job summaries and decoded logs were inspected:
+
+- [macOS job 136461602276](https://github.com/weiliang79/nepteer/actions/runs/44786198786/job/136461602276): all applicable validation, 31 frontend tests, 31 Rust tests (one ignored explicit generator), binding drift assertion, Clippy, production macOS bundle and license upload passed.
+- [Windows job 136461602663](https://github.com/weiliang79/nepteer/actions/runs/44786198786/job/136461602663): all validations and the same test counts, x86_64 MSVC executable, NSIS packaging, both-output/manifest verification and uploads passed. The actual built executable manifest was checked as **asInvoker, uiAccess=false**. Only platform-inapplicable packaging steps were skipped.
+
+[Download Windows artifact](https://github.com/weiliang79/nepteer/actions/runs/44786198786/artifacts/14655485088): `nepteer-windows-x86_64-c2c76faea110a35c83e8c1f095b178dfc352eb75`, ID `14655485088`, 5,144,903-byte ZIP. Output/build/upload logs confirm `nepteer.exe` (9,629,696 bytes) and `bundle/nsis/Nepteer_0.5.0-alpha.0_x64-setup.exe` (2,124,182 bytes), built under `target/x86_64-pc-windows-msvc/release/`. Digest: `sha256:a80d81a25f72966a934616115442d1bd1c7317daa2a42cb713ff5d9380339db5`. License artifacts: [Windows](https://github.com/weiliang79/nepteer/actions/runs/44786198786/artifacts/14654651546), [macOS](https://github.com/weiliang79/nepteer/actions/runs/44786198786/artifacts/14655345888).
+
+Installer remains currentUser with existing WebView2 required. This documentation-only follow-up records validated runtime/artifact provenance above. CI cannot verify physical input behavior and does not promote any evidence level. Nothing was merged to main.
 
 ## Hardware handoff and Step 5B evidence
 
