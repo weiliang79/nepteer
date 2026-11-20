@@ -44,7 +44,16 @@ No actual Windows APIs, WMI or Windows executable can be run on the macOS author
 
 ## CI and artifact evidence
 
-Feature branch push and native CI are pending at this implementation checkpoint. Results and exact run/artifact URLs will be added after native validation.
+Implementation committed/pushed to `feat/windows-telemetry`: [`20334741b7e29c87873bae30ed2eaa426fd54fd8`](https://github.com/weiliang79/nepteer/commit/20334741b7e29c87873bae30ed2eaa426fd54fd8).
+
+[Desktop CI run 44732291833](https://github.com/weiliang79/nepteer/actions/runs/44732291833) **passed on both platforms**:
+
+- [macOS job 136274837504](https://github.com/weiliang79/nepteer/actions/runs/44732291833/job/136274837504): all validation, production application bundle and license metadata upload passed.
+- [Windows job 136274837711](https://github.com/weiliang79/nepteer/actions/runs/44732291833/job/136274837711): formatting, typecheck, lint, all 12 frontend tests, Rust check, all 10 Rust tests (explicit generator intentionally ignored), Clippy, MSVC x86_64 production executable, NSIS bundling, both-output verification, manifest extraction and artifact uploads passed. The Windows-only API/WMI path compiled and the default-provider test ran on the hosted Windows machine.
+
+[Download Windows artifact](https://github.com/weiliang79/nepteer/actions/runs/44732291833/artifacts/14626354747): `nepteer-windows-x86_64-20334741b7e29c87873bae30ed2eaa426fd54fd8`, artifact ID `14626354747`, 4,797,707-byte ZIP. Build/output logs verified `nepteer.exe` (8,851,456 bytes) and `bundle/nsis/Nepteer_0.2.0-alpha.0_x64-setup.exe` (1,996,035 bytes). Windows SDK manifest extraction reported **asInvoker, uiAccess=false**.
+
+Dependency inventories: [Windows](https://github.com/weiliang79/nepteer/actions/runs/44732291833/artifacts/14627765961), [macOS](https://github.com/weiliang79/nepteer/actions/runs/44732291833/artifacts/14627166174). A documentation-only follow-up records this completed run; the implementation/artifact code is the commit above. Nothing was merged into main. CI success is not Step 2 Steam Deck hardware verification.
 
 The Windows command remains `pnpm build --target x86_64-pc-windows-msvc --bundles nsis`. The expected artifact `nepteer-windows-x86_64-<commit>` contains `nepteer.exe` and `bundle/nsis/Nepteer_0.2.0-alpha.0_x64-setup.exe`, from `target/x86_64-pc-windows-msvc/release/`. The workflow requires both and extracts the executable manifest to require asInvoker / uiAccess=false. NSIS remains currentUser, with existing WebView2 required. No release publication or merge is performed.
 
