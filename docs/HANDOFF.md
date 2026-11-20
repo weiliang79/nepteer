@@ -38,7 +38,7 @@ Host: macOS arm64, Node 24.14.1, pnpm 12.21.0, Rust 1.100.0.
 | `pnpm rust:check`                         | Passed                                                                                         |
 | `pnpm rust:test`                          | Passed; 16 tests, 1 intentionally ignored explicit generator                                   |
 | `pnpm rust:lint`                          | Passed; all-target Clippy with -D warnings                                                     |
-| `pnpm build --bundles app`                | Passed; production frontend, actual Rust executable and 10.22 MiB macOS app bundle             |
+| `pnpm build --bundles app`                | Passed; production frontend, actual Rust executable and 10.23 MiB macOS app bundle             |
 | `pnpm dev`                                | Compiled/launched native app and Vite; terminal startup smoke only, not a full GUI/focus audit |
 | `pnpm licenses:rust` / `pnpm licenses:js` | Passed; updated declared-license inventory                                                     |
 | `git diff --check`                        | Passed                                                                                         |
@@ -53,7 +53,16 @@ Local output: `target/release/bundle/macos/Nepteer.app` and `target/release/nept
 
 ## CI / Windows artifact
 
-Feature push/native matrix results are pending at this implementation checkpoint. Add the actual commit, run/job and artifact URLs after native CI completes. The workflow includes `feat/quick-access-menu` and retains every validation step, macOS bundle, Windows x86_64 MSVC executable/NSIS build, both-output checks, asInvoker/uiAccess=false manifest extraction, and artifact/license uploads.
+Implementation commit: `aa8795679dc060ce0793cad7cc9cc86c89740e8a`; milestone documentation: `5aa131d92a306f661c3133efbc696be31150fffa`. The [first native run](https://github.com/weiliang79/nepteer/actions/runs/44750299446) passed on macOS and Windows.
+
+Final code including the explicit local-navigation guard: [`15e3fe1f1c17870c2d05516c62026ebbc217bc0b`](https://github.com/weiliang79/nepteer/commit/15e3fe1f1c17870c2d05516c62026ebbc217bc0b). [Final code CI run 44754434286](https://github.com/weiliang79/nepteer/actions/runs/44754434286) **passed on both platforms**:
+
+- [macOS job 136350341789](https://github.com/weiliang79/nepteer/actions/runs/44754434286/job/136350341789): every validation step, production app bundle and license upload passed.
+- [Windows job 136350341383](https://github.com/weiliang79/nepteer/actions/runs/44754434286/job/136350341383): formatting, typecheck, lint, 18 frontend tests, Rust check, 16 Rust tests (explicit generator intentionally ignored), Clippy, MSVC x86_64 build, NSIS packaging, both-output validation, manifest verification and uploads passed. The produced executable manifest was verified as **asInvoker, uiAccess=false**.
+
+[Windows artifact](https://github.com/weiliang79/nepteer/actions/runs/44754434286/artifacts/14637041698): `nepteer-windows-x86_64-15e3fe1f1c17870c2d05516c62026ebbc217bc0b`, ID `14637041698`, 4,977,295-byte ZIP. It contains `nepteer.exe` and `bundle/nsis/Nepteer_0.3.0-alpha.0_x64-setup.exe` (installer 2,063,217 bytes). Build/output checks and upload logs were inspected. License metadata: [Windows](https://github.com/weiliang79/nepteer/actions/runs/44754434286/artifacts/14636967120), [macOS](https://github.com/weiliang79/nepteer/actions/runs/44754434286/artifacts/14636384475).
+
+A documentation-only follow-up records the completed run. Runtime code/artifact provenance is the final code commit above. Nothing was merged to main; the branch is ready for review and manual testing. **CI does not validate native activation, touch, desktop/game compatibility or Step 3 Steam Deck hardware behavior.** The workflow includes `feat/quick-access-menu` and retains every validation step, macOS bundle, Windows x86_64 MSVC executable/NSIS build, both-output checks, asInvoker/uiAccess=false manifest extraction, and artifact/license uploads.
 
 Expected artifact `nepteer-windows-x86_64-<commit>` contains `nepteer.exe` and `bundle/nsis/Nepteer_0.3.0-alpha.0_x64-setup.exe`, built under `target/x86_64-pc-windows-msvc/release/`. NSIS remains currentUser and requires existing WebView2. No release publication or merge to main is authorized.
 
