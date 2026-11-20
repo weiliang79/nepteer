@@ -33,7 +33,7 @@ pnpm build --bundles app
 
 [Foundation CI](https://github.com/weiliang79/nepteer/actions/workflows/ci.yml) validates macOS and Windows and compiles an actual x86_64 Windows application. After a successful run, download **nepteer-windows-x86_64-&lt;commit&gt;** from the run's Artifacts section. It contains a per-user NSIS installer and standalone `nepteer.exe`. Microsoft Edge WebView2 must already be installed; the installer deliberately skips runtime installation to avoid requesting privilege. No Visual Studio is needed to run the artifact.
 
-Windows builds and Steam Deck hardware verification remain **pending until CI and manual testing actually run**. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
+Native macOS and Windows x86_64 CI builds passed for the stabilization code; see the [handoff](docs/HANDOFF.md) for run and artifact URLs. Steam Deck hardware verification remains **pending**. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
 
 ## Layout
 

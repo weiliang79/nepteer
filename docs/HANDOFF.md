@@ -1,6 +1,6 @@
 # Step 1 stabilization handoff
 
-Review baseline: [`ccf30c3ca80f6fc34c62cf208aa6a53456afab93`](https://github.com/weiliang79/nepteer/commit/ccf30c3ca80f6fc34c62cf208aa6a53456afab93). This remains the mock-only v0.1.0-alpha foundation. Stabilization changes are authorized for commit/push to `main`. `CODEX_STEP1_PROMPT.md` stays ignored and untracked.
+Review baseline: [`ccf30c3ca80f6fc34c62cf208aa6a53456afab93`](https://github.com/weiliang79/nepteer/commit/ccf30c3ca80f6fc34c62cf208aa6a53456afab93). This remains the mock-only v0.1.0-alpha foundation. Stabilization fixes were committed and pushed to `main`; the validated code commit and CI evidence are listed below. `CODEX_STEP1_PROMPT.md` stays ignored and untracked.
 
 ## Verified Windows failure
 
@@ -47,13 +47,26 @@ Local bundle: `target/release/bundle/macos/Nepteer.app`; executable: `target/rel
 
 ## CI and artifacts
 
-Stabilization code commit: [`27bc5a2a4384ed1eaaaca98287e9963d98a1c0d1`](https://github.com/weiliang79/nepteer/commit/27bc5a2a4384ed1eaaaca98287e9963d98a1c0d1), pushed to `main`.
+Checkout/bindings fix commit: [`27bc5a2a4384ed1eaaaca98287e9963d98a1c0d1`](https://github.com/weiliang79/nepteer/commit/27bc5a2a4384ed1eaaaca98287e9963d98a1c0d1), pushed to `main`.
 
 [Stabilization workflow run 44716956321](https://github.com/weiliang79/nepteer/actions/runs/44716956321):
 
 - [macOS job 136222680956](https://github.com/weiliang79/nepteer/actions/runs/44716956321/job/136222680956): **passed**, including every validation step and native application bundle.
 - [Windows job 136222680624](https://github.com/weiliang79/nepteer/actions/runs/44716956321/job/136222680624): **failed after formatting/frontend checks and Rust check passed**. The test executable compiled but exited before any tests ran with `0xc0000139 / STATUS_ENTRYPOINT_NOT_FOUND`. The installed Tauri/`embed-resource` sources embed the Common Controls v6 manifest only in application binaries, not test harnesses, matching [upstream Tauri issue 13419](https://github.com/tauri-apps/tauri/issues/13419). The follow-up build-script fix embeds the same explicit manifest across all MSVC targets.
-- Windows artifact URL: none from this failed attempt; follow-up validation pending.
+- Windows artifact URL: none from this failed attempt.
+
+Follow-up manifest fix: [`851e85c54af266854c4461cb4095161d2b87937b`](https://github.com/weiliang79/nepteer/commit/851e85c54af266854c4461cb4095161d2b87937b), [workflow run 44717978512](https://github.com/weiliang79/nepteer/actions/runs/44717978512).
+
+- [macOS job 136226122868](https://github.com/weiliang79/nepteer/actions/runs/44717978512/job/136226122868): **passed**, including all validations and the application bundle.
+- [Windows job 136226122356](https://github.com/weiliang79/nepteer/actions/runs/44717978512/job/136226122356): **passed**, including formatting, typecheck, lint, 7 frontend tests, Rust check, 4 Rust tests (explicit generator intentionally ignored), Clippy, native x86_64 MSVC release build, NSIS bundling, both-output verification, manifest validation, license inventories and artifact upload.
+
+Verified Windows artifact: [nepteer-windows-x86_64-851e85c54af266854c4461cb4095161d2b87937b](https://github.com/weiliang79/nepteer/actions/runs/44717978512/artifacts/14620034690), 4,700,012-byte ZIP (artifact ID `14620034690`). It was downloaded through the GitHub connector; the successful job's output checks and upload log verify:
+
+- `nepteer.exe`: 8,731,136 bytes.
+- `bundle/nsis/Nepteer_0.1.0-alpha.0_x64-setup.exe`: 1,958,307 bytes.
+- Windows SDK `mt.exe` extracted the produced executable's manifest and verified `asInvoker` / `uiAccess=false`.
+
+License inventories: [Windows](https://github.com/weiliang79/nepteer/actions/runs/44717978512/artifacts/14621216636), [macOS](https://github.com/weiliang79/nepteer/actions/runs/44717978512/artifacts/14620955934). No installer or executable was run on Steam Deck hardware. The final documentation-only commit records this completed run; it does not change the validated application code.
 
 The Windows build command is `pnpm build --target x86_64-pc-windows-msvc --bundles nsis`. Expected outputs are `target/x86_64-pc-windows-msvc/release/nepteer.exe` and `target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe`. The workflow requires both, then uploads them as `nepteer-windows-x86_64-<commit SHA>`. Dependency inventories are uploaded separately per platform.
 
