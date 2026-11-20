@@ -54,3 +54,5 @@ CSP is unchanged. `main` may read/select telemetry and show/hide/toggle/query th
 Sources: [Tauri window builder limitations](https://docs.rs/tauri/latest/tauri/webview/struct.WebviewWindowBuilder.html), [global shortcut plugin](https://v2.tauri.app/plugin/global-shortcut/), [Windows foreground restrictions](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow).
 
 Sources: [GetSystemPowerStatus](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getsystempowerstatus), [SYSTEM_POWER_STATUS](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-system_power_status), [Win32_ComputerSystem](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-computersystem), [WMI Rust wrapper](https://docs.rs/wmi/0.18.4/wmi/struct.WMIConnection.html).
+
+QAM navigation is explicitly restricted in its native builder to the local bundled entry page (or the exact configured Vite origin during development). Remote origins, other local pages and non-app URL schemes are rejected; this does not broaden CSP.

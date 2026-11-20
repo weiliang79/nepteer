@@ -156,6 +156,15 @@ fn bounds(x: i32, y: i32, width: u32, height: u32, scale: f64) -> Result<Bounds,
     })
 }
 
+fn local_navigation(url: &tauri::Url, development: Option<&tauri::Url>) -> bool {
+    let bundled = (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
+        || (url.scheme() == "http"
+            && url.host_str() == Some("tauri.localhost")
+            && url.port().is_none());
+    let vite = development.is_some_and(|dev| url.origin() == dev.origin());
+    (bundled || vite) && matches!(url.path(), "/" | "/index.html")
+}
+
 struct Native<'a, R: Runtime> {
     app: &'a tauri::AppHandle<R>,
 }
@@ -180,11 +189,17 @@ impl<R: Runtime> Backend for Native<'_, R> {
         self.window()?.is_focused().map_err(|e| e.to_string())
     }
     fn create(&mut self) -> Result<(), String> {
+        let development = if tauri::is_dev() {
+            self.app.config().build.dev_url.clone()
+        } else {
+            None
+        };
         tauri::WebviewWindowBuilder::new(
             self.app,
             LABEL,
             tauri::WebviewUrl::App("index.html?qam".into()),
         )
+        .on_navigation(move |url| local_navigation(url, development.as_ref()))
         .title("Nepteer · Quick Access")
         .inner_size(400.0, 720.0)
         .visible(false)
@@ -496,6 +511,33 @@ mod tests {
         assert!(state.apply(Action::Show, &mut window).unwrap().visible);
         state.registration_result(true);
         assert!(state.status(&window).unwrap().shortcut_available);
+    }
+    #[test]
+    fn qam_navigation_stays_on_the_local_entry_page() {
+        let dev = tauri::Url::parse("http://127.0.0.1:1420").unwrap();
+        for url in [
+            "tauri://localhost/index.html?qam",
+            "http://tauri.localhost/?qam",
+            "http://127.0.0.1:1420/index.html?qam",
+        ] {
+            assert!(local_navigation(
+                &tauri::Url::parse(url).unwrap(),
+                Some(&dev)
+            ));
+        }
+        for url in [
+            "https://example.com/",
+            "http://tauri.localhost.evil/",
+            "http://127.0.0.1:9999/",
+            "data:text/html,remote",
+            "http://tauri.localhost/other.html",
+        ] {
+            assert!(!local_navigation(
+                &tauri::Url::parse(url).unwrap(),
+                Some(&dev)
+            ));
+        }
+        assert!(!local_navigation(&dev, None));
     }
     #[test]
     fn close_policy_and_geometry_are_bounded() {

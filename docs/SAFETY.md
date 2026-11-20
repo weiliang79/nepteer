@@ -19,3 +19,5 @@ Windows focus restoration retains only an opaque window handle in process memory
 QAM starts hidden, its close action hides, and main close exits the process. There is no tray resident process, autostart, new background service or helper. Shortcut cleanup runs on normal exit; the OS releases its registration when the process ends.
 
 Steps 1 and 2 passed CI and user-reported Windows Deck smoke tests. This is historical evidence, not Step 3 overlay/focus verification. New hardware testing remains pending until the Step 3 checklist is completed. Pure coordinator/mock-runtime/jsdom tests do not establish actual OS activation, touch or fullscreen behavior.
+
+QAM navigation is explicitly restricted in its native builder to the local bundled entry page (or the exact configured Vite origin during development). Remote origins, other local pages and non-app URL schemes are rejected; this does not broaden CSP.

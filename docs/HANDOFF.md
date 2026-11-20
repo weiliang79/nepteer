@@ -36,7 +36,7 @@ Host: macOS arm64, Node 24.14.1, pnpm 12.21.0, Rust 1.100.0.
 | `pnpm lint`                               | Passed with zero warnings                                                                      |
 | `pnpm test`                               | Passed; 18 tests in 3 files                                                                    |
 | `pnpm rust:check`                         | Passed                                                                                         |
-| `pnpm rust:test`                          | Passed; 15 tests, 1 intentionally ignored explicit generator                                   |
+| `pnpm rust:test`                          | Passed; 16 tests, 1 intentionally ignored explicit generator                                   |
 | `pnpm rust:lint`                          | Passed; all-target Clippy with -D warnings                                                     |
 | `pnpm build --bundles app`                | Passed; production frontend, actual Rust executable and 10.22 MiB macOS app bundle             |
 | `pnpm dev`                                | Compiled/launched native app and Vite; terminal startup smoke only, not a full GUI/focus audit |
@@ -45,7 +45,7 @@ Host: macOS arm64, Node 24.14.1, pnpm 12.21.0, Rust 1.100.0.
 
 Initial development corrections: generic runtime parameters were required on injected AppHandle/WebviewWindow arguments to preserve mock-runtime IPC tests; an async request-counter cleanup triggered an ESLint ref warning and was corrected. Final checks passed. No test or permission was disabled to pass validation.
 
-Pure Rust tests cover hidden initial state, idempotence, repeated toggles with one creation, missing/destroyed/external-hidden recovery, blur/focus denial and return behavior, close-versus-exit policy, shortcut/creation failure recovery, bounded DPI/negative-monitor geometry, existing telemetry conversion and generated bindings. Mock-runtime IPC tests verify main/QAM/other/remote capability boundaries, shared provider reads and rejection of QAM mode changes/window show. These do not exercise native OS activation.
+Pure Rust tests cover hidden initial state, idempotence, repeated toggles with one creation, missing/destroyed/external-hidden recovery, blur/focus denial and return behavior, close-versus-exit policy, local-only navigation, shortcut/creation failure recovery, bounded DPI/negative-monitor geometry, existing telemetry conversion and generated bindings. Mock-runtime IPC tests verify main/QAM/other/remote capability boundaries, shared provider reads and rejection of QAM mode changes/window show. These do not exercise native OS activation.
 
 React tests cover both source labels, zero/unavailable/no battery, errors/retry, hidden startup with no telemetry read, native open/provider-triggered reads, Close/Escape, initial focus/Tab wrap, saved theme, planned rows, dashboard Open action/errors and all existing settings/telemetry behavior. jsdom does not validate actual native focus, touch or game compatibility.
 
