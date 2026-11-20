@@ -26,22 +26,24 @@ No serial/instance-ID query, path logging/exposure, exclusive access, output/fea
 
 Host: macOS arm64, Node 24.14.1, pnpm 12.21.0, Rust 1.100.0. Exact final commands/results are recorded below; a check-only temporary compilation of the native adapter supplements but does not replace native Windows CI.
 
-| Command                                   | Actual result                                                |
-| ----------------------------------------- | ------------------------------------------------------------ |
-| `git fetch origin`                        | Passed; branch created from updated main                     |
-| `pnpm bindings`                           | Passed; generated controller DTOs                            |
-| `pnpm bindings:check`                     | Passed; no-write drift check                                 |
-| `pnpm format` / `pnpm format:check`       | Passed                                                       |
-| `pnpm typecheck`                          | Passed                                                       |
-| `pnpm lint`                               | Passed; zero warnings                                        |
-| `pnpm test`                               | Passed; 27 tests in 4 files                                  |
-| `pnpm rust:check`                         | Passed                                                       |
-| `pnpm rust:test`                          | Passed; 23 tests, 1 intentionally ignored explicit generator |
-| `pnpm rust:lint`                          | Passed; all-target Clippy with -D warnings                   |
-| `pnpm build:web`                          | Passed; production Vite bundle                               |
-| `pnpm build --bundles app`                | Passed; native executable and 10.53 MiB macOS app bundle     |
-| `pnpm licenses:rust` / `pnpm licenses:js` | Passed; no dependency package addition                       |
-| `git diff --check`                        | Passed                                                       |
+| Command                                                                                                    | Actual result                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `git fetch origin`                                                                                         | Passed; branch created from updated main                                                                                                                                                    |
+| `pnpm bindings`                                                                                            | Passed; generated controller DTOs                                                                                                                                                           |
+| `pnpm bindings:check`                                                                                      | Passed; no-write drift check                                                                                                                                                                |
+| `pnpm format` / `pnpm format:check`                                                                        | Passed                                                                                                                                                                                      |
+| `pnpm typecheck`                                                                                           | Passed                                                                                                                                                                                      |
+| `pnpm lint`                                                                                                | Passed; zero warnings                                                                                                                                                                       |
+| `pnpm test`                                                                                                | Passed; 27 tests in 4 files                                                                                                                                                                 |
+| `pnpm rust:check`                                                                                          | Passed                                                                                                                                                                                      |
+| `pnpm rust:test`                                                                                           | Passed; 23 tests, 1 intentionally ignored explicit generator                                                                                                                                |
+| `pnpm rust:lint`                                                                                           | Passed; all-target Clippy with -D warnings                                                                                                                                                  |
+| `pnpm build:web`                                                                                           | Passed; production Vite bundle                                                                                                                                                              |
+| `pnpm build --bundles app`                                                                                 | Passed; native executable and 10.53 MiB macOS app bundle                                                                                                                                    |
+| `pnpm licenses:rust` / `pnpm licenses:js`                                                                  | Passed; no dependency package addition                                                                                                                                                      |
+| `cargo check --manifest-path /tmp/nepteer-hid-api-check/Cargo.toml --offline`                              | Passed; isolated native adapter/API type-check on macOS, 14 expected dead-code warnings because native entry points are uncalled in that temporary harness; no Windows linking or execution |
+| `cargo clippy --manifest-path /tmp/nepteer-hid-api-check/Cargo.toml --offline -- -D warnings -A dead-code` | Passed; temporary harness only, dead-code allowance is not applied to production or CI                                                                                                      |
+| `git diff --check`                                                                                         | Passed                                                                                                                                                                                      |
 
 Rust tests cover conservative candidate/usage policy, multiple collections, missing metadata/no device/enumeration failure, opaque-ID privacy, stale scan IDs, opt-in/idempotent start/stop, single worker/resources, open/read/disconnect errors without reconnect, expiry, cancellation/join, length bounds, no decoded input, read-only transport/source API guard and main/QAM/unknown/remote IPC restrictions. Existing QAM/focus/telemetry tests remain. React tests cover unscanned/not-found/detected, selection/start/stop, real/simulated/unsupported labels, busy/denied/disconnect, retry, event ordering, unavailable controls, keyboard access and page cleanup, plus dashboard/QAM/settings regressions. These use synthetic readers/mock IPC/jsdom; they prove no actual Windows HID, game or physical input behavior.
 
@@ -49,7 +51,14 @@ Local output: `target/release/nepteer`, `target/release/bundle/macos/Nepteer.app
 
 ## Native CI and Windows artifact
 
-Pending push/run completion. The final validated runtime commit, native run/job URLs and downloadable artifact will be recorded here after inspection. Expected artifact is `nepteer-windows-x86_64-<commit>` with `nepteer.exe` and `bundle/nsis/Nepteer_0.4.0-alpha.0_x64-setup.exe`, built natively under `target/x86_64-pc-windows-msvc/release/`. NSIS remains currentUser, manifest asInvoker/uiAccess=false, WebView2 already installed. CI success is build/test evidence, not Steam Deck validation.
+Implementation commits: `e921133` (native diagnostics) and [`94662a3ebfc53f4932e15edf544be842bc39d501`](https://github.com/weiliang79/nepteer/commit/94662a3ebfc53f4932e15edf544be842bc39d501) (Controller UI/tests/docs). [Native CI run 44762768321](https://github.com/weiliang79/nepteer/actions/runs/44762768321) **passed on both platforms**. Job summaries and decoded logs were inspected:
+
+- [Windows job 136379323706](https://github.com/weiliang79/nepteer/actions/runs/44762768321/job/136379323706): dependency install, format, typecheck, ESLint, 27 frontend tests, production web build, Rust check, 23 Rust tests (one intentionally ignored explicit generator), binding drift assertion, Clippy, x86_64 MSVC executable, NSIS installer, both-output and manifest verification, license metadata and uploads all passed. The built executable manifest was verified as **asInvoker, uiAccess=false**.
+- [macOS job 136379324105](https://github.com/weiliang79/nepteer/actions/runs/44762768321/job/136379324105): all applicable validation steps, the same test counts, production app bundle and license upload passed. Only platform-inapplicable packaging steps were skipped.
+
+[Download Windows artifact](https://github.com/weiliang79/nepteer/actions/runs/44762768321/artifacts/14641693410): `nepteer-windows-x86_64-94662a3ebfc53f4932e15edf544be842bc39d501`, ID `14641693410`, 5,133,698-byte ZIP. Build/output/upload logs confirm `nepteer.exe` (9,607,680 bytes) and `bundle/nsis/Nepteer_0.4.0-alpha.0_x64-setup.exe` (2,120,527 bytes), built natively under `target/x86_64-pc-windows-msvc/release/`. Artifact digest: `sha256:6b345779180d053bd3d3ddfebab78baefb31598f24f0cdfbbd33f8eddab52fa5`. License artifacts: [Windows](https://github.com/weiliang79/nepteer/actions/runs/44762768321/artifacts/14641393890), [macOS](https://github.com/weiliang79/nepteer/actions/runs/44762768321/artifacts/14642652888).
+
+NSIS remains currentUser, WebView2 must already be installed, and no added HID redistributable is required. This documentation-only follow-up records the validated runtime/artifact provenance above. CI success is build/test evidence, not Steam Deck validation. Nothing was merged to main.
 
 ## Manual handoff
 
