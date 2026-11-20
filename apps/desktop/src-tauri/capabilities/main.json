@@ -1,7 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Only the main local window may read mock telemetry.",
+  "description": "Dashboard telemetry, provider selection and fixed Quick Access operations.",
   "windows": ["main"],
-  "permissions": ["allow-get-telemetry"]
+  "permissions": [
+    "allow-get-telemetry",
+    "allow-show-quick-access",
+    "allow-hide-quick-access",
+    "allow-toggle-quick-access",
+    "allow-quick-access-status"
+  ]
 }

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getTelemetry, temperature } from "@/lib/telemetry";
+import { loadPreferences, type Preferences } from "@/lib/preferences";
+import { version } from "@/lib/app-info";
+import { showQuickAccess, quickAccessStatus } from "@/lib/quick-access";
 import type { ProviderMode, Snapshot } from "@/lib/bindings";
 
 const sections = [
@@ -11,22 +14,11 @@ const sections = [
   "Settings",
 ] as const;
 type Section = (typeof sections)[number];
-type Preferences = { theme: "dark" | "light"; unit: "celsius" | "fahrenheit" };
-function loadPreferences(): Preferences {
-  try {
-    const value = JSON.parse(
-      localStorage.getItem("nepteer.preferences") ?? "{}",
-    );
-    return {
-      theme: value?.theme === "light" ? "light" : "dark",
-      unit: value?.unit === "fahrenheit" ? "fahrenheit" : "celsius",
-    };
-  } catch {
-    return { theme: "dark", unit: "celsius" };
-  }
-}
-
 export default function App() {
+  const [qamMessage, setQamMessage] = useState<string | null>(null);
+  const [shortcutHint, setShortcutHint] = useState(
+    "Ctrl + Alt + Q (Control + Option + Q on macOS)",
+  );
   const [section, setSection] = useState<Section>("Dashboard");
   const [preferences, setPreferences] = useState(loadPreferences);
   const [mode, setMode] = useState<ProviderMode>("auto");
@@ -35,6 +27,33 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [request, setRequest] = useState(0);
   const [storageError, setStorageError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void quickAccessStatus()
+      .then((status) => {
+        if (active) {
+          setShortcutHint(status.shortcutHint);
+          setQamMessage(status.notice);
+        }
+      })
+      .catch(() => {});
+    const changed = () => setPreferences(loadPreferences());
+    window.addEventListener("storage", changed);
+    return () => {
+      active = false;
+      window.removeEventListener("storage", changed);
+    };
+  }, []);
+  async function openQuickAccess() {
+    setQamMessage(null);
+    try {
+      const status = await showQuickAccess();
+      setShortcutHint(status.shortcutHint);
+      setQamMessage(status.notice);
+    } catch (reason) {
+      setQamMessage(`Quick Access could not open: ${String(reason)}`);
+    }
+  }
   useEffect(() => {
     document.documentElement.dataset.theme = preferences.theme;
   }, [preferences.theme]);
@@ -111,7 +130,7 @@ export default function App() {
                 0{index + 1}
               </span>
               {item}
-              {!["Dashboard", "Settings"].includes(item) && (
+              {!["Dashboard", "Settings", "Quick Access"].includes(item) && (
                 <span className="planned-tag">Planned</span>
               )}
             </Button>
@@ -119,7 +138,7 @@ export default function App() {
         </nav>
         <div className="sidebar-footer">
           <span className="status-dot" /> {sourceLabel}
-          <small>v0.2.0-alpha · Read only</small>
+          <small>v{version} · Read only</small>
         </div>
       </aside>
       <main id="main" tabIndex={-1}>
@@ -147,6 +166,15 @@ export default function App() {
                 {loading ? "Reading…" : "Refresh snapshot"}
               </Button>
             )}
+          </div>
+          <div className="qam-entry">
+            <Button onClick={() => void openQuickAccess()}>
+              Open Quick Access
+            </Button>
+            <p className="muted">
+              {shortcutHint} · Available while Nepteer is running
+            </p>
+            {qamMessage && <p role="alert">{qamMessage}</p>}
           </div>
           <div className="notice">
             <span className="notice-symbol" aria-hidden="true">
@@ -343,11 +371,11 @@ export default function App() {
                       </dl>
                     </section>
                     <section className="panel future-panel">
-                      <span className="planned-tag">ON THE HORIZON</span>
+                      <span className="planned-tag">QUICK ACCESS</span>
                       <h2>A quicker way in.</h2>
                       <p className="muted">
-                        A controller-friendly Quick Access Menu is planned for a
-                        future milestone.
+                        Open a separate, read-only panel with battery
+                        information and keyboard/touch navigation.
                       </p>
                       <p className="muted">
                         Power profiles, fan controls and input mapping are not
@@ -357,7 +385,7 @@ export default function App() {
                         variant="outline"
                         onClick={() => setSection("Quick Access")}
                       >
-                        Explore what’s planned <span aria-hidden="true">↗</span>
+                        About Quick Access <span aria-hidden="true">↗</span>
                       </Button>
                     </section>
                   </div>
@@ -371,6 +399,21 @@ export default function App() {
                 </>
               )}
             </>
+          )}
+          {section === "Quick Access" && (
+            <section className="panel">
+              <h2>A panel within reach.</h2>
+              <p className="muted">
+                Open Quick Access above ordinary desktop windows with the button
+                above or {shortcutHint}. Escape, Close, or clicking outside
+                after activation hides the panel. Exclusive-fullscreen
+                compatibility is not guaranteed.
+              </p>
+              <p className="muted">
+                Performance, controller and display controls remain planned.
+                This panel changes no hardware settings.
+              </p>
+            </section>
           )}
           {section === "Settings" && (
             <section className="panel settings">
@@ -440,7 +483,7 @@ export default function App() {
               </div>
             </section>
           )}
-          {!["Dashboard", "Settings"].includes(section) && (
+          {!["Dashboard", "Settings", "Quick Access"].includes(section) && (
             <section className="panel planned-page">
               <span className="planned-tag">PLANNED · FUTURE MILESTONE</span>
               <h2>

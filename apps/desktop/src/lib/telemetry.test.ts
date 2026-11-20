@@ -26,7 +26,7 @@ test("native wrapper invokes exactly the read-only command", async () => {
     gpuTemperatureCelsius: null,
   });
   expect(handler).toHaveBeenCalledTimes(1);
-  expect(handler).toHaveBeenCalledWith("get_telemetry", { mode: "auto" });
+  expect(handler).toHaveBeenCalledWith("get_telemetry", {});
   await getTelemetry("mock");
   expect(handler).toHaveBeenLastCalledWith("get_telemetry", { mode: "mock" });
 });

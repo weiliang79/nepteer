@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "quick-access",
+  "description": "Local Quick Access may read telemetry/session source, query visibility, hide itself and listen for native open/provider events.",
+  "windows": ["quick-access"],
+  "permissions": [
+    "allow-get-telemetry",
+    "allow-hide-quick-access",
+    "allow-quick-access-status",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

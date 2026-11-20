@@ -1,6 +1,12 @@
 fn main() {
-    let mut attributes = tauri_build::Attributes::new()
-        .app_manifest(tauri_build::AppManifest::new().commands(&["get_telemetry"]));
+    let mut attributes =
+        tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&[
+            "get_telemetry",
+            "show_quick_access",
+            "hide_quick_access",
+            "toggle_quick_access",
+            "quick_access_status",
+        ]));
 
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
         && std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc")

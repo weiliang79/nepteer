@@ -527,3 +527,120 @@ select:focus-visible {
     flex-wrap: wrap;
   }
 }
+
+.qam-entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.qam-entry [role="alert"] {
+  width: 100%;
+  font-size: 13px;
+}
+.qam-panel {
+  min-height: 100vh;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--background);
+  border: 1px solid var(--border);
+}
+.qam-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.qam-header h1 {
+  font-size: 24px;
+  margin: 4px 0 0;
+}
+.qam-header button {
+  margin-left: auto;
+  font-size: 18px;
+}
+.qam-battery {
+  padding: 22px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.qam-battery .source-pill {
+  margin-bottom: 20px;
+}
+.qam-reading {
+  font-size: clamp(32px, 10vw, 48px);
+  letter-spacing: -0.045em;
+  margin: 10px 0;
+  line-height: 1.25;
+}
+.qam-battery p.muted {
+  margin: 6px 0 0;
+}
+.qam-navigation {
+  display: grid;
+  gap: 4px;
+}
+.qam-navigation button {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 54px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+.qam-navigation .planned-tag {
+  margin-left: auto;
+}
+.qam-navigation p {
+  padding: 8px 14px;
+}
+.qam-footer {
+  display: block;
+  margin-top: auto;
+  padding-top: 18px;
+  font-size: 11px;
+}
+.qam-footer p {
+  margin: 0 0 10px;
+}
+.qam-footer span {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+.qam-error {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+@keyframes qam-enter {
+  from {
+    opacity: 0.6;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qam-panel {
+    animation: none;
+  }
+}
+
+html[data-window="quick-access"] body {
+  min-width: 0;
+}
+.qam-panel {
+  min-width: 0;
+}
+.qam-header {
+  flex-wrap: wrap;
+}
