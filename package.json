@@ -1,0 +1,25 @@
+{
+  "name": "nepteer-workspace",
+  "private": true,
+  "version": "0.1.0-alpha.0",
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "dev": "pnpm --filter @nepteer/desktop tauri dev",
+    "build": "pnpm --filter @nepteer/desktop tauri build",
+    "build:web": "pnpm --filter @nepteer/desktop build",
+    "typecheck": "pnpm --filter @nepteer/desktop typecheck",
+    "lint": "pnpm --filter @nepteer/desktop lint",
+    "test": "pnpm --filter @nepteer/desktop test",
+    "format": "prettier --write . && cargo fmt --all",
+    "format:check": "prettier --check . && cargo fmt --all -- --check",
+    "rust:check": "cargo check --workspace --locked",
+    "rust:test": "cargo test --workspace --locked",
+    "rust:lint": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+    "bindings": "cargo test --workspace export_bindings",
+    "licenses:js": "pnpm --recursive --include-workspace-root licenses list --json",
+    "licenses:rust": "node scripts/rust-licenses.mjs"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.0"
+  }
+}

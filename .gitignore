@@ -1,0 +1,11 @@
+node_modules/
+dist/
+target/
+*.log
+.DS_Store
+.env*
+!.env.example
+apps/desktop/src-tauri/gen/
+
+# Local implementation instructions
+/CODEX_STEP1_PROMPT.md

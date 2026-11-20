@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+Cargo.lock
+target
+node_modules
+dist
+AGENTS.md
+CODEX_STEP1_PROMPT.md
+apps/desktop/src/lib/bindings.ts

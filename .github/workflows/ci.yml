@@ -1,0 +1,63 @@
+name: Foundation CI
+on:
+  push:
+    branches: [main, feat/foundation]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build:web
+      - run: pnpm rust:check
+      - run: pnpm rust:test
+      - run: pnpm rust:lint
+      - name: Build native Windows x86_64 installer
+        if: runner.os == 'Windows'
+        run: pnpm build --target x86_64-pc-windows-msvc --bundles nsis
+      - name: Build macOS application bundle
+        if: runner.os == 'macOS'
+        run: pnpm build --bundles app
+      - name: Record JavaScript licenses
+        run: pnpm licenses:js > javascript-licenses.json
+      - name: Record Rust licenses
+        run: pnpm licenses:rust > rust-licenses.json
+      - name: Upload Windows installer and runnable binary
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nepteer-windows-x86_64-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            target/x86_64-pc-windows-msvc/release/nepteer.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-licenses-${{ runner.os }}-${{ github.sha }}
+          path: |
+            javascript-licenses.json
+            rust-licenses.json

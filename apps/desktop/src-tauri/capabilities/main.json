@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Only the main local window may read mock telemetry.",
+  "windows": ["main"],
+  "permissions": ["allow-get-telemetry"]
+}
