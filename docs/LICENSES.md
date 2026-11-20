@@ -34,6 +34,10 @@ Rust's `tauri/test` feature is enabled only for development tests to verify actu
 
 `windows-sys` 0.61.2 (MIT OR Apache-2.0) supplies official read-only `GetSystemPowerStatus` / `GetLastError` bindings. `wmi` 0.18.4 (MIT OR Apache-2.0) provides typed local COM/WMI query handling so the app avoids hand-written unsafe COM/VARIANT lifetime code. Its default chrono feature is disabled. The only additional locked transitive package is `futures` 0.3.34 (MIT OR Apache-2.0); its component crates and the `windows` bindings already existed in the Tauri graph. All are Windows-only dependencies and none adds a runtime service or subprocess. Version and declared-license metadata were reviewed from downloaded Cargo manifests and recorded in the inventory. No Steam Deck Tools source is used.
 
+## Step 3 shortcut dependency
+
+`tauri-plugin-global-shortcut` 2.4.1 and its `global-hotkey` 0.8.0 backend are Apache-2.0 OR MIT. The official plugin supplies platform registration/lifecycle without a frontend dependency or custom keyboard hook. Windows uses RegisterHotKey/UnregisterHotKey (including no-repeat); macOS uses Carbon hotkey registration. Added transitive declared licenses are recorded in LICENSE_INVENTORY.md, including MIT/Apache keyboard-types and Windows bindings, Apache-2.0 gethostname, and MIT/Apache/LLVM-exception/Zlib alternatives in Linux-only support. No copied source or SteamOS assets were introduced. Full distribution notices/platform review remain required; metadata review is not legal clearance.
+
 ## Transitive review and remaining obligations
 
 The inventory contains MIT/Apache/BSD/ISC/Unlicense/0BSD/MIT-0/Zlib packages, Unicode-3.0 data, BlueOak-1.0.0 packages, CC-BY-4.0 `caniuse-lite` data, MPL-2.0 CSS tooling and Rust components, and Apache LLVM exceptions. Some Rust packages offer LGPL as an alternative to MIT/Apache; select and document permitted alternatives for the actual distribution rather than assuming all alternatives apply. Preserve conjunctive license requirements such as BSD AND MIT and Apache AND MIT. Slash-separated older metadata needs confirmation against upstream license texts.

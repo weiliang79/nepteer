@@ -1,8 +1,8 @@
 # Dependency license inventory
 
-Declared package metadata reviewed during v0.2.0-alpha. This records resolved packages reported on the macOS authoring host, including development dependencies. It is not a complete distribution notice bundle or legal clearance. JavaScript platform-specific optional binaries must be reviewed from Windows CI. Rust lists the entire locked graph, including target-only packages. Local Nepteer licensing is not selected.
+Declared dependency metadata reviewed for v0.3.0-alpha.0. This inventory includes build/test and target-only packages and is not distribution clearance. Review Windows optional binaries and full source/notice obligations before distribution.
 
-Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bundled dependencies and preserve full upstream notices before public distribution.
+Regenerate with `pnpm licenses:js` and `pnpm licenses:rust`.
 
 ## JavaScript
 
@@ -370,6 +370,7 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | embed-resource               | 3.0.12                        | MIT                                                 |
 | equivalent                   | 1.0.3                         | Apache-2.0 OR MIT                                   |
 | erased-serde                 | 0.4.11                        | MIT OR Apache-2.0                                   |
+| errno                        | 0.3.15                        | MIT OR Apache-2.0                                   |
 | fastrand                     | 2.5.0                         | Apache-2.0 OR MIT                                   |
 | fdeflate                     | 0.3.7                         | MIT OR Apache-2.0                                   |
 | field-offset                 | 0.3.6                         | MIT OR Apache-2.0                                   |
@@ -398,6 +399,7 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | gdkx11                       | 0.18.2                        | MIT                                                 |
 | gdkx11-sys                   | 0.18.2                        | MIT                                                 |
 | generic-array                | 0.14.7                        | MIT                                                 |
+| gethostname                  | 1.1.0                         | Apache-2.0                                          |
 | getrandom                    | 0.3.4                         | MIT OR Apache-2.0                                   |
 | getrandom                    | 0.4.3                         | MIT OR Apache-2.0                                   |
 | gio                          | 0.18.4                        | MIT                                                 |
@@ -406,6 +408,7 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | glib-macros                  | 0.18.5                        | MIT                                                 |
 | glib-sys                     | 0.18.1                        | MIT                                                 |
 | glob                         | 0.3.4                         | MIT OR Apache-2.0                                   |
+| global-hotkey                | 0.8.0                         | Apache-2.0 OR MIT                                   |
 | gobject-sys                  | 0.18.0                        | MIT                                                 |
 | gtk                          | 0.18.2                        | MIT                                                 |
 | gtk-sys                      | 0.18.2                        | MIT                                                 |
@@ -461,6 +464,7 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | js-sys                       | 0.3.107                       | MIT OR Apache-2.0                                   |
 | json-patch                   | 4.2.0                         | MIT/Apache-2.0                                      |
 | jsonptr                      | 0.7.1                         | MIT OR Apache-2.0                                   |
+| keyboard-types               | 0.7.0                         | MIT OR Apache-2.0                                   |
 | keyboard-types               | 0.8.3                         | MIT OR Apache-2.0                                   |
 | libappindicator              | 0.9.0                         | Apache-2.0 OR MIT                                   |
 | libappindicator-sys          | 0.9.0                         | Apache-2.0 OR MIT                                   |
@@ -469,6 +473,7 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | libloading                   | 0.7.4                         | ISC                                                 |
 | libredox                     | 0.1.25                        | MIT                                                 |
 | link-section                 | 0.19.4                        | Apache-2.0 OR MIT                                   |
+| linux-raw-sys                | 0.12.1                        | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | litemap                      | 0.8.3                         | Unicode-3.0                                         |
 | lock_api                     | 0.4.14                        | MIT OR Apache-2.0                                   |
 | log                          | 0.4.35                        | MIT OR Apache-2.0                                   |
@@ -484,7 +489,7 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | ndk                          | 0.9.0                         | MIT OR Apache-2.0                                   |
 | ndk-context                  | 0.1.1                         | MIT OR Apache-2.0                                   |
 | ndk-sys                      | 0.6.0+11769913                | MIT OR Apache-2.0                                   |
-| nepteer                      | 0.2.0-alpha.0                 | Not selected (local project)                        |
+| nepteer                      | 0.3.0-alpha.0                 | Not selected (local project)                        |
 | new_debug_unreachable        | 1.0.6                         | MIT                                                 |
 | num_enum                     | 0.7.6                         | BSD-3-Clause OR MIT OR Apache-2.0                   |
 | num_enum_derive              | 0.7.6                         | BSD-3-Clause OR MIT OR Apache-2.0                   |
@@ -554,6 +559,7 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | reqwest                      | 0.13.5                        | MIT OR Apache-2.0                                   |
 | rustc_version                | 0.4.1                         | MIT OR Apache-2.0                                   |
 | rustc-hash                   | 2.1.3                         | Apache-2.0 OR MIT                                   |
+| rustix                       | 1.1.6                         | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | rustversion                  | 1.0.23                        | MIT OR Apache-2.0                                   |
 | same-file                    | 1.0.6                         | Unlicense/MIT                                       |
 | schemars                     | 0.8.22                        | MIT                                                 |
@@ -611,6 +617,8 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | tauri-build                  | 2.7.6                         | Apache-2.0 OR MIT                                   |
 | tauri-codegen                | 2.7.6                         | Apache-2.0 OR MIT                                   |
 | tauri-macros                 | 2.7.6                         | Apache-2.0 OR MIT                                   |
+| tauri-plugin                 | 2.7.4                         | Apache-2.0 OR MIT                                   |
+| tauri-plugin-global-shortcut | 2.4.1                         | Apache-2.0 OR MIT                                   |
 | tauri-runtime                | 2.12.4                        | Apache-2.0 OR MIT                                   |
 | tauri-runtime-wry            | 2.12.5                        | Apache-2.0 OR MIT                                   |
 | tauri-utils                  | 2.10.4                        | Apache-2.0 OR MIT                                   |
@@ -686,12 +694,20 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | window-vibrancy              | 0.8.1                         | Apache-2.0 OR MIT                                   |
 | windows                      | 0.62.2                        | MIT OR Apache-2.0                                   |
 | windows_aarch64_gnullvm      | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_aarch64_gnullvm      | 0.52.6                        | MIT OR Apache-2.0                                   |
 | windows_aarch64_msvc         | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_aarch64_msvc         | 0.52.6                        | MIT OR Apache-2.0                                   |
 | windows_i686_gnu             | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_i686_gnu             | 0.52.6                        | MIT OR Apache-2.0                                   |
+| windows_i686_gnullvm         | 0.52.6                        | MIT OR Apache-2.0                                   |
 | windows_i686_msvc            | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_i686_msvc            | 0.52.6                        | MIT OR Apache-2.0                                   |
 | windows_x86_64_gnu           | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_x86_64_gnu           | 0.52.6                        | MIT OR Apache-2.0                                   |
 | windows_x86_64_gnullvm       | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_x86_64_gnullvm       | 0.52.6                        | MIT OR Apache-2.0                                   |
 | windows_x86_64_msvc          | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows_x86_64_msvc          | 0.52.6                        | MIT OR Apache-2.0                                   |
 | windows-collections          | 0.3.2                         | MIT OR Apache-2.0                                   |
 | windows-core                 | 0.62.2                        | MIT OR Apache-2.0                                   |
 | windows-future               | 0.3.2                         | MIT OR Apache-2.0                                   |
@@ -702,8 +718,10 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | windows-result               | 0.4.1                         | MIT OR Apache-2.0                                   |
 | windows-strings              | 0.5.1                         | MIT OR Apache-2.0                                   |
 | windows-sys                  | 0.45.0                        | MIT OR Apache-2.0                                   |
+| windows-sys                  | 0.59.0                        | MIT OR Apache-2.0                                   |
 | windows-sys                  | 0.61.2                        | MIT OR Apache-2.0                                   |
 | windows-targets              | 0.42.2                        | MIT OR Apache-2.0                                   |
+| windows-targets              | 0.52.6                        | MIT OR Apache-2.0                                   |
 | windows-threading            | 0.2.1                         | MIT OR Apache-2.0                                   |
 | windows-version              | 0.1.7                         | MIT OR Apache-2.0                                   |
 | winnow                       | 0.5.40                        | MIT                                                 |
@@ -715,6 +733,9 @@ Regenerate using `pnpm licenses:js` and `pnpm licenses:rust`. Confirm actual bun
 | wry                          | 0.57.3                        | Apache-2.0 OR MIT                                   |
 | x11                          | 2.21.0                        | MIT                                                 |
 | x11-dl                       | 2.21.0                        | MIT                                                 |
+| x11rb                        | 0.13.2                        | MIT OR Apache-2.0                                   |
+| x11rb-protocol               | 0.13.2                        | MIT OR Apache-2.0                                   |
+| xkeysym                      | 0.2.1                         | MIT OR Apache-2.0 OR Zlib                           |
 | yoke                         | 0.8.4                         | Unicode-3.0                                         |
 | yoke-derive                  | 0.8.4                         | Unicode-3.0                                         |
 | zerofrom                     | 0.1.8                         | Unicode-3.0                                         |

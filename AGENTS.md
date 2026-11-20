@@ -1,11 +1,21 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.2.0-alpha Windows read-only telemetry, not hardware control.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.3.0-alpha.0 Quick Access Menu foundation, not hardware control.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 2 — Windows read-only telemetry
+## Current milestone: Step 3 — Quick Access Menu foundation
+
+Steps 1 and 2 passed native CI and user-reported Windows Steam Deck smoke tests. Step 2 merged at `dcc5fc4b589dbf5cd8f50150b26b6c6a4e0b5adb`. Work on `feat/quick-access-menu` from latest main. Commit/push reviewable changes to that branch, validate native macOS/Windows CI and upload Windows artifacts; do not merge to main without review.
+
+Add exactly one separate `quick-access` window: hidden on startup, borderless, opaque, right-aligned within the selected display work area, on top while visible and absent from the Windows taskbar. Rust owns actual visibility, show/hide/toggle/query, close-to-hide and main-close-to-exit behavior. Reuse the existing telemetry provider and Rust DTOs. QAM may read the session provider but only main may change it. Keep permissions label-specific and minimal; no frontend window creation or arbitrary shortcut registration.
+
+Use the official global-shortcut plugin with Ctrl+Alt+Q (Control+Option+Q on macOS) and a dashboard Open Quick Access fallback. Handle conflicts without crashing and clean up registration on exit. Windows foreground identity may be retained in memory solely for best-effort focus return; never read titles or log handles. Do not synthesize input, repeatedly force focus, attach input threads, bypass activation restrictions or inject into games. Outside-click blur must not steal focus back. Document macOS/Spaces and exclusive-fullscreen limitations and keep hardware verification pending until the user tests Step 3.
+
+No new sensors, TDP/fan/clock writes, controller interception/mapping, virtual controllers, trackpad access, Neptune HID, Steam/⋯ interception, RTSS, drivers, services, startup persistence, game hooks or anti-cheat interaction. The QAM is the only overlay authorized in this milestone. Preserve the safety and architecture rules below; prior milestone exclusions describe their historical scope.
+
+## Completed milestone: Step 2 — Windows read-only telemetry
 
 Step 1 is complete: native macOS/Windows CI passed and the user reported all eight Windows Steam Deck smoke tests passed. Step 2 introduces Windows battery percentage/charging status using `GetSystemPowerStatus`, and non-identifying manufacturer/model via a narrowly selected native WMI query. Windows defaults to the real provider; macOS retains mock development. Explicit session-only mock selection is visible in Settings. Reads must never silently fall back to simulated values. Missing/unknown readings remain unavailable, zero remains valid, and no serial numbers or other unique identifiers are queried, persisted or logged. LCD/OLED classification remains unverified.
 
