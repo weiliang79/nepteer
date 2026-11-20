@@ -17,9 +17,10 @@ Added `.gitattributes` with `* text=auto eol=lf` and binary icon exclusions. Rep
 - `.gitattributes`: consistent text checkout on macOS/Windows; no conversion of binary icons.
 - `telemetry.rs`, root `package.json`: split explicit `pnpm bindings` generation from the ordinary read-only `bindings_are_current` test and `pnpm bindings:check`. The generator is an ignored test selected explicitly with `--ignored --exact`; no CI-dependent behavior remains. Rust remains the type authority; generated DTO contents did not change. No dependency added.
 - `.github/workflows/ci.yml`: retain MSVC x86_64 NSIS build and existing executable/installer upload paths; explicitly require **both** outputs before upload. Extract the actual executable manifest with Windows SDK `mt.exe` and require `asInvoker` / `uiAccess=false`. Fail if the SDK tool, installer, executable or expected manifest is missing.
+- `build.rs`, `windows-app-manifest.xml`: embed Common Controls v6 and explicit `asInvoker` / `uiAccess=false` for all MSVC application and test targets, without duplicating Tauri's binary-only manifest. No dependency added.
 - Architecture/development docs: document LF policy and generation/check workflow. This handoff records evidence and remaining hardware checks.
 
-Tauri command registration, capabilities, CSP and production code paths were reviewed and remain unchanged. Only `get_telemetry` is allowed from the local main window. IPC tests still reject another window and a remote URL. There are no added shell/filesystem grants or remote origins. NSIS remains `currentUser`; WebView2 runtime setup remains skipped. A supported existing WebView2 runtime is required. [Tauri documents per-user NSIS installation](https://v2.tauri.app/distribute/windows-installer/).
+Tauri command registration, capabilities, CSP and application runtime code paths were reviewed and remain unchanged. Only `get_telemetry` is allowed from the local main window. IPC tests still reject another window and a remote URL. There are no added shell/filesystem grants or remote origins. NSIS remains `currentUser`; WebView2 runtime setup remains skipped. A supported existing WebView2 runtime is required. [Tauri documents per-user NSIS installation](https://v2.tauri.app/distribute/windows-installer/).
 
 ## Local regression results
 
@@ -46,7 +47,13 @@ Local bundle: `target/release/bundle/macos/Nepteer.app`; executable: `target/rel
 
 ## CI and artifacts
 
-Stabilization workflow: pending first push. This section will be updated with actual run/job and artifact URLs after the run completes.
+Stabilization code commit: [`27bc5a2a4384ed1eaaaca98287e9963d98a1c0d1`](https://github.com/weiliang79/nepteer/commit/27bc5a2a4384ed1eaaaca98287e9963d98a1c0d1), pushed to `main`.
+
+[Stabilization workflow run 44716956321](https://github.com/weiliang79/nepteer/actions/runs/44716956321):
+
+- [macOS job 136222680956](https://github.com/weiliang79/nepteer/actions/runs/44716956321/job/136222680956): **passed**, including every validation step and native application bundle.
+- [Windows job 136222680624](https://github.com/weiliang79/nepteer/actions/runs/44716956321/job/136222680624): **failed after formatting/frontend checks and Rust check passed**. The test executable compiled but exited before any tests ran with `0xc0000139 / STATUS_ENTRYPOINT_NOT_FOUND`. The installed Tauri/`embed-resource` sources embed the Common Controls v6 manifest only in application binaries, not test harnesses, matching [upstream Tauri issue 13419](https://github.com/tauri-apps/tauri/issues/13419). The follow-up build-script fix embeds the same explicit manifest across all MSVC targets.
+- Windows artifact URL: none from this failed attempt; follow-up validation pending.
 
 The Windows build command is `pnpm build --target x86_64-pc-windows-msvc --bundles nsis`. Expected outputs are `target/x86_64-pc-windows-msvc/release/nepteer.exe` and `target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe`. The workflow requires both, then uploads them as `nepteer-windows-x86_64-<commit SHA>`. Dependency inventories are uploaded separately per platform.
 
