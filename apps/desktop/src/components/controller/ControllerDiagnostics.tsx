@@ -102,8 +102,9 @@ export default function ControllerDiagnostics() {
           <p>
             Discovery is manual. Monitoring never sends output/feature reports,
             changes hardware, or takes exclusive access. Sessions stop after
-            five minutes or when you leave this page. No button decoding is
-            verified; no controller button opens QAM.
+            five minutes or when you leave this page. Physical button decoding
+            remains disabled pending hardware evidence. Simulation demonstrates
+            candidate mappings; no controller button opens QAM.
           </p>
         </div>
       </div>
@@ -296,8 +297,8 @@ export default function ControllerDiagnostics() {
             )}
             {snapshot.monitor.phase === "raw_input_only" && (
               <p className="muted">
-                Raw input is observable. Report format and button interpretation
-                are unsupported.
+                Raw input is observable. Physical decoding remains disabled;
+                matching a candidate format does not verify physical controls.
               </p>
             )}
             {snapshot.monitor.issue && (
@@ -309,23 +310,189 @@ export default function ControllerDiagnostics() {
           </>
         )}
       </section>
-      <section className="panel">
-        <h2>Input interpretation · Unverified</h2>
+      {snapshot && <InputDiagnostics snapshot={snapshot} active={active} />}
+    </section>
+  );
+}
+
+function controlName(value: string) {
+  if (value === "quick_access") return "Quick Access (⋯)";
+  if (value === "steam") return "Steam";
+  return value.length <= 2 ? value.toUpperCase() : value.replaceAll("_", " ");
+}
+function InputDiagnostics({
+  snapshot,
+  active,
+}: {
+  snapshot: DiagnosticsSnapshot;
+  active: boolean;
+}) {
+  const { monitor, source } = snapshot;
+  const report = monitor.report;
+  const transitions = monitor.transitions
+    .filter(
+      (event) =>
+        active &&
+        event.source === source &&
+        (source === "simulated" ||
+          (source === "windows" &&
+            report.framingVerified &&
+            monitor.controls.some(
+              (control) =>
+                control.control === event.control &&
+                control.verification === "button_verified",
+            ))),
+    )
+    .slice(-32);
+  return (
+    <>
+      <section className="panel" aria-label="Report format">
+        <h2>Report format</h2>
+        {!active && (
+          <p className="muted">
+            Historical session summary · Monitoring is inactive.
+          </p>
+        )}
+        <dl className="capabilities">
+          <div>
+            <dt>Selected candidate</dt>
+            <dd>{monitor.candidateId ?? "None"}</dd>
+          </div>
+          <div>
+            <dt>Format recognition</dt>
+            <dd>
+              {report.recognition === "candidate"
+                ? "Published candidate · Unverified"
+                : report.recognition === "malformed"
+                  ? "Malformed candidate packet"
+                  : report.recognition === "unsupported"
+                    ? "Unsupported format"
+                    : "Not observed"}
+            </dd>
+          </div>
+          <div>
+            <dt>Candidate layout</dt>
+            <dd>{report.format?.replaceAll("_", " ") ?? "Unknown"}</dd>
+          </div>
+          <div>
+            <dt>Candidate HID report ID</dt>
+            <dd>
+              {report.reportId === null
+                ? "Not identified"
+                : hex(report.reportId, 2)}
+            </dd>
+          </div>
+          <div>
+            <dt>Candidate message type</dt>
+            <dd>
+              {report.messageType === null
+                ? "Unknown"
+                : hex(report.messageType, 2)}
+            </dd>
+          </div>
+          <div>
+            <dt>Hardware framing verified (Level 2)</dt>
+            <dd>{report.framingVerified ? "Yes" : "No"}</dd>
+          </div>
+          <div>
+            <dt>Physical button verification complete (Level 3)</dt>
+            <dd>{report.physicalButtonsVerified ? "Yes" : "No"}</dd>
+          </div>
+          <div>
+            <dt>Candidate / unsupported / malformed reports</dt>
+            <dd>
+              {report.candidateReportCount} / {report.unsupportedReportCount} /{" "}
+              {report.malformedReportCount}
+            </dd>
+          </div>
+        </dl>
+        {report.lastIssue && (
+          <p role="status" className="qam-error">
+            Parser diagnostic: {report.lastIssue.replaceAll("_", " ")}. No
+            release was inferred from this packet.
+          </p>
+        )}
         <p className="muted">
-          Report length alone does not identify a protocol. No Steam/⋯, face
-          button, D-pad, shoulder, trigger, rear button, stick or trackpad
-          interpretation is implemented. All controls remain unavailable; no
-          synthetic press/release is generated.
+          Level 1 is a published candidate, Level 2 needs observed Windows
+          framing evidence, and Level 3 needs independent physical press/release
+          correlation for each control. Synthetic reports and CI cannot promote
+          these levels. Report ID and message type are distinct.
+        </p>
+      </section>
+      <section className="panel" aria-label="Controller button states">
+        <h2>Input interpretation</h2>
+        <p className="muted">
+          Physical mappings are unverified and disabled in this build. Phase 1
+          candidates cover face buttons, D-pad, L1/R1, Steam and ⋯. Simulation
+          shows held states and transitions only. Triggers, rear buttons, sticks
+          and trackpads remain unavailable.
         </p>
         <div className="controller-inputs">
-          {snapshot?.monitor.controls.map((control) => (
-            <div key={control.control}>
-              <span>{control.control.replaceAll("_", " ")}</span>
-              <span>Unavailable</span>
-            </div>
-          ))}
+          {monitor.controls.map((control) => {
+            const trusted =
+              active &&
+              monitor.buttonDecodingSupported &&
+              report.recognition === "candidate" &&
+              ((source === "simulated" &&
+                control.verification === "simulated") ||
+                (source === "windows" &&
+                  report.framingVerified &&
+                  control.verification === "button_verified"));
+            const pressed = trusted ? control.pressed : null;
+            return (
+              <div
+                key={control.control}
+                className={pressed === true ? "input-pressed" : undefined}
+                aria-label={`${controlName(control.control)}: ${pressed === null ? "unavailable" : pressed ? "pressed" : "released"}`}
+              >
+                <span>{controlName(control.control)}</span>
+                <span>
+                  {pressed === null
+                    ? "Unavailable"
+                    : pressed
+                      ? "Pressed / held"
+                      : "Released"}
+                </span>
+                <small>
+                  {control.verification === "candidate"
+                    ? "Unverified mapping"
+                    : control.verification === "simulated"
+                      ? "Simulated"
+                      : control.verification === "button_verified"
+                        ? "Physically verified"
+                        : "Unsupported"}
+                </small>
+              </div>
+            );
+          })}
         </div>
       </section>
-    </section>
+      <section className="panel" aria-label="Recent input transitions">
+        <h2>Recent transitions</h2>
+        <p className="muted">
+          At most 32 in-memory observations, ordered oldest first, with time
+          since session start. First valid state is a baseline. Stop/rescan
+          clears history; nothing is saved.
+        </p>
+        {transitions.length === 0 ? (
+          <p>No verified or simulated transitions.</p>
+        ) : (
+          <ol className="controller-transitions">
+            {transitions.map((event) => (
+              <li key={event.sequence}>
+                <span>
+                  {controlName(event.control)} ·{" "}
+                  {event.pressed ? "Press" : "Release"}
+                </span>
+                <span>
+                  {(event.atSessionMs / 1000).toFixed(2)}s ·{" "}
+                  {event.source === "simulated" ? "Simulated" : "Physical"}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </>
   );
 }

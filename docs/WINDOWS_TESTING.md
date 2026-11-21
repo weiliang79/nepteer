@@ -1,6 +1,43 @@
-# Step 4 · Windows 11 Steam Deck LCD testing
+# Step 5A · Windows Neptune decoding validation
 
-**All Step 4 hardware observations are pending.** Native CI builds and synthetic tests do not establish HID report availability, physical button compatibility or Steam Input coexistence. Historical Steps 1–3 passed user-reported tests, including 14 Step 3 tests.
+**No Step 5A framing or physical button mapping is verified.** Step 4 passed user-reported hardware checks, but no actual report IDs, lengths or control-correlated evidence was supplied to this task. CI/synthetic fixtures do not establish either. Do not disable Steam Input, elevate, change drivers/firmware, unplug internal hardware or test anti-cheat-protected games.
+
+## Phase A: current build and safe framing observations
+
+Record build/commit/artifact, Windows version, scaling and Steam Input running state. Share only safe interface usage/page/number, descriptor/actual lengths, candidate ID/type/format, counts and outcomes. Never paste raw HID streams, full paths, serials or unique IDs into chat.
+
+1. Install/launch as a standard user with WebView2 already present. QAM is hidden; diagnostics are stopped/unscanned and no controller is automatically opened.
+2. Open Controller → Windows native HID → Rescan. Confirm plausible candidate metadata, multiple collections stay separate, no paths/serials and mouse/keyboard/missing metadata stays discovery-only.
+3. Select an eligible vendor-defined candidate, Start Monitoring explicitly. Record not-found, denied/busy, open-but-silent and reports-observed separately. No interface is selected automatically to force success.
+4. Observe Report format: selected candidate, actual length, candidate HID report ID, message type, layout, recognition and aggregate candidate/unsupported/malformed counts. Expected published candidate body is version 1/type 0x09/declared length 64; a zero-prefixed 65-byte variant is proposed, not established. Bare message ID stays unidentified. Both hardware-verification fields must remain **No**, even for a match.
+5. Observe idle count changes for 10 seconds, then press exactly one A button, hold, release and repeat five times. Record only count/format stability and Steam Input behavior. Current physical button cards must remain Unavailable with no transition history. Counts are not button evidence; do not mark Level 3 passed based on them.
+6. Repeat safe framing observations for B/X/Y, D-pad directions, L1/R1, Steam and ⋯ individually, then simultaneous pairs. Check QAM is never triggered by physical controller input. Note that unrelated false button transitions cannot be evaluated in this build because native mapping is disabled.
+7. Keep Steam running/Input enabled and confirm existing input works during/after observation. Optionally compare when Steam was already absent or another controller tool already holds access; do not terminate tools or take ownership to obtain reports. Stop on any interference.
+8. Unknown format remains raw observation with unavailable controls; malformed content shows a bounded parser diagnostic and no releases. Transport-invalid lengths may still stop the worker. Do not force malformed packets on hardware or alter devices to test an error; synthetic tests cover these cases.
+9. Stop explicitly: input is unavailable, history empty, counts/time labeled historical and no longer increasing. Repeat Start/Stop 20 times, rescan and reselect; no duplicate worker or stale state. Leave/reopen Controller to check cleanup and current native status.
+10. Observe normal five-minute expiry, main close with QAM open, and fresh launch. No active monitor, input history, orphan process, driver/service or startup entry survives normal shutdown/uninstall. Natural disconnect/busy recovery is optional when safely observable, never requires internal unplugging or driver changes.
+11. Retest Dashboard, theme/units/provider settings, telemetry and keyboard/touch QAM open/hide/focus. Ctrl+Alt+Q/dashboard entry retains existing behavior while monitoring. Physical Steam/⋯ never opens QAM.
+12. Deliberately choose Simulated diagnostics → Rescan → select → Start. SIMULATED INPUT must remain visible. Expect A press/held/release then B+⋯ together; at most 32 ordered simulated transitions with session times, no repeated held presses. Phase 1 released values are neutral and unsupported triggers/rear/sticks/trackpads unavailable. Stop/restart clears input/history and establishes a new baseline; simulation cannot mark hardware verified.
+
+Mark each item pass/fail/not tested with safe observations. Matching candidate headers only supplies review evidence; this build never auto-promotes to framing_verified or button_verified. No unsupported native control should visually highlight.
+
+## Phase B: physical mapping evidence needed before enablement
+
+Current native UI cannot correlate physical buttons with candidate bits: decoding is deliberately disabled. The proposed bounded local correlation probe in NEPTUNE_RESEARCH.md is **not implemented** in this milestone. Do not mistake simulated UI transitions for physical validation. First review the safe Phase A results and confirm the format/interface; if further byte analysis is needed, implement/review that explicit memory-only probe before asking the user to continue:
+
+1. Select the reviewed collection/format and one physical control; opt in to a short local probe with a visible timer/abort. No arbitrary byte inspector, raw export or recording.
+2. Start with every control released; establish baseline. Press only the selected button, hold, release, repeat five times. Review aggregate expected presses/releases/repeats and unrelated changes, never packet bytes.
+3. Repeat independently for each Phase 1 control. Test idle periods and unsupported controls for false positives. A working A result must not promote Steam, ⋯ or another control.
+4. Test simultaneous pairs and different release order, checking deterministic independent transitions with no unrelated false positives. Repeated held reports must yield one press, and first held baseline no historical press.
+5. Record safe format/interface/build context and independent user observations, review with the developer, and only then consider an explicit per-control allowlist scoped to the verified format/interface. New sessions/reconnects require fresh baselines. Missing/inaccessible/noisy evidence stays unverified.
+
+Outstanding Step 5B evidence includes actual Windows framing, continuous-versus-change delivery behavior, individual physical Steam/⋯ and other button correlations, false-positive/combination tests and Steam Input coexistence. Controller-driven QAM, mappings and all device writes remain excluded here.
+
+---
+
+## Historical Step 4 · Windows 11 Steam Deck LCD testing
+
+**Step 4 hardware checks passed, as reported by the user.** Native CI builds and synthetic tests do not establish HID report availability, physical button compatibility or Steam Input coexistence. Historical Steps 1–3 passed user-reported tests, including 14 Step 3 tests.
 
 Record branch/commit, CI run/artifact, Windows version, Steam running/not running, scaling and each result as pass/fail/not tested. Record only safe VID/PID/usage/interface metadata and summary counts/lengths/state. Never capture serials, full paths, unique IDs or raw input streams. No internal-controller unplugging, driver changes, unsupported hardware modifications or security bypass is required. Do not test anti-cheat-protected games.
 
@@ -28,7 +65,7 @@ Also leave a session running for five minutes to verify native expiry and resour
 
 ## Historical Step 3 · Windows 11 Steam Deck LCD QAM checklist
 
-Steps 1 and 2: CI and user-reported hardware smoke tests passed. **Step 3 overlay, focus and game compatibility are pending user verification.** Automated fake-backend/mock-runtime tests do not prove native activation or fullscreen behavior.
+Steps 1 and 2: CI and user-reported hardware smoke tests passed. **The user reports 14 successful Step 3 hardware tests; exclusive-fullscreen limitations remain.** Automated fake-backend/mock-runtime tests do not prove native activation or fullscreen behavior.
 
 Record branch/commit, CI run/artifact URL, Windows version, display scaling, test application/window mode and observations. Do not collect serials, private application titles or window handles. Keep a keyboard available; Steam/⋯ and native controller interception are not implemented. Do not test anti-cheat-protected games in this initial validation; do not hook, inject into or modify any game.
 

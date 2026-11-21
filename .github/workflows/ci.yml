@@ -8,6 +8,7 @@ on:
         feat/windows-telemetry,
         feat/quick-access-menu,
         feat/neptune-discovery,
+        feat/neptune-input-decoding,
       ]
   pull_request:
   workflow_dispatch:

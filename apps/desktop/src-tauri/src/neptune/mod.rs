@@ -47,6 +47,7 @@ pub enum MonitorPhase {
     Starting,
     AwaitingReports,
     RawInputOnly,
+    SimulatedInput,
     AccessDenied,
     DeviceBusy,
     Disconnected,
@@ -57,7 +58,7 @@ impl MonitorPhase {
     pub fn active(self) -> bool {
         matches!(
             self,
-            Self::Starting | Self::AwaitingReports | Self::RawInputOnly
+            Self::Starting | Self::AwaitingReports | Self::RawInputOnly | Self::SimulatedInput
         )
     }
 }
@@ -123,7 +124,7 @@ pub struct Candidate {
     pub capabilities: InputCapabilities,
     pub issue: Option<InputFailure>,
 }
-#[derive(Debug, Clone, Copy, Serialize, TS)]
+#[derive(Debug, Clone, Copy, Serialize, TS, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ControllerControl {
     Steam,
@@ -151,16 +152,69 @@ pub enum ControllerControl {
     LeftTrackpadClick,
     RightTrackpadClick,
 }
+/// Candidate layouts: published body / proposed Windows prefix; neither is physically verified.
+#[derive(Debug, Clone, Copy, Serialize, TS, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ReportFormat {
+    DeckV1Bare64,
+    DeckV1ZeroPrefixed65,
+}
+#[derive(Debug, Clone, Copy, Default, Serialize, TS, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ReportRecognition {
+    #[default]
+    NotObserved,
+    Candidate,
+    Unsupported,
+    Malformed,
+}
+#[derive(Debug, Clone, Copy, Serialize, TS, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ParseIssue {
+    UnsupportedPrefix,
+    UnsupportedVersion,
+    UnsupportedMessage,
+    Truncated,
+    Oversized,
+    InvalidDeclaredLength,
+}
+#[derive(Debug, Clone, Copy, Serialize, TS, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum MappingVerification {
+    Unavailable,
+    Candidate,
+    Simulated,
+    ButtonVerified,
+}
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportDiagnostics {
+    pub recognition: ReportRecognition,
+    pub format: Option<ReportFormat>,
+    /// Zero only for the matching zero-prefixed candidate; bare message has no identified HID ID.
+    pub report_id: Option<u8>,
+    pub message_type: Option<u8>,
+    pub framing_verified: bool,
+    pub physical_buttons_verified: bool,
+    pub candidate_report_count: u32,
+    pub unsupported_report_count: u32,
+    pub malformed_report_count: u32,
+    pub last_issue: Option<ParseIssue>,
+}
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ControlObservation {
     pub control: ControllerControl,
     pub pressed: Option<bool>,
+    pub verification: MappingVerification,
 }
-/// Contract only: no transition is emitted until a format is independently verified.
+/// Bounded session-local observations. This build emits simulated transitions only.
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ButtonTransition {
+    pub sequence: u32,
+    pub at_session_ms: u32,
+    pub source: InputSource,
     pub control: ControllerControl,
     pub pressed: bool,
 }
@@ -176,6 +230,7 @@ pub struct MonitorStatus {
     pub last_report_at_unix_ms: Option<u64>,
     pub issue: Option<InputFailure>,
     pub button_decoding_supported: bool,
+    pub report: ReportDiagnostics,
     pub controls: Vec<ControlObservation>,
     pub transitions: Vec<ButtonTransition>,
 }
@@ -190,6 +245,7 @@ impl Default for MonitorStatus {
             last_report_at_unix_ms: None,
             issue: None,
             button_decoding_supported: false,
+            report: ReportDiagnostics::default(),
             controls: reports::unavailable_controls(),
             transitions: Vec::new(),
         }
@@ -421,6 +477,7 @@ impl Diagnostics {
             .map_err(|_| "Controller state is unavailable.")?;
         data.monitor.phase = MonitorPhase::Stopped;
         data.monitor.opened = false;
+        data.monitor.button_decoding_supported = false;
         data.monitor.transitions.clear();
         data.monitor.controls = reports::unavailable_controls();
         Ok(data.clone())
@@ -484,7 +541,7 @@ impl DiscoveryBackend for PlatformBackend {
     }
     fn open(&self, candidate: &PrivateCandidate) -> Result<Box<dyn InputReader>, InputFailure> {
         if candidate.mode == DiagnosticsMode::Simulated {
-            return Ok(Box::new(SimulatedReader));
+            return Ok(Box::new(SimulatedReader::default()));
         }
         #[cfg(windows)]
         {
@@ -522,11 +579,21 @@ fn simulated_candidate() -> PrivateCandidate {
         mode: DiagnosticsMode::Simulated,
     }
 }
-struct SimulatedReader;
+#[derive(Default)]
+struct SimulatedReader {
+    step: u32,
+}
 impl InputReader for SimulatedReader {
     fn read(&mut self, buffer: &mut [u8], timeout_ms: u32) -> Result<Option<usize>, InputFailure> {
         std::thread::sleep(Duration::from_millis(u64::from(timeout_ms.min(50))));
-        buffer[..64].fill(0);
+        // Each state repeats for ten reports: baseline, press, hold, release, simultaneous.
+        let buttons = match (self.step / 10) % 8 {
+            1 | 2 => 1 << 7,                  // candidate A
+            4 | 5 => (1 << 5) | (1u64 << 50), // candidate B + Quick Access
+            _ => 0,
+        };
+        buffer[..64].copy_from_slice(&reports::synthetic_report(buttons));
+        self.step = self.step.wrapping_add(1);
         Ok(Some(64))
     }
 }
@@ -542,6 +609,11 @@ pub(crate) fn declarations() -> Vec<String> {
         InputCapabilities::decl(),
         Candidate::decl(),
         ControllerControl::decl(),
+        ReportFormat::decl(),
+        ReportRecognition::decl(),
+        ParseIssue::decl(),
+        MappingVerification::decl(),
+        ReportDiagnostics::decl(),
         ControlObservation::decl(),
         ButtonTransition::decl(),
         MonitorStatus::decl(),
@@ -812,5 +884,56 @@ mod tests {
                 "unexpected device API: {forbidden}"
             );
         }
+    }
+    #[test]
+    fn simulated_worker_decodes_but_stop_restart_and_expiry_clear_all_input() {
+        let diagnostics = Diagnostics::new(Arc::new(PlatformBackend), Duration::from_secs(3));
+        let data = diagnostics.rescan(DiagnosticsMode::Simulated).unwrap();
+        let id = &data.candidates[0].id;
+        diagnostics.start(id, notify()).unwrap();
+        wait_until(|| {
+            !diagnostics
+                .snapshot()
+                .unwrap()
+                .monitor
+                .transitions
+                .is_empty()
+        });
+        let live = diagnostics.snapshot().unwrap();
+        assert_eq!(live.source, InputSource::Simulated);
+        assert_eq!(live.monitor.phase, MonitorPhase::SimulatedInput);
+        assert!(live
+            .monitor
+            .controls
+            .iter()
+            .any(|c| c.pressed == Some(true)));
+        assert!(
+            !live.monitor.report.framing_verified && !live.monitor.report.physical_buttons_verified
+        );
+        let stopped = diagnostics.stop().unwrap();
+        assert!(stopped.monitor.transitions.is_empty());
+        assert!(!stopped.monitor.button_decoding_supported);
+        assert!(stopped.monitor.controls.iter().all(|c| c.pressed.is_none()));
+        diagnostics.start(id, notify()).unwrap();
+        wait_until(|| {
+            diagnostics.snapshot().unwrap().monitor.phase == MonitorPhase::SimulatedInput
+        });
+        assert!(diagnostics
+            .snapshot()
+            .unwrap()
+            .monitor
+            .transitions
+            .is_empty());
+        diagnostics.shutdown();
+        let short = Diagnostics::new(Arc::new(PlatformBackend), Duration::from_millis(600));
+        let found = short.rescan(DiagnosticsMode::Simulated).unwrap();
+        short.start(&found.candidates[0].id, notify()).unwrap();
+        wait_until(|| short.snapshot().unwrap().monitor.phase == MonitorPhase::Stopped);
+        let expired = short.snapshot().unwrap();
+        assert!(
+            expired.monitor.transitions.is_empty() && !expired.monitor.button_decoding_supported
+        );
+        assert!(expired.monitor.controls.iter().all(|c| c.pressed.is_none()));
+        assert_eq!(expired.source, InputSource::Simulated);
     }
 }

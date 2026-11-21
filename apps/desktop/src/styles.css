@@ -685,12 +685,34 @@ html[data-window="quick-access"] body {
   gap: 10px;
 }
 .controller-inputs > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  min-height: 64px;
+  gap: 6px;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
   font-size: 11px;
   color: var(--secondary);
+}
+
+.controller-inputs .input-pressed {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 20%, var(--card));
+}
+.controller-inputs small {
+  grid-column: 1 / -1;
+  color: var(--secondary);
+}
+.controller-transitions {
+  max-height: 18rem;
+  overflow-y: auto;
+  padding-left: 1.5rem;
+}
+.controller-transitions li {
+  padding: 0.65rem;
+}
+.controller-transitions li span {
+  display: block;
 }
