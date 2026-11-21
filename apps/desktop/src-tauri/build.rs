@@ -11,6 +11,9 @@ fn main() {
             "neptune_start",
             "neptune_stop",
             "neptune_status",
+            "neptune_probe_start",
+            "neptune_probe_status",
+            "neptune_probe_abort",
         ]));
 
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")

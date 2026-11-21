@@ -365,6 +365,7 @@ impl InputReader for Reader {
             ));
         }
         output[..count].copy_from_slice(&self.buffer[..count]);
+        self.buffer.fill(0); // I/O is complete; retain no packet after handing it to the observer.
         Ok(Some(count))
     }
 }

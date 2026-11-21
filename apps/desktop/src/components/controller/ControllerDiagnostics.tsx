@@ -1,3 +1,4 @@
+import PhysicalCorrelation from "./PhysicalCorrelation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { DiagnosticsMode, DiagnosticsSnapshot } from "@/lib/bindings";
@@ -310,6 +311,13 @@ export default function ControllerDiagnostics() {
           </>
         )}
       </section>
+      {snapshot && (
+        <PhysicalCorrelation
+          key={snapshot.monitor.sessionGeneration}
+          snapshot={snapshot}
+          selectedCandidateId={selected}
+        />
+      )}
       {snapshot && <InputDiagnostics snapshot={snapshot} active={active} />}
     </section>
   );

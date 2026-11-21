@@ -4,16 +4,18 @@ import type {
   DiagnosticsMode,
   DiagnosticsSnapshot,
   MonitorPhase,
+  ProbeStatus,
+  ProbeStartRequest,
 } from "./bindings";
-function native(
+function native<T = DiagnosticsSnapshot>(
   command: string,
   args: Record<string, unknown> = {},
-): Promise<DiagnosticsSnapshot> {
+): Promise<T> {
   if (!isTauri())
     return Promise.reject(
       new Error("Controller diagnostics need the native Nepteer app."),
     );
-  return invoke<DiagnosticsSnapshot>(command, args);
+  return invoke<T>(command, args);
 }
 export const listCandidates = () => native("neptune_list");
 export const rescanCandidates = (mode: DiagnosticsMode) =>
@@ -35,3 +37,11 @@ export const onDiagnostics = (
   listen<DiagnosticsSnapshot>("neptune-diagnostics", (event) =>
     callback(event.payload),
   );
+
+export const startProbe = (request: ProbeStartRequest) =>
+  native<ProbeStatus>("neptune_probe_start", { request });
+export const probeStatus = () => native<ProbeStatus>("neptune_probe_status");
+export const abortProbe = (token: number) =>
+  native<ProbeStatus>("neptune_probe_abort", { token });
+export const probeActive = (outcome: ProbeStatus["outcome"]) =>
+  outcome === "preparing" || outcome === "running";

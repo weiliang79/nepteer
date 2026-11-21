@@ -265,11 +265,22 @@ test("Controller is a practical diagnostics page; leaving stops observation and 
   vi.mocked(diagnostics.onDiagnostics).mockResolvedValue(() => {});
   vi.mocked(diagnostics.listCandidates).mockResolvedValue({
     source: "unsupported",
+    probe: {
+      token: 0,
+      revision: 0,
+      monitorGeneration: 0,
+      outcome: "not_started",
+      phase: "preparation",
+      cycle: 0,
+      remainingMs: 0,
+      summary: null,
+    },
     discovery: "not_scanned",
     candidates: [],
     discoveryIssue: null,
     monitor: {
       phase: "stopped",
+      sessionGeneration: 0,
       candidateId: null,
       opened: false,
       reportCount: 0,

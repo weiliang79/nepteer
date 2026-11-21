@@ -75,6 +75,27 @@ pub(super) fn classify(bytes: &[u8]) -> Classification {
         buttons: u64::from_le_bytes(word),
     })
 }
+/// Internal-only correlation input. Reuses the checked parser, never crosses IPC.
+pub(super) fn correlation_word(bytes: &[u8]) -> Result<u64, bool> {
+    match classify(bytes) {
+        Classification::Candidate(frame) if frame.format == ReportFormat::DeckV1ZeroPrefixed65 => {
+            Ok(frame.buttons)
+        }
+        Classification::Malformed(_) => Err(true),
+        _ => Err(false),
+    }
+}
+pub(super) fn candidate_bit(control: ControllerControl) -> Option<u8> {
+    BUTTONS
+        .iter()
+        .find(|(value, _)| *value == control)
+        .map(|(_, bit)| *bit)
+}
+pub(super) fn known_mask() -> u64 {
+    BUTTONS
+        .iter()
+        .fold(0, |mask, (_, bit)| mask | (1u64 << bit))
+}
 /// Preserve Step 4 terminal transport-length policy before classifying packet content.
 pub(super) fn inspect(length: usize, descriptor_length: usize) -> Result<(), InputFailure> {
     if length == 0 || length > descriptor_length || length > MAX_REPORT {
