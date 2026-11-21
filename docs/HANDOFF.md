@@ -38,7 +38,14 @@ Local validation passed on macOS arm64:
 
 Five new Rust tests cover rejection/preflight, diagnostic+probe ownership/recovery, stale scans/spawn failure, immediate open/read/unexpected failures with replacement, and no-report expiry. Eleven additional shortcut UI cases cover pending/duplicate prevention, real interval polling, rejection/retry, stale events/generations/IPC responses, worker termination in compact view, safe error text/copying, Disarm fencing a late rejected Arm, and subscription failure with polling fallback. Initial TypeScript fixture errors were corrected by extending the existing test DTOs; no check or permission was disabled.
 
-Native CI/artifact results are pending push for this fix. Prior Step 5B evidence below remains historical and tied to its tested SHA. Actual game-close reproduction, Windows installer execution, new interactive GUI/focus/coexistence tests and the focused checklist at the top of WINDOWS_TESTING.md remain pending on hardware. CI does not establish their success.
+Fix commit `a0e9366f7b4d91c13623492f311a98e258d40bcc`: [Desktop CI run 44897797106](https://github.com/weiliang79/nepteer/actions/runs/44897797106) passed on both native platforms.
+
+- [macOS job](https://github.com/weiliang79/nepteer/actions/runs/44897797106/job/136827075156): all validation and native app bundle passed.
+- [Windows job](https://github.com/weiliang79/nepteer/actions/runs/44897797106/job/136827074987): all validation, x86_64 MSVC/NSIS build, manifest/output verification and uploads passed.
+- Both logs confirm 61 frontend tests, 58 Rust tests passed, one explicit generator ignored and `bindings_are_current` passed. No checks were skipped to enable packaging; opposite-platform-only build steps remain conditional as before.
+- [Windows executable and installer artifact](https://github.com/weiliang79/nepteer/actions/runs/44897797106/artifacts/14704324896), tied to the fix SHA above: `nepteer.exe` (10,056,704 bytes) and `bundle/nsis/Nepteer_0.5.0-alpha.2_x64-setup.exe` (2,197,323 bytes). Logs confirm `Verified executable manifest: asInvoker, uiAccess=false`; current-user NSIS/WebView2 configuration is unchanged.
+
+Subsequent handoff-only commits do not change this implementation. Prior Step 5B evidence below remains historical and tied to its tested SHA. Exit the previous Nepteer process before installing this same-version diagnostic build; confirm the Last Arm Attempt and Copy Shortcut Diagnostic Summary controls are present. Actual game-close reproduction, Windows installer execution, new interactive GUI/focus/coexistence tests and the focused checklist at the top of WINDOWS_TESTING.md remain pending on hardware. CI does not establish their success. Do not merge.
 
 ---
 
