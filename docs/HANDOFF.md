@@ -43,7 +43,14 @@ Local validation passed on macOS arm64, Node 24.14.1, pnpm 12.21.0, Rust 1.100.0
 
 Explicit binding generation was unnecessary because no DTO changed; the read-only drift assertion passed independently and in the Rust suite. Four added Rust tests and four parameterized frontend cases provide direction-specific coverage; existing cancellation, no-write/privacy, one-reader conflicts, Arm diagnostics and QAM/telemetry/settings tests remain enabled. No native production Rust change, new permission or test weakening occurred.
 
-Native macOS/Windows CI and matching Windows artifact are pending push for this branch. Not run locally: Windows installer execution, actual D-pad/probe/GUI/game/tool coexistence tests. Synthetic results cannot establish actual D-pad mappings, Windows GUI behavior, Steam Input coexistence or isolation. Physical matrix and reviewer decisions remain pending. Existing Step 5B historical logs below are not Step 5C.1 results.
+Implementation/test/documentation commit `771cd899ab65774754fd94fde488a5d6b31eb7b0`: [Desktop CI run 44907342876](https://github.com/weiliang79/nepteer/actions/runs/44907342876) passed on both platforms.
+
+- [Native macOS job](https://github.com/weiliang79/nepteer/actions/runs/44907342876/job/136855632780): validation, binding drift and actual macOS bundle passed.
+- [Native Windows job](https://github.com/weiliang79/nepteer/actions/runs/44907342876/job/136855633109): validation, binding drift, MSVC x86_64 build, NSIS, manifest/output checks and uploads passed.
+- Both logs: 65 frontend tests and 62 Rust tests passed, one intentionally ignored explicit generator; `bindings_are_current` passed. Formatting, TypeScript, ESLint, Rust check, all-target Clippy and web production build remained enabled.
+- [Matching Windows executable/installer artifact](https://github.com/weiliang79/nepteer/actions/runs/44907342876/artifacts/14708621948): `nepteer.exe` (10,057,216 bytes) and `bundle/nsis/Nepteer_0.5.0-alpha.2_x64-setup.exe` (2,200,264 bytes). Extracted manifest verification printed `Verified executable manifest: asInvoker, uiAccess=false`; current-user NSIS and WebView2 requirements are unchanged. Exit the old app before installing this same-version branch build and check the D-pad guidance appears after selecting a direction.
+
+The following handoff-only result commit changes no runtime/test behavior. CI is not physical verification; no merge has been performed. Not run locally: Windows installer execution, actual D-pad/probe/GUI/game/tool coexistence tests. Synthetic results cannot establish actual D-pad mappings, Windows GUI behavior, Steam Input coexistence or isolation. Physical matrix and reviewer decisions remain pending. Existing Step 5B historical logs below are not Step 5C.1 results.
 
 ---
 
