@@ -1,4 +1,39 @@
-# Step 5A · Windows Neptune decoding validation
+# Step 5A.1 · Physical Neptune button correlation
+
+**Probe hardware results are pending.** Known user-reported baseline: Steam Deck LCD/Windows 11; Steam Deck Tools installed, Steam Controller.exe running, Desktop mode. Separate Steam client/Steam Input status was not confirmed. Reported collections: mouse interface 0 (0x0001/0x0002, length 6), keyboard interface 1 (0x0001/0x0006, length 9), vendor interface 2 (0xFFFF/0x0001, descriptor 65). Vendor reports: actual 65 bytes, deck_v1_zero_prefixed65, candidate ID 0x00/type 0x09, 42,808 candidate reports, 0 unsupported/malformed; intermittent idle and increased input activity. These aggregates do not fully verify framing or any physical mapping.
+
+Keep a keyboard/touchscreen available. Do not uninstall/disable Steam Deck Tools, stop Steam, change Desktop mode/Steam Input/HidHide/Lizard Mode, modify firmware/drivers, unplug internal hardware, elevate or test anti-cheat-protected games. Unknown Steam/Input labels are valid. Mark each item pass/fail/not tested with safe aggregate results only.
+
+1. Install the matching x86_64 artifact as a standard user with WebView2 already present. No elevation, driver/service or startup entry; QAM starts hidden and HID monitoring stopped.
+2. Manually Rescan and inspect the three expected HID collections where present. Mouse/keyboard remain discovery-only. No serial/full device path/unique ID should be displayed or copied.
+3. Select the eligible vendor-defined usage-1 descriptor-65 interface explicitly. Do not choose an arbitrary first VID/PID match or virtual Xbox controller.
+4. Start normal monitoring and confirm actual length 65, zero prefix candidate report ID 0x00/type 0x09, deck_v1_zero_prefixed65 and normal compatible counts. Both hardware verification flags must remain No. Missing/incompatible reports must not enable the probe.
+5. Keep normal monitoring running. The probe must reuse that one worker/handle; no second reader or hidden monitor is created. Check ordinary input still works.
+6. In Physical Button Correlation, record Steam Deck Tools running Yes and mode Desktop **only if currently true**. Leave Steam running/Input Unknown unless independently known. These labels must change no controller behavior.
+7. Select A. Read the explanation, separately consent, then Start Probe. It must never start from opening the page, choosing a control, consent alone or rescan. No Next clicks are needed after Start.
+8. Preparation (0–4s): release all controls, rest the Deck, do not touch pads/sticks. Multiple identical released reports over >=500ms are required. No fresh baseline/no frames yields inconclusive, not verification.
+9. Idle (4–7s): keep hands off. Follow five automatic cycles starting around 7/11/15/19/23s: press A in the 1.5s Press window, hold through the 1s Hold window, release in the 1.5s Release window. Keep controls released during the final 27–29s interval. Rust countdown may be sampled by the UI; do not anticipate the prompt.
+10. Review the aggregate result and Copy Safe Summary. Expect five in-window presses/releases/completed cycles, final released, no nominated idle/outside-phase edges for a plausible observation. Inspect unrelated known/unknown edge counts independently. An Observed result is pending independent review, never physical verification. Save/share only the safe JSON and build/context, never raw packets/paths/serials.
+11. Repeat independently for B/X/Y, preferably more than once each. A plausible A result must not mark B/X/Y or other controls verified.
+12. Repeat Steam and Quick Access (⋯) separately, keeping touch/keyboard Abort available. Desktop mode may treat them differently; blocked/missing/ambiguous results are valid inconclusive evidence. Do not reconfigure tools to force access.
+13. Compare nominated controls and safe summaries: Steam and ⋯ must be tested distinctly. Neither can open QAM. Do not call either verified from format/cadence alone.
+14. Run negative controls: nominate A but leave hands off through all phases; expect missing cycles/inconclusive. Check idle counts do not increase just because reports arrive. If safely testing idle activity, record any false positives without changes to system configuration.
+15. Optionally nominate A and press a second physical button with it during a cycle. Verify unrelated **edges**, not repeated held samples, are counted separately. Unknown changes are aggregate only; no raw bit mask should be shown. Record possible noise/contamination rather than treating every change as mapping failure.
+16. Abort midway. The button must stay available; native status ends immediately (subject only to IPC delivery), retains only aggregates, and no later probe activity resumes automatically.
+17. Stop Monitoring during a probe, leave Controller, rescan or switch the selected/owning interface. Active probe must abort; normal stop joins/releases the existing reader. Reopening shows actual current/terminal status and no stale native pressed cards.
+18. Check normal ~29s completion and native hard 30s limit. If status/UI stalls safely, no evidence may be analyzed after the deadline; an incomplete/delayed/no-report run remains inconclusive. Do not manufacture driver failures or alter hardware to test this. Synthetic tests cover delayed tick/deadline logic.
+19. Repeat probes and Start/Abort, including returning to Controller, without stale results, duplicate sessions or workers. A late response from a previous token must not alter a newer probe. No automatic retry/reconnect.
+20. Confirm Steam Deck Tools Desktop-mode behavior and ordinary controller input keep working during/after the probe. Separate Steam/Input status remains observational; do not stop tools/services or claim universal coexistence.
+21. Confirm Ctrl+Alt+Q/dashboard Open Quick Access and existing touch/Escape/focus restoration still work while normal monitoring/probe runs. QAM has no probe controls/permissions.
+22. Confirm physical Steam/⋯ never opens QAM or sends keyboard/gamepad output from Nepteer.
+23. Confirm normal native physical cards remain Unavailable and native recent transition history empty before/during/after the probe. Simulation remains explicitly SIMULATED INPUT and cannot run a physical probe or verify hardware. Retest telemetry/theme/units/navigation.
+24. Close main with monitoring/probe and QAM open; process/worker/windows must exit cleanly. Fresh launch is unscanned/stopped with no result history. Uninstall leaves no driver/service/orphan/persistent controller behavior.
+
+Read NEPTUNE_RESEARCH.md for exact windows/counters. >1.5s report gaps, late/early/missing edges, no hold/final samples or baseline instability intentionally prevent a positive observation. Actual timing synchronization, noise and mode-specific behavior need human review. An independent developer must review repeated per-control real summaries before any future mapping acceptance; this build has no promotion mechanism or physical event API.
+
+---
+
+## Historical Step 5A · Windows Neptune decoding validation
 
 **No Step 5A framing or physical button mapping is verified.** Step 4 passed user-reported hardware checks, but no actual report IDs, lengths or control-correlated evidence was supplied to this task. CI/synthetic fixtures do not establish either. Do not disable Steam Input, elevate, change drivers/firmware, unplug internal hardware or test anti-cheat-protected games.
 
