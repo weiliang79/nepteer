@@ -391,6 +391,8 @@ pub(super) fn open(candidate: &PrivateCandidate) -> Result<Box<dyn InputReader>,
             Some(value.Usage),
             Some(value.InputReportByteLength),
         )
+        || Some(value.UsagePage) != candidate.public.usage_page
+        || Some(value.Usage) != candidate.public.usage
         || Some(value.InputReportByteLength) != candidate.public.input_report_length
     {
         return Err(InputFailure::new(

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-neptune-shortcut-arm"
+description = "Enables the neptune_shortcut_arm command without any pre-configured scope."
+commands.allow = ["neptune_shortcut_arm"]
+
+[[permission]]
+identifier = "deny-neptune-shortcut-arm"
+description = "Denies the neptune_shortcut_arm command without any pre-configured scope."
+commands.deny = ["neptune_shortcut_arm"]

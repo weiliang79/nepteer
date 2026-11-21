@@ -781,3 +781,27 @@ html[data-window="quick-access"] body {
   color: var(--text);
   padding: 12px;
 }
+
+.physical-shortcut {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 22px;
+  background: var(--card);
+}
+.physical-shortcut-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.physical-shortcut-bar p {
+  margin: 6px 0;
+}
+.physical-shortcut fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 14px;
+}

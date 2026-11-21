@@ -17,6 +17,9 @@
     "allow-neptune-probe-start",
     "allow-neptune-probe-status",
     "allow-neptune-probe-abort",
+    "allow-neptune-shortcut-arm",
+    "allow-neptune-shortcut-disarm",
+    "allow-neptune-shortcut-status",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

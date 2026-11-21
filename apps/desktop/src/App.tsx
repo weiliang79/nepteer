@@ -1,3 +1,4 @@
+import PhysicalQuickAccess from "@/components/shortcut/PhysicalQuickAccess";
 import ControllerDiagnostics from "@/components/controller/ControllerDiagnostics";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -153,6 +154,10 @@ export default function App() {
           </span>
         </header>
         <div className="content">
+          <PhysicalQuickAccess
+            expanded={section === "Dashboard" || section === "Settings"}
+            onManage={() => setSection("Settings")}
+          />
           <div className="page-heading">
             <div>
               <p className="eyebrow">YOUR HANDHELD, AT A GLANCE</p>
@@ -194,7 +199,7 @@ export default function App() {
               </strong>
               <p>
                 {isMock
-                  ? "All readings are fixed sample values. No hardware is monitored or controlled."
+                  ? "All telemetry readings are fixed samples. An explicitly armed native controller shortcut is a separate read-only mode."
                   : isWindows
                     ? "Battery and device information come from Windows. Unsupported sensors remain unavailable. No hardware settings are changed."
                     : "Reading the selected provider. Automatic mode uses Windows telemetry on Windows and mock samples on other hosts."}

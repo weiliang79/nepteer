@@ -186,6 +186,47 @@ async fn neptune_probe_abort<R: tauri::Runtime>(
     }
     result
 }
+#[tauri::command]
+async fn neptune_shortcut_arm<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    request: neptune::shortcut::ShortcutArmRequest,
+) -> Result<neptune::shortcut::ShortcutStatus, String> {
+    ensure_diagnostics_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<neptune::Diagnostics>()
+            .shortcut_arm(app.clone(), request)
+    })
+    .await
+    .map_err(|_| "Shortcut arming failed.".to_string())?
+}
+#[tauri::command]
+async fn neptune_shortcut_disarm<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    generation: u32,
+) -> Result<neptune::shortcut::ShortcutStatus, String> {
+    ensure_diagnostics_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = app
+            .state::<neptune::Diagnostics>()
+            .shortcut_disarm(generation);
+        if let Ok(status) = &result {
+            let _ = app.emit_to("main", neptune::shortcut::EVENT, status);
+        }
+        result
+    })
+    .await
+    .map_err(|_| "Shortcut disarming failed.".to_string())?
+}
+#[tauri::command]
+async fn neptune_shortcut_status<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+) -> Result<neptune::shortcut::ShortcutStatus, String> {
+    ensure_diagnostics_window(&window)?;
+    app.state::<neptune::Diagnostics>().shortcut_status()
+}
 pub fn request_exit<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     let state = app.state::<neptune::Diagnostics>();
     if state.shutdown_complete() {
@@ -217,7 +258,10 @@ fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R>
             neptune_status,
             neptune_probe_start,
             neptune_probe_status,
-            neptune_probe_abort
+            neptune_probe_abort,
+            neptune_shortcut_arm,
+            neptune_shortcut_disarm,
+            neptune_shortcut_status
         ])
 }
 
@@ -333,33 +377,38 @@ mod tests {
             "neptune_probe_start",
             "neptune_probe_status",
             "neptune_probe_abort",
+            "neptune_shortcut_arm",
+            "neptune_shortcut_disarm",
+            "neptune_shortcut_status",
         ] {
+            let body = if command == "neptune_shortcut_arm" {
+                serde_json::json!({"request":{"candidateId":"scan1-candidate1","expectedGeneration":0,"consent":true,"reviewedConfiguration":true}})
+            } else {
+                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1","token":0,"generation":0,"request":{"expectedToken":0,"monitorGeneration":0,"candidateId":"scan1-candidate1","control":"a","consent":false,"environment":{"steamDeckToolsRunning":"unknown","steamDeckToolsMode":"unknown","steamRunning":"unknown","steamInput":"unknown"}}})
+            };
             let mut diagnostic = request();
             diagnostic.cmd = command.into();
-            diagnostic.body = tauri::ipc::InvokeBody::Json(
-                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1", "token":0,
-                    "request":{"expectedToken":0,"monitorGeneration":0,"candidateId":"scan1-candidate1","control":"a","consent":false,
-                    "environment":{"steamDeckToolsRunning":"unknown","steamDeckToolsMode":"unknown","steamRunning":"unknown","steamInput":"unknown"}}}),
-            );
+            diagnostic.body = tauri::ipc::InvokeBody::Json(body.clone());
             assert!(tauri::test::get_ipc_response(&qam, diagnostic).is_err());
             let mut forbidden = request();
             forbidden.cmd = command.into();
-            forbidden.body = tauri::ipc::InvokeBody::Json(
-                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1", "token":0,
-                    "request":{"expectedToken":0,"monitorGeneration":0,"candidateId":"scan1-candidate1","control":"a","consent":false,
-                    "environment":{"steamDeckToolsRunning":"unknown","steamDeckToolsMode":"unknown","steamRunning":"unknown","steamInput":"unknown"}}}),
-            );
+            forbidden.body = tauri::ipc::InvokeBody::Json(body.clone());
             assert!(tauri::test::get_ipc_response(&other, forbidden).is_err());
             let mut remote = request();
             remote.cmd = command.into();
             remote.url = "https://example.com".parse().unwrap();
-            remote.body = tauri::ipc::InvokeBody::Json(
-                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1", "token":0,
-                    "request":{"expectedToken":0,"monitorGeneration":0,"candidateId":"scan1-candidate1","control":"a","consent":false,
-                    "environment":{"steamDeckToolsRunning":"unknown","steamDeckToolsMode":"unknown","steamRunning":"unknown","steamInput":"unknown"}}}),
-            );
+            remote.body = tauri::ipc::InvokeBody::Json(body.clone());
             assert!(tauri::test::get_ipc_response(&main, remote).is_err());
         }
+        let mut shortcut_query = request();
+        shortcut_query.cmd = "neptune_shortcut_status".into();
+        let status = tauri::test::get_ipc_response(&main, shortcut_query)
+            .unwrap()
+            .deserialize::<serde_json::Value>()
+            .unwrap();
+        assert_eq!(status["phase"], "disarmed");
+        assert_eq!(status["opened"], false);
+        assert_eq!(status["readerOwner"], "none");
         let mut probe_query = request();
         probe_query.cmd = "neptune_probe_status".into();
         let result = tauri::test::get_ipc_response(&main, probe_query)

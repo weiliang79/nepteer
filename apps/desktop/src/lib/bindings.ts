@@ -56,3 +56,8 @@ export type ProbeStatus = {
  */
 token: number, revision: number, monitorGeneration: number, outcome: ProbeOutcome, phase: ProbePhase, cycle: number, remainingMs: number, summary: ProbeSummary | null, };
 export type ProbeStartRequest = { expectedToken: number, monitorGeneration: number, candidateId: string, control: ControllerControl, environment: ProbeEnvironment, consent: boolean, };
+export type ShortcutPhase = "disarmed" | "arming" | "waiting_reports" | "waiting_baseline" | "armed" | "disarming" | "expired" | "disconnected" | "access_denied" | "device_busy" | "unsupported_interface" | "unsupported_format" | "error";
+export type ReaderOwner = "none" | "diagnostics" | "shortcut";
+export type ShortcutIssue = "no_compatible_reports" | "read_failed" | "incompatible_format" | "queue_full" | "dispatch_failed" | "internal";
+export type ShortcutStatus = { generation: number, revision: number, phase: ShortcutPhase, remainingMs: number, opened: boolean, source: InputSource, readerOwner: ReaderOwner, interface: ProbeInterface | null, issue: ShortcutIssue | null, };
+export type ShortcutArmRequest = { candidateId: string, expectedGeneration: number, consent: boolean, reviewedConfiguration: boolean, };
