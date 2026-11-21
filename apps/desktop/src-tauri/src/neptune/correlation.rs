@@ -874,4 +874,160 @@ mod tests {
             Some(ProbeEndReason::Deadline)
         );
     }
+    const DPAD: [(ControllerControl, u8, u8); 4] = [
+        (ControllerControl::DpadUp, 8, 11),
+        (ControllerControl::DpadDown, 11, 8),
+        (ControllerControl::DpadLeft, 10, 9),
+        (ControllerControl::DpadRight, 9, 10),
+    ];
+    fn drive_dpad(control: ControllerControl, word: impl Fn(u32) -> u64) -> Probe {
+        let mut p = Probe::new(&candidate(), control, ProbeEnvironment::default()).unwrap();
+        for ms in (0..=29_000).step_by(100) {
+            p.observe(ms, reports::correlation_word(&packet(word(ms))));
+        }
+        p
+    }
+    #[test]
+    fn each_dpad_candidate_independently_completes_five_cycles_without_promotion() {
+        for (control, bit, _) in DPAD {
+            assert_eq!(reports::candidate_bit(control), Some(bit));
+            let mut p = drive_dpad(control, |ms| if planned(ms) != 0 { 1u64 << bit } else { 0 });
+            assert_eq!(p.status.outcome, ProbeOutcome::Observed);
+            assert_eq!(p.summary().reason, Some(ProbeEndReason::Completed));
+            let c = &p.summary().counts;
+            assert!(c.baseline_established && c.final_released == Some(true));
+            assert_eq!(
+                (
+                    c.observed_press_edges,
+                    c.observed_release_edges,
+                    c.expected_press_edges,
+                    c.expected_release_edges,
+                    c.completed_cycles
+                ),
+                (5, 5, 5, 5, 5)
+            );
+            assert_eq!(
+                (
+                    c.missing_presses,
+                    c.missing_releases,
+                    c.idle_transitions,
+                    c.outside_phase_edges,
+                    c.report_gaps,
+                    c.unrelated_known_changes,
+                    c.unknown_bit_changes
+                ),
+                (0, 0, 0, 0, 0, 0, 0)
+            );
+            assert!(!c.framing_changed);
+            assert!(c.repeated_held_reports > 5);
+            let mut normal = MonitorStatus::default();
+            reports::Processor::new(DiagnosticsMode::Native).process(
+                &packet(1u64 << bit),
+                100,
+                &mut normal,
+            );
+            assert!(normal.controls.iter().all(|c| c.pressed.is_none()));
+            assert!(normal.transitions.is_empty());
+            assert!(!normal.report.framing_verified && !normal.report.physical_buttons_verified);
+            let json = serde_json::to_string(p.status.summary.as_ref().unwrap()).unwrap();
+            for private in [
+                "raw",
+                "path",
+                "serial",
+                "last_word",
+                "token",
+                "candidateId",
+                "button_verified",
+            ] {
+                assert!(!json.contains(private));
+            }
+        }
+    }
+    #[test]
+    fn dpad_idle_opposite_and_face_button_negative_controls_have_zero_nominated_edges() {
+        for (control, _, opposite) in DPAD {
+            // None = an idle-only run. Others = five cycles of the wrong control.
+            for other in [None, Some(opposite), Some(7), Some(5)] {
+                let mut p = drive_dpad(control, |ms| match other {
+                    Some(bit) if planned(ms) != 0 => 1u64 << bit,
+                    _ => 0,
+                });
+                assert_eq!(p.status.outcome, ProbeOutcome::Inconclusive);
+                let c = &p.summary().counts;
+                assert!(c.baseline_established);
+                assert_eq!(
+                    (
+                        c.observed_press_edges,
+                        c.observed_release_edges,
+                        c.idle_transitions,
+                        c.expected_press_edges,
+                        c.expected_release_edges,
+                        c.completed_cycles
+                    ),
+                    (0, 0, 0, 0, 0, 0)
+                );
+                assert_eq!((c.missing_presses, c.missing_releases), (5, 5));
+                assert_eq!(
+                    c.unrelated_known_changes,
+                    if other.is_some() { 10 } else { 0 }
+                );
+                assert_eq!(c.unknown_bit_changes, 0);
+            }
+        }
+    }
+    #[test]
+    fn dpad_diagonals_and_combinations_remain_visible_as_contamination_not_verification() {
+        for (control, bit, _) in DPAD {
+            // A neighboring axis plus A: nominated timing can match even in a diagonal.
+            let neighbor = if bit == 8 || bit == 11 { 10 } else { 8 };
+            let mut p = drive_dpad(control, |ms| {
+                let known = if planned(ms) != 0 {
+                    (1u64 << bit) | (1 << neighbor) | (1 << 7)
+                } else {
+                    0
+                };
+                known
+                    | if (12_000..12_500).contains(&ms) {
+                        1u64 << 63
+                    } else {
+                        0
+                    }
+            });
+            // Observed is timing correlation only; review must reject this as a clean primary run.
+            assert_eq!(p.status.outcome, ProbeOutcome::Observed);
+            assert_eq!(p.summary().counts.unrelated_known_changes, 20);
+            assert_eq!(p.summary().counts.unknown_bit_changes, 2);
+            assert_eq!(p.summary().counts.expected_press_edges, 5);
+            assert!(p.last_word.is_none());
+        }
+    }
+    #[test]
+    fn dpad_probe_keeps_exact_framing_and_released_baseline_requirements() {
+        for (control, bit, _) in DPAD {
+            let mut p = drive_dpad(control, |_| 1u64 << bit);
+            assert_eq!(p.status.outcome, ProbeOutcome::Inconclusive);
+            assert_eq!(p.summary().reason, Some(ProbeEndReason::BaselineMissing));
+            for variant in 0..7 {
+                let mut p = Probe::new(&candidate(), control, ProbeEnvironment::default()).unwrap();
+                let mut bytes = packet(0);
+                match variant {
+                    0 => {
+                        bytes.remove(0);
+                    } // bare64 is not eligible for correlation
+                    1 => bytes[0] = 2,
+                    2 => bytes[1] = 2,
+                    3 => bytes[3] = 8,
+                    4 => bytes[4] = 63,
+                    5 => {
+                        bytes.pop();
+                    }
+                    _ => bytes.push(0),
+                }
+                p.observe(0, reports::correlation_word(&bytes));
+                assert_eq!(p.status.outcome, ProbeOutcome::Error);
+                assert!(p.summary().counts.framing_changed);
+                assert_eq!(p.summary().counts.expected_press_edges, 0);
+            }
+        }
+    }
 }

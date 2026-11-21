@@ -416,3 +416,58 @@ test("interface changes abort the probe and start errors are recoverable", async
   );
   expect(screen.getByRole("button", { name: "Start Probe" })).toBeEnabled();
 });
+
+test.each([
+  ["dpad_up", "D-pad Up", 8],
+  ["dpad_down", "D-pad Down", 11],
+  ["dpad_left", "D-pad Left", 10],
+  ["dpad_right", "D-pad Right", 9],
+] as const)(
+  "%s uses the existing independent probe with primary-test guidance",
+  async (control, label, bit) => {
+    const user = userEvent.setup();
+    const selected = { ...summary, control, candidateBit: bit };
+    vi.mocked(api.startProbe).mockResolvedValue({
+      ...preparing,
+      summary: selected,
+    });
+    const view = render(<PhysicalCorrelation {...props} />);
+    await user.selectOptions(
+      screen.getByLabelText("Physical control to test"),
+      control,
+    );
+    const guidance = screen.getByRole("note");
+    expect(guidance).toHaveTextContent("every physical control released");
+    expect(guidance).toHaveTextContent("do not press diagonals");
+    expect(guidance).toHaveTextContent("Repeat each direction separately");
+    expect(guidance).toHaveTextContent("disarm the physical ⋯ shortcut");
+    expect(guidance).toHaveTextContent("without an active game");
+    expect(guidance).toHaveTextContent(
+      "controller navigation is not implemented",
+    );
+    expect(api.startProbe).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Start Probe" }));
+    expect(api.startProbe).toHaveBeenCalledWith(
+      expect.objectContaining({ control, consent: true }),
+    );
+    view.rerender(
+      <PhysicalCorrelation
+        {...props}
+        snapshot={{
+          ...snapshot,
+          probe: {
+            ...preparing,
+            revision: 10,
+            phase: "press",
+            outcome: "running",
+            summary: selected,
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText(`Press ${label} now.`)).toBeInTheDocument();
+    expect(screen.getByRole("note")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Abort Probe" })).toBeEnabled();
+  },
+);

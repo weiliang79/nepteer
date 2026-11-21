@@ -173,6 +173,9 @@ export default function PhysicalCorrelation({
   const nominated =
     controls.find(([value]) => value === summary?.control)?.[1] ??
     "selected control";
+  const dpad = (
+    active ? summary?.control : control || summary?.control
+  )?.startsWith("dpad_");
   const instruction =
     probe.phase === "preparation"
       ? "Release all buttons. Rest the Deck; keep hands off sticks and trackpads."
@@ -204,6 +207,21 @@ export default function PhysicalCorrelation({
         Selected interface: {selectedCandidateId || "None"} · Required format:
         deck_v1_zero_prefixed65
       </p>
+      {dpad && (
+        <p className="muted" role="note">
+          D-pad correlation: disarm the physical ⋯ shortcut before monitoring.
+          For this test use the reviewed Steam Deck LCD / Windows 11 vendor
+          collection: interface 2, usage FFFF/0001, input length 65. Begin with
+          every physical control released. Test only the nominated direction; do
+          not press diagonals during primary correlation. Follow the existing
+          press, hold and release prompts. Keep hands off sticks and trackpads
+          during preparation, idle and final observation. Repeat each direction
+          separately in a fresh session. Results remain candidate evidence for
+          independent review; controller navigation is not implemented. Shared
+          observation does not stop games or other tools receiving input. Run
+          these tests on the desktop without an active game.
+        </p>
+      )}
       {!eligible && (
         <p className="muted">
           Select an eligible native vendor interface with descriptor length 65,

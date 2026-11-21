@@ -1,3 +1,83 @@
+# Step 5C.1 · D-pad physical evidence matrix
+
+**D-pad physical results: pending. Controller QAM navigation: not implemented.** The user reports merged Step 5B physically tested, but those results do not validate D-pad controls. Use the new branch artifact/SHA and collect fresh, independently reviewable sessions. Leave Steam Deck Tools and Steam configured as they are; all tests in this section run on the **Windows desktop without an active game**. Keep keyboard/touch available.
+
+## Scope and setup
+
+1. Launch as a standard user. Explicitly **Disarm Physical Quick Access Shortcut** and wait for cleanup/reader owner None. Do not run diagnostics and the armed shortcut concurrently.
+2. On Controller, rescan native HID interfaces and manually select VID 28DE/PID 1205, **interface 2, usage FFFF/0001, descriptor input length 65**. Do not select mouse/keyboard/virtual Xbox or an alternate profile. Missing/inaccessible device means stop and report the safe limitation; no takeover/reconnect loop.
+3. Start normal read-only monitoring. Confirm actual 65-byte reports recognized as `deck_v1_zero_prefixed65`. This is framing observation, not verification of a direction. No compatible reports means inconclusive; never use simulated input as physical evidence.
+4. Record manual environment labels: Deck LCD / Windows 11, Steam Deck Tools running, Steam Controller.exe Desktop mode, Steam running, Steam Input known state or Unknown. These labels are not automatically detected. Other models/software/modes are outside this milestone.
+5. Select exactly one physical direction in Physical Button Correlation, consent and Start Probe. The existing fixed schedule is unchanged: release/rest 0–4s, idle 4–7s, five cycles at 7/11/15/19/23s (1.5s press, 1s hold, 1.5s release), final hands-off 27–29s; hard Rust deadline 30s. Follow the screen prompts, with no Next clicks during measurement. Keep sticks/trackpads untouched, particularly during preparation, idle and final observation. Do not press diagonals in primary tests.
+6. After each run use **Copy Safe Summary** before the next Start replaces the result. Paste only the aggregate JSON plus a manual session label and artifact SHA into a review issue/message. The app uploads/records nothing. Do not share raw bytes, report streams, paths, serials, instance IDs or input history. Safe static candidate bit indices and aggregate unknown-change counts are allowed; unknown masks/values are not.
+
+## Primary positives and repeatability
+
+| Session labels (two fresh runs each) | Nominated physical direction | Candidate bit | Physical results | Independent review |
+| ------------------------------------ | ---------------------------- | ------------: | ---------------- | ------------------ |
+| P-U1 / P-U2                          | D-pad Up                     |             8 | Pending          | Pending            |
+| P-D1 / P-D2                          | D-pad Down                   |            11 | Pending          | Pending            |
+| P-L1 / P-L2                          | D-pad Left                   |            10 | Pending          | Pending            |
+| P-R1 / P-R2                          | D-pad Right                  |             9 | Pending          | Pending            |
+
+Release every physical control for preparation/idle. Press only the nominated direction for each of five prompts; hold and release on schedule. Repeat the four directions in fresh sessions, not just one run each. If the five-minute monitor expires between sessions, copy the current result, then explicitly Start Monitoring again; do not alter timers. Copy unsuccessful runs too, labeling them as such.
+
+Expected **per positive summary** (these are requirements, not reported hardware results):
+
+| JSON field                                                                    | Expected                                                      |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `control` / `candidateBit` / `format`                                         | Corresponding direction/bit above / `deck_v1_zero_prefixed65` |
+| `outcome` / `reason`                                                          | `observed` / `completed`                                      |
+| `counts.compatibleReports`                                                    | Positive, with fresh samples across all phases                |
+| `counts.incompatibleReports` / `malformedReports`                             | 0 / 0                                                         |
+| `counts.baselineEstablished`                                                  | true                                                          |
+| `counts.observedPressEdges` / `observedReleaseEdges`                          | 5 / 5                                                         |
+| `counts.expectedPressEdges` / `expectedReleaseEdges` (accepted on-time edges) | 5 / 5                                                         |
+| `counts.completedCycles`                                                      | 5                                                             |
+| `counts.missingPresses` / `missingReleases`                                   | 0 / 0                                                         |
+| `counts.idleTransitions` / `outsidePhaseEdges`                                | 0 / 0                                                         |
+| `counts.earlyEdges` / `lateEdges` / `repeatedEdges`                           | 0 / 0 / 0                                                     |
+| `counts.reportGaps` / `framingChanged`                                        | 0 / false                                                     |
+| `counts.finalReleased`                                                        | true                                                          |
+| `counts.unrelatedKnownChanges` / `unknownBitChanges`                          | Record actual counts and review context; never hide them      |
+
+For a clean isolated direction, investigate unrelated-known changes instead of accepting a diagonal/contaminated run merely because outcome is observed. Unknown-bit changes can be ordinary noise; inspect them without automatically calling the mapping wrong. Neither kind of change is exported as a mask or automatically promoted to verification. Missing samples/timing uncertainty require another fresh session, not guessed success or widened timing. Two positives are necessary evidence, not automatic reviewer approval.
+
+## Negative-control sessions
+
+Run each row once **for each nominated direction**, using fresh Start Probe sessions. Keep all controls released for preparation/idle. For idle-only controls remain hands-off throughout; for wrong-control tests follow the five press/hold/release prompts using only the physical control specified below, never the nominated one.
+
+| Session label pattern                     | Probe nominee                         | Physical activity instead | Expected nominated evidence                    |
+| ----------------------------------------- | ------------------------------------- | ------------------------- | ---------------------------------------------- |
+| N-U-idle / N-D-idle / N-L-idle / N-R-idle | Up / Down / Left / Right respectively | None for whole session    | No press/release edges or idle false positives |
+| N-U-opposite                              | Up                                    | Down only                 | No Up edges                                    |
+| N-D-opposite                              | Down                                  | Up only                   | No Down edges                                  |
+| N-L-opposite                              | Left                                  | Right only                | No Left edges                                  |
+| N-R-opposite                              | Right                                 | Left only                 | No Right edges                                 |
+| N-U-A / N-D-A / N-L-A / N-R-A             | Corresponding direction               | A only                    | No nominated edges                             |
+| N-U-B / N-D-B / N-L-B / N-R-B             | Corresponding direction               | B only                    | No nominated edges                             |
+
+A valid negative can be `inconclusive` / `incomplete_evidence`: baseline true, compatible reports >0, observed/accepted nominated edges 0/0, completed cycles 0 and missing presses/releases 5/5. That expected lack of nominated cycles is the point. Wrong-control edges should contribute unrelated-known counts, not nominated edges. Interpret actual counts/report gaps, not outcome alone; baseline_missing/deadline/no reports do not establish a clean negative. Any nominated edge during opposite/A/B activity blocks acceptance until investigated. Idle false positives are a failure of the negative control, not evidence of a press. If a result is ambiguous, copy it and repeat without changing drivers/tools.
+
+## Secondary combination observations (only after individual repeats are reviewed)
+
+| Session   | Nominated probe | Secondary control held during five cycles               |
+| --------- | --------------- | ------------------------------------------------------- |
+| C-U-A     | Up              | A                                                       |
+| C-D-B     | Down            | B                                                       |
+| C-L-Steam | Left            | Steam                                                   |
+| C-R-QAM   | Right           | ⋯, only if safe without disturbing the test environment |
+
+Establish the normal all-released preparation **and idle first**. Only after the idle interval ends, hold the secondary control while cycling the nominated direction; release it before final observation. Holding A/B/Steam/⋯ during initial preparation prevents the existing all-known-buttons-released baseline. Expect secondary known-bit changes and review them as intentional context. Never treat combinations as substitutes for clean individual tests. The physical shortcut must stay disarmed, so probe ⋯ cannot toggle Nepteer, but another controller utility may still react. Record Steam Deck Tools side effects; abort/skip if they interfere. Do not suppress, disable or reconfigure tools to obtain a clean result.
+
+## Readiness and regression handoff
+
+Abort one run midway; Stop Monitoring during another; verify terminal reason and no continued observation. Confirm no native D-pad state/transition is published or QAM navigation performed, including when the panel is open. Keep the existing shortcut/diagnostics conflict and Arm failure diagnostics intact. After stopping diagnostics, separately rearm ⋯ for the existing Step 5B keyboard/touch/physical-toggle regression; disarm before returning to probes. Test clean main-window shutdown and restart defaults. Existing NSIS/current-user/manifest and telemetry/theme tests still apply. No forced internal disconnect, driver change, service, elevation or anti-cheat game test is required.
+
+Independent reviewer records per direction: repeat positives accepted/rejected/pending, negative evidence, combination context, hardware/software scope and unresolved noise/timing issues. No automatic physical promotion or production navigation follows. Step 5C.2 needs reviewed mappings, the desktop-only focus/event/fence design in ARCHITECTURE.md and its own implementation tests. The known game input pass-through limitation remains; input isolation requires a separate future routing review.
+
+---
+
 ## Step 5B Arm lifecycle reproduction — pending on the diagnostic fix
 
 The user reports ⋯ toggled Nepteer QAM successfully in Mongil: STAR DIVE, then a later Arm appeared to remain Disarmed after game close/native monitoring. This demonstrates one integration success, not a verified cause of the later failure. Do not infer HID reconnect, Steam Input state or process behavior from it. Use the same previously tested environment only; do not add game hooks, process detection, anti-cheat testing or driver/tool changes.

@@ -1,3 +1,52 @@
+# Step 5C.1 — D-pad physical correlation and QAM navigation readiness
+
+Branch `feat/neptune-dpad-correlation`, based on latest merged main `245480a1bbac357b4661805fb6cfa7f8b5b1fbd0` (Step 5B, PR #6). Fetched upstream, confirmed a clean checkout and that the main tree matches the reviewed Step 5B implementation before branching. The user reports Step 5B physically tested on Deck LCD/Windows 11/Steam Deck Tools Desktop mode. **No physical D-pad evidence has been provided. No navigation or input isolation is implemented.** Production version remains 0.5.0-alpha.2; this readiness milestone does not need a runtime/version/dependency migration. No merge is performed.
+
+## Audit result and exact changes
+
+The existing probe is sufficient for independent D-pad Up/Down/Left/Right correlation; no parser, monitor, correlation algorithm, shortcut or QAM runtime fix was justified. Audited mappings remain Up 8, Down 11, Left 10, Right 9. All share the existing checked zero-prefixed65 parser, native source/monitor ownership gate, preparation/idle/five cycles/final release, <30s deadline, cancellation and safe aggregates. Simulated source, unsupported controls/framing and stale owners are rejected. No native button events or verification promotion follow a probe.
+
+- `PhysicalCorrelation.tsx`: conditional D-pad testing guidance — disarm first, exact manually selected reviewed collection, all released, one direction/no primary diagonals, original timed prompts, hands off pads/sticks, repeat fresh sessions, desktop/no active game and no navigation/isolation claim. No new state machine or probe.
+- `PhysicalCorrelation.test.tsx`: four parameterized UI cases check independent direction selection, the guidance, consent, original Start request/press prompt and Abort availability.
+- `neptune/correlation.rs`: tests only, covering all four exact candidate lookups/five-cycle scalar evidence, idle/opposite/A/B negatives, diagonal/multi-bit contamination, unknown edges, framing and initially held baseline. Published bits/production code are untouched.
+- `.github/workflows/ci.yml`: add the requested branch to the existing native CI triggers; keep every validation, build, manifest and upload step.
+- `NEPTUNE_RESEARCH.md`, `WINDOWS_TESTING.md`, `ARCHITECTURE.md`, `SAFETY.md`, this handoff: scope/evidence distinction, positive/repeat/negative/secondary matrices, safe copying, concrete current QAM focus audit and conceptual Step 5C.2 contract, pass-through limitation and independent review requirements.
+
+Rust DTOs/generated bindings, capabilities/CSP, read-only native access, one-reader policy, Step 5B Arm diagnostics, 350ms cooldown, 30-minute shortcut/five-minute monitor/30-second probe limits and current QAM keyboard/touch/focus behavior are unchanged. AGENTS/README retain the production Step 5B specification; no new runtime convention/functionality is introduced. Historical milestone sections below preserve their original evidence context rather than asserting current pending/merge state.
+
+## Evidence and future navigation gates
+
+Use the Step 5C.1 matrix at the top of WINDOWS_TESTING.md. Require two fresh five-cycle positives per direction plus idle/opposite/A/B negative summaries for each. Negative runs can be inconclusive because no nominated cycles occur; inspect actual counters, sample availability and unrelated activity. Unknown-bit changes are diagnostics, not automatic mapping failures. A diagonal can yield observed nominated timing while unrelated-known edges increase: do not accept that as a clean primary direction test. Secondary A-held+Up, B-held+Down, Steam-held+Left and optional ⋯-held+Right only follow reviewed individual evidence; establish released preparation/idle first and document tool side effects without changing tools. Copy each safe aggregate before the next Start; no raw bytes/paths/serials/history or automatic upload.
+
+The audited QAM has six buttons: Close → enabled Refresh battery → Performance → Controller → Display → Settings. All expanded sections are informational; no settings are adjustable in QAM. Every visible notification focuses Close/refreshes telemetry; Escape requests native Hide and Tab wraps enabled buttons. Proposed Step 5C.2 actions are Previous/Next/Left/Right/Activate/Back, scoped only to local QAM from the existing armed worker. The design includes native visibility epoch/generation/deadline fencing, four bounded pending actions plus one acknowledged delivery, no initial held/repeat/diagonal actions, and no global keyboard simulation. It is documentation only, not an emitted event/API. Left/Right are no-ops for current controls. Physical direction/A/B reviews and desktop-only implementation tests remain prerequisites.
+
+User-reported game input pass-through is expected for shared observation. Navigation would let Nepteer react, while isolation would stop game reactions; the latter is not provided by focus/visibility or this architecture. Step 5C.2 starts on the Windows desktop without an active game. Gameplay navigation needs separate routing feasibility/review because duplicate actions can reach both. No exclusive access, interception, remapping, emulation/injection, game hook or Steam/Tools reconfiguration is introduced or authorized.
+
+## Validation / artifacts
+
+Local validation passed on macOS arm64, Node 24.14.1, pnpm 12.21.0, Rust 1.100.0:
+
+| Exact command                             | Result                                                  |
+| ----------------------------------------- | ------------------------------------------------------- |
+| `git fetch origin`                        | Passed; latest main is requested PR #6 merge            |
+| `pnpm format` / `pnpm format:check`       | Passed; Prettier and Rustfmt                            |
+| `pnpm typecheck` / `pnpm lint`            | Passed; zero ESLint warnings                            |
+| `pnpm test`                               | 65 passed in 6 files (15 physical correlation UI cases) |
+| `pnpm bindings:check`                     | Passed; generated bindings unchanged                    |
+| `pnpm rust:check`                         | Passed                                                  |
+| `pnpm rust:test`                          | 62 passed, one intentionally ignored explicit generator |
+| `pnpm rust:lint`                          | Passed; all-target Clippy with -D warnings              |
+| `pnpm build:web`                          | Passed; production Vite build                           |
+| `pnpm build --bundles app`                | Passed; actual macOS executable / 10.96 MiB app bundle  |
+| `pnpm licenses:rust` / `pnpm licenses:js` | Passed; no new dependencies                             |
+| `git diff --check`                        | Passed                                                  |
+
+Explicit binding generation was unnecessary because no DTO changed; the read-only drift assertion passed independently and in the Rust suite. Four added Rust tests and four parameterized frontend cases provide direction-specific coverage; existing cancellation, no-write/privacy, one-reader conflicts, Arm diagnostics and QAM/telemetry/settings tests remain enabled. No native production Rust change, new permission or test weakening occurred.
+
+Native macOS/Windows CI and matching Windows artifact are pending push for this branch. Not run locally: Windows installer execution, actual D-pad/probe/GUI/game/tool coexistence tests. Synthetic results cannot establish actual D-pad mappings, Windows GUI behavior, Steam Input coexistence or isolation. Physical matrix and reviewer decisions remain pending. Existing Step 5B historical logs below are not Step 5C.1 results.
+
+---
+
 # Step 5B stabilization — observable physical shortcut Arm attempts
 
 Still v0.5.0-alpha.2 on `feat/neptune-qam-shortcut`, reviewed base `21bf467aa5163cbe0a695f5f823d600c63867720`. No new milestone or merge. User reports physical ⋯ successfully toggled QAM during gameplay. This fix has not been retested on the Deck.
