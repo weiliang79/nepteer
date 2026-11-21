@@ -20,6 +20,11 @@ const disabledPhysical = {
   readerOwner: "none" as const,
   interface: null,
   issue: null,
+  manualRescanRequired: false,
+  lastAttempt: null,
+  terminationReason: null,
+  workerRunning: false,
+  monitorPhase: "stopped" as const,
 };
 import * as diagnostics from "./lib/neptune";
 vi.mock("./lib/neptune", async (original) => ({

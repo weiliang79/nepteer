@@ -7,7 +7,10 @@ import {
   shortcutStatus,
   onPhysicalShortcut,
   shortcutOwnsReader,
+  shortcutReasons,
+  shortcutDiagnosticSummary,
 } from "@/lib/physical-shortcut";
+import { version } from "@/lib/app-info";
 import type { Candidate, ShortcutStatus } from "@/lib/bindings";
 const reviewed = (c: Candidate) =>
   c.attributesVerified &&
@@ -45,15 +48,24 @@ export default function PhysicalQuickAccess({
   const [selected, setSelected] = useState("");
   const [consent, setConsent] = useState(false);
   const [configuration, setConfiguration] = useState(false);
+  const [armPending, setArmPending] = useState(false);
+  const [copyNotice, setCopyNotice] = useState("");
+  const pending = useRef(false);
+  const disarming = useRef(false);
+  const [disarmPending, setDisarmPending] = useState(false);
+  const requestId = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState(false);
+  const [eventsUnavailable, setEventsUnavailable] = useState(false);
   const alive = useRef(false);
   const latest = useRef<ShortcutStatus | null>(null);
   const accept = useCallback((value: ShortcutStatus) => {
     if (
       !alive.current ||
-      (latest.current && value.revision < latest.current.revision)
+      (latest.current &&
+        (value.generation < latest.current.generation ||
+          value.revision <= latest.current.revision))
     )
       return;
     latest.current = value;
@@ -84,7 +96,9 @@ export default function PhysicalQuickAccess({
         if (disposed) stop();
         else unlisten = stop;
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!disposed) setEventsUnavailable(true);
+      });
     void query();
     const timer = window.setInterval(() => void query(), 1000);
     return () => {
@@ -98,7 +112,6 @@ export default function PhysicalQuickAccess({
   const owned = status ? shortcutOwnsReader(status) : false;
   async function scan(rescan: boolean) {
     setBusy(true);
-    setError(null);
     try {
       const value = await (rescan
         ? rescanCandidates("native")
@@ -110,41 +123,95 @@ export default function PhysicalQuickAccess({
         setConfiguration(false);
         accept(await shortcutStatus());
       }
-    } catch (reason) {
-      if (alive.current) setError(String(reason));
+    } catch {
+      if (alive.current)
+        setError(
+          "Interface discovery request failed. Stop/disarm the active reader, then retry native discovery.",
+        );
     } finally {
       if (alive.current) setBusy(false);
     }
   }
   async function arm() {
-    if (!status || !selected || !consent || !configuration) return;
-    setBusy(true);
+    if (pending.current || disarming.current) return;
+    if (!status || !selected || !consent || !configuration) {
+      setError(
+        "Arm unavailable: select an eligible interface and complete both acknowledgments.",
+      );
+      return;
+    }
+    const id = ++requestId.current;
+    pending.current = true;
+    setArmPending(true);
     setError(null);
     try {
-      accept(
-        await armShortcut({
-          candidateId: selected,
-          expectedGeneration: status.generation,
-          consent,
-          reviewedConfiguration: configuration,
-        }),
-      );
-    } catch (reason) {
-      if (alive.current) setError(String(reason));
+      const value = await armShortcut({
+        candidateId: selected,
+        expectedGeneration: status.generation,
+        consent,
+        reviewedConfiguration: configuration,
+      });
+      if (id === requestId.current) accept(value);
+    } catch {
+      // IPC rejection is observable even if no event arrives. Never export arbitrary IPC/OS strings.
+      if (alive.current && id === requestId.current) {
+        setError(
+          "Arm request failed. See Last Arm Attempt for the native reason. If unavailable, refresh status and retry; arming was not confirmed.",
+        );
+        try {
+          accept(await shortcutStatus());
+        } catch {
+          /* Keep the visible request failure. */
+        }
+      }
     } finally {
-      if (alive.current) setBusy(false);
+      if (id === requestId.current) {
+        pending.current = false;
+        if (alive.current) setArmPending(false);
+      }
     }
   }
   async function disarm() {
-    if (!status) return;
-    setError(null);
+    if (!status || disarming.current) return;
+    const id = ++requestId.current;
+    disarming.current = true;
+    setDisarmPending(true);
     try {
-      accept(await disarmShortcut(status.generation));
-    } catch (reason) {
-      if (alive.current) setError(String(reason));
+      const value = await disarmShortcut(status.generation);
+      if (id === requestId.current) accept(value);
+    } catch {
+      if (alive.current && id === requestId.current)
+        setError(
+          "Disarm request failed. Refresh status and retry Disarm; cleanup has not been confirmed.",
+        );
+    } finally {
+      if (id === requestId.current) {
+        pending.current = false;
+        disarming.current = false;
+        if (alive.current) {
+          setArmPending(false);
+          setDisarmPending(false);
+        }
+      }
     }
   }
   const profile = candidates.find((c) => c.id === selected);
+  const blocked =
+    status?.readerOwner === "diagnostics"
+      ? "Arm unavailable: Stop Monitoring / the correlation probe on Controller before arming."
+      : !connection
+        ? "Arm unavailable: native status connection is unavailable."
+        : status?.source !== "windows"
+          ? "Arm unavailable: native Windows discovery is required."
+          : owned
+            ? "Arm unavailable: the current shortcut session must be explicitly disarmed first."
+            : !profile || !reviewed(profile)
+              ? "Arm unavailable: rescan/load interfaces and select the reviewed vendor collection."
+              : !consent || !configuration
+                ? "Arm unavailable: complete both consent and configuration acknowledgments."
+                : null;
+  const attempt = status?.lastAttempt;
+  const reason = attempt?.reason ?? status?.terminationReason;
   return (
     <section
       className="physical-shortcut"
@@ -171,13 +238,93 @@ export default function PhysicalQuickAccess({
           )}
           <Button
             variant="outline"
-            disabled={!owned}
+            disabled={!owned || disarmPending}
             onClick={() => void disarm()}
           >
             Disarm Shortcut
           </Button>
         </div>
       </div>
+      {armPending && (
+        <p role="status">
+          Arming — checking controller access… Arm request sent; awaiting native
+          response.
+        </p>
+      )}
+      {blocked && !armPending && <p className="qam-error">{blocked}</p>}
+      {eventsUnavailable && (
+        <p className="muted">
+          Live status subscription unavailable; native status polling remains
+          active.
+        </p>
+      )}
+      {disarmPending && (
+        <p role="status">Disarming — waiting for safe reader cleanup…</p>
+      )}
+      {attempt && (
+        <div aria-label="Last Arm Attempt" className="panel">
+          <strong>
+            Last Arm Attempt #{attempt.id}: {attempt.outcome}
+          </strong>
+          <p>
+            Stage: {attempt.stage.replaceAll("_", " ")} · Worker:{" "}
+            {status?.workerRunning ? "running" : "not running"} · HID handle:{" "}
+            {attempt.hidHandleOpened
+              ? "opened during attempt"
+              : "not opened during attempt"}{" "}
+            · Compatible reports:{" "}
+            {attempt.compatibleReportsObserved ? "observed" : "not observed"}
+          </p>
+        </div>
+      )}
+      {reason && (
+        <p role="alert" className="qam-error">
+          {shortcutReasons[reason][0]} Action: {shortcutReasons[reason][1]}
+        </p>
+      )}
+      {status?.terminationReason && status.terminationReason !== reason && (
+        <p>
+          Last worker termination:{" "}
+          {shortcutReasons[status.terminationReason][0]}
+        </p>
+      )}
+      {status && (
+        <p className="muted">
+          Monitor phase: {status.monitorPhase.replaceAll("_", " ")}
+        </p>
+      )}
+      <Button
+        variant="outline"
+        disabled={!status}
+        onClick={() => {
+          if (!status) return;
+          void (async () => {
+            try {
+              if (!navigator.clipboard?.writeText)
+                throw new Error("clipboard unavailable");
+              await navigator.clipboard.writeText(
+                JSON.stringify(
+                  shortcutDiagnosticSummary(
+                    status,
+                    version,
+                    armPending ? "pending" : error ? "ipc_failed" : "idle",
+                  ),
+                  null,
+                  2,
+                ),
+              );
+              setCopyNotice("Safe shortcut summary copied.");
+            } catch {
+              setCopyNotice(
+                "Clipboard unavailable. Retry copying from the native app.",
+              );
+            }
+          })();
+        }}
+      >
+        Copy Shortcut Diagnostic Summary
+      </Button>
+      {copyNotice && <p role="status">{copyNotice}</p>}
       {expanded && (
         <>
           <p>
@@ -199,13 +346,7 @@ export default function PhysicalQuickAccess({
                 : "Unavailable"}{" "}
             · Reader owner: {status?.readerOwner ?? "Unknown"}
           </p>
-          {status?.readerOwner === "diagnostics" && (
-            <p className="muted">
-              Stop Monitoring / the correlation probe before arming. Switching
-              modes never takes over another reader.
-            </p>
-          )}
-          <fieldset disabled={owned || busy}>
+          <fieldset disabled={owned || busy || armPending || disarmPending}>
             <legend>Explicit arming</legend>
             <div className="controller-actions">
               <Button

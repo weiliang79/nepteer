@@ -57,6 +57,91 @@ pub enum ShortcutIssue {
     DispatchFailed,
     Internal,
 }
+#[derive(Debug, Clone, Copy, Serialize, TS, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ArmStage {
+    RequestReceived,
+    OwnershipCheck,
+    CandidateValidation,
+    WorkerSpawn,
+    HidOpen,
+    WaitingReports,
+    WaitingBaseline,
+    Armed,
+    Terminated,
+}
+#[derive(Debug, Clone, Copy, Serialize, TS, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ArmOutcome {
+    Pending,
+    Active,
+    Rejected,
+    Terminated,
+}
+#[derive(Debug, Clone, Copy, Serialize, TS, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ArmReason {
+    MonitorActive,
+    ProbeActive,
+    ShortcutAlreadyActive,
+    StaleGeneration,
+    CandidateNotFound,
+    CandidateIneligible,
+    UnsupportedSource,
+    ConsentRequired,
+    AccessDenied,
+    DeviceBusy,
+    Disconnected,
+    HidOpenFailed,
+    WorkerSpawnFailed,
+    ReadFailed,
+    UnsupportedFormat,
+    NoCompatibleReports,
+    SessionExpired,
+    UserDisarmed,
+    Shutdown,
+    UnexpectedTermination,
+    QueueFull,
+    DispatchFailed,
+    InternalError,
+}
+impl ArmReason {
+    fn from_issue(issue: ShortcutIssue) -> Self {
+        match issue {
+            ShortcutIssue::NoCompatibleReports => Self::NoCompatibleReports,
+            ShortcutIssue::ReadFailed => Self::ReadFailed,
+            ShortcutIssue::IncompatibleFormat => Self::UnsupportedFormat,
+            ShortcutIssue::QueueFull => Self::QueueFull,
+            ShortcutIssue::DispatchFailed => Self::DispatchFailed,
+            ShortcutIssue::Internal => Self::InternalError,
+        }
+    }
+    pub fn needs_rescan(self) -> bool {
+        matches!(
+            self,
+            Self::CandidateNotFound
+                | Self::CandidateIneligible
+                | Self::Disconnected
+                | Self::HidOpenFailed
+                | Self::UnsupportedFormat
+                | Self::ReadFailed
+                | Self::UnexpectedTermination
+        )
+    }
+}
+/// One memory-only attempt, including rejections before a session generation exists.
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ArmAttempt {
+    pub id: u32,
+    pub stage: ArmStage,
+    pub outcome: ArmOutcome,
+    pub reason: Option<ArmReason>,
+    pub candidate_selected: bool,
+    pub candidate_eligible: Option<bool>,
+    pub hid_handle_opened: bool,
+    pub compatible_reports_observed: bool,
+}
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ShortcutStatus {
@@ -69,6 +154,11 @@ pub struct ShortcutStatus {
     pub reader_owner: ReaderOwner,
     pub interface: Option<correlation::ProbeInterface>,
     pub issue: Option<ShortcutIssue>,
+    pub last_attempt: Option<ArmAttempt>,
+    pub termination_reason: Option<ArmReason>,
+    pub worker_running: bool,
+    pub monitor_phase: MonitorPhase,
+    pub manual_rescan_required: bool,
 }
 impl Default for ShortcutStatus {
     fn default() -> Self {
@@ -86,6 +176,11 @@ impl Default for ShortcutStatus {
             reader_owner: ReaderOwner::None,
             interface: None,
             issue: None,
+            last_attempt: None,
+            termination_reason: None,
+            worker_running: false,
+            monitor_phase: MonitorPhase::Stopped,
+            manual_rescan_required: false,
         }
     }
 }
@@ -216,6 +311,7 @@ pub(crate) struct Ticket {
     generation: u32,
     started: Instant,
     deadline: Instant,
+    attempt_id: u32,
 }
 impl Ticket {
     pub(crate) fn valid(&self) -> bool {
@@ -251,6 +347,70 @@ pub(crate) struct State {
     pending: Mutex<Pending>,
 }
 impl State {
+    pub(super) fn request_attempt(&self, selected: bool) -> u32 {
+        let mut s = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        let id = s
+            .status
+            .last_attempt
+            .as_ref()
+            .map_or(1, |a| a.id.saturating_add(1));
+        s.status.last_attempt = Some(ArmAttempt {
+            id,
+            stage: ArmStage::RequestReceived,
+            outcome: ArmOutcome::Pending,
+            reason: None,
+            candidate_selected: selected,
+            candidate_eligible: None,
+            hid_handle_opened: false,
+            compatible_reports_observed: false,
+        });
+        id
+    }
+    pub(super) fn attempt_stage(&self, stage: ArmStage) {
+        if let Ok(mut s) = self.inner.lock() {
+            if let Some(a) = &mut s.status.last_attempt {
+                a.stage = stage;
+            }
+        }
+    }
+    pub(super) fn reject(&self, reason: ArmReason) -> String {
+        if let Ok(mut s) = self.inner.lock() {
+            if let Some(a) = &mut s.status.last_attempt {
+                a.outcome = ArmOutcome::Rejected;
+                a.reason = Some(reason);
+                if reason == ArmReason::CandidateIneligible {
+                    a.candidate_eligible = Some(false);
+                }
+            }
+        }
+        // Fixed enum-derived text only, never OS errors, paths or request strings.
+        format!("Shortcut Arm rejected: {reason:?}. See Last Arm Attempt for recovery.")
+    }
+    fn terminate_attempt(status: &mut ShortcutStatus, reason: ArmReason) {
+        status.termination_reason = Some(reason);
+        if let Some(a) = &mut status.last_attempt {
+            if matches!(a.outcome, ArmOutcome::Pending | ArmOutcome::Active) {
+                a.stage = ArmStage::Terminated;
+                a.outcome = ArmOutcome::Terminated;
+                a.reason = Some(reason);
+            }
+        }
+    }
+    pub(super) fn end_reason(&self, reason: ArmReason) {
+        if let Ok(mut s) = self.inner.lock() {
+            Self::terminate_attempt(&mut s.status, reason);
+        }
+    }
+    pub(super) fn spawn_failed(&self) {
+        if let Ok(mut s) = self.inner.lock() {
+            s.status.termination_reason = Some(ArmReason::WorkerSpawnFailed);
+            if let Some(a) = &mut s.status.last_attempt {
+                a.stage = ArmStage::WorkerSpawn;
+                a.outcome = ArmOutcome::Terminated;
+                a.reason = Some(ArmReason::WorkerSpawnFailed);
+            }
+        }
+    }
     pub(super) fn snapshot(&self) -> ShortcutStatus {
         let mut s = self.inner.lock().unwrap_or_else(|p| p.into_inner());
         s.status.revision = s.status.revision.saturating_add(1);
@@ -269,6 +429,13 @@ impl State {
         } else {
             ReaderOwner::None
         };
+        s.status.manual_rescan_required = s
+            .status
+            .last_attempt
+            .as_ref()
+            .and_then(|a| a.reason)
+            .or(s.status.termination_reason)
+            .is_some_and(ArmReason::needs_rescan);
         s.status.clone()
     }
     pub(super) fn begin(
@@ -299,6 +466,7 @@ impl State {
             revision: s.status.revision.saturating_add(1),
             phase: ShortcutPhase::Arming,
             remaining_ms: LIMIT.as_millis() as u32,
+            last_attempt: s.status.last_attempt.clone(),
             interface: Some(correlation::ProbeInterface {
                 vendor_id: c.vendor_id,
                 product_id: c.product_id,
@@ -310,6 +478,10 @@ impl State {
             ..Default::default()
         };
         s.status.source = InputSource::Windows;
+        if let Some(a) = &mut s.status.last_attempt {
+            a.candidate_eligible = Some(true);
+            a.stage = ArmStage::WorkerSpawn;
+        }
         s.deadline = Some(deadline);
         self.fence.current.store(generation, Ordering::SeqCst);
         Ok(Ticket {
@@ -317,6 +489,7 @@ impl State {
             generation,
             started,
             deadline,
+            attempt_id: s.status.last_attempt.as_ref().map_or(0, |a| a.id),
         })
     }
     pub(super) fn invalidate(&self) {
@@ -338,6 +511,24 @@ impl State {
             if s.status.generation == token.generation && token.valid() {
                 s.status.phase = phase;
                 s.status.opened = opened;
+                if let Some(a) = &mut s.status.last_attempt {
+                    if a.id == token.attempt_id {
+                        a.hid_handle_opened |= opened;
+                        a.compatible_reports_observed |=
+                            matches!(phase, ShortcutPhase::WaitingBaseline | ShortcutPhase::Armed);
+                        a.stage = match phase {
+                            ShortcutPhase::WaitingReports => ArmStage::WaitingReports,
+                            ShortcutPhase::WaitingBaseline => ArmStage::WaitingBaseline,
+                            ShortcutPhase::Armed => ArmStage::Armed,
+                            _ => ArmStage::HidOpen,
+                        };
+                        a.outcome = if phase == ShortcutPhase::Armed {
+                            ArmOutcome::Active
+                        } else {
+                            ArmOutcome::Pending
+                        };
+                    }
+                }
             }
         }
     }
@@ -350,6 +541,7 @@ impl State {
                 ShortcutPhase::Error
             };
             s.status.issue = Some(issue);
+            Self::terminate_attempt(&mut s.status, ArmReason::from_issue(issue));
         }
     }
     pub(crate) fn fail_dispatch(&self, ticket: &Ticket) {
@@ -365,9 +557,16 @@ impl State {
             }
             s.status.phase = ShortcutPhase::Error;
             s.status.issue = Some(ShortcutIssue::DispatchFailed);
+            Self::terminate_attempt(&mut s.status, ArmReason::DispatchFailed);
         }
     }
-    fn finish(&self, token: &Ticket, phase: ShortcutPhase, issue: Option<ShortcutIssue>) {
+    fn finish(
+        &self,
+        token: &Ticket,
+        phase: ShortcutPhase,
+        issue: Option<ShortcutIssue>,
+        reason: ArmReason,
+    ) {
         self.fence.invalidate();
         self.barrier();
         if let Ok(mut p) = self.pending.lock() {
@@ -381,6 +580,10 @@ impl State {
                 }
                 s.status.opened = false;
                 s.status.remaining_ms = 0;
+                s.status.worker_running = false;
+                if s.status.termination_reason.is_none() {
+                    Self::terminate_attempt(&mut s.status, reason);
+                }
             }
         }
     }
@@ -431,9 +634,21 @@ pub(super) fn run(
     notify: NotifyShortcut,
     dispatch: Dispatch,
 ) {
-    let result = observe(
-        backend, &candidate, &cancel, &state, &token, &notify, &dispatch,
-    );
+    if let Ok(mut s) = state.inner.lock() {
+        s.status.worker_running = true;
+    }
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        observe(
+            backend, &candidate, &cancel, &state, &token, &notify, &dispatch,
+        )
+    }))
+    .unwrap_or_else(|_| {
+        state.end_reason(ArmReason::UnexpectedTermination);
+        Err(InputFailure::new(
+            InputErrorKind::Internal,
+            "Shortcut worker terminated unexpectedly.",
+        ))
+    });
     let (phase, issue) = match result {
         Ok(phase) => (phase, None),
         Err(failure) => (
@@ -451,7 +666,22 @@ pub(super) fn run(
         ),
     };
     // observe dropped the read handle and canceled/drained pending I/O before terminal status.
-    state.finish(&token, phase, issue);
+    let reason = if let Ok(s) = state.inner.lock() {
+        s.status.termination_reason.unwrap_or_else(|| match phase {
+            ShortcutPhase::Expired => ArmReason::SessionExpired,
+            ShortcutPhase::Disarmed => ArmReason::UserDisarmed,
+            ShortcutPhase::AccessDenied => ArmReason::AccessDenied,
+            ShortcutPhase::DeviceBusy => ArmReason::DeviceBusy,
+            ShortcutPhase::Disconnected => ArmReason::Disconnected,
+            ShortcutPhase::UnsupportedInterface => ArmReason::CandidateIneligible,
+            ShortcutPhase::UnsupportedFormat => ArmReason::UnsupportedFormat,
+            _ if !s.status.opened => ArmReason::HidOpenFailed,
+            _ => ArmReason::ReadFailed,
+        })
+    } else {
+        ArmReason::InternalError
+    };
+    state.finish(&token, phase, issue, reason);
     notify(state.snapshot());
 }
 fn observe(
@@ -470,6 +700,8 @@ fn observe(
             ShortcutPhase::Disarmed
         });
     }
+    state.phase(token, ShortcutPhase::Arming, false);
+    notify(state.snapshot()); // The worker is running; HID open is pending, not yet successful.
     let mut reader = backend.open(candidate)?;
     state.phase(token, ShortcutPhase::WaitingReports, true);
     notify(state.snapshot());
@@ -538,6 +770,10 @@ pub(crate) fn declarations() -> Vec<String> {
         ShortcutPhase::decl(),
         ReaderOwner::decl(),
         ShortcutIssue::decl(),
+        ArmStage::decl(),
+        ArmOutcome::decl(),
+        ArmReason::decl(),
+        ArmAttempt::decl(),
         ShortcutStatus::decl(),
         ShortcutArmRequest::decl(),
     ]
@@ -748,9 +984,13 @@ mod worker_tests {
         }
         fn open(&self, _: &PrivateCandidate) -> Result<Box<dyn InputReader>, InputFailure> {
             self.opens.fetch_add(1, Ordering::SeqCst);
-            if self.error.load(Ordering::SeqCst) == 1 {
+            if [1, 6, 8].contains(&self.error.load(Ordering::SeqCst)) {
                 return Err(InputFailure::new(
-                    InputErrorKind::AccessDenied,
+                    match self.error.load(Ordering::SeqCst) {
+                        6 => InputErrorKind::DeviceBusy,
+                        8 => InputErrorKind::Internal,
+                        _ => InputErrorKind::AccessDenied,
+                    },
                     "Synthetic denial",
                 ));
             }
@@ -778,6 +1018,7 @@ mod worker_tests {
                     "Synthetic read failure",
                 )),
                 5 => Ok(None),
+                7 => panic!("synthetic unexpected worker exit"),
                 _ => {
                     b[0] = 0;
                     b[1..65].copy_from_slice(&reports::synthetic_report(
@@ -977,5 +1218,237 @@ mod worker_tests {
         }
         assert_eq!(opens.load(Ordering::SeqCst), 1);
         assert_eq!(drops.load(Ordering::SeqCst), 1);
+    }
+    fn setup() -> (Diagnostics, String, Arc<AtomicU32>, Arc<AtomicUsize>) {
+        let error = Arc::new(AtomicU32::new(0));
+        let opens = Arc::new(AtomicUsize::new(0));
+        let d = Diagnostics::new(
+            Arc::new(Backend {
+                word: Arc::new(AtomicU64::new(0)),
+                error: error.clone(),
+                opens: opens.clone(),
+                drops: Arc::new(AtomicUsize::new(0)),
+            }),
+            Duration::from_secs(10),
+        );
+        let id = d.rescan(DiagnosticsMode::Native).unwrap().candidates[0]
+            .id
+            .clone();
+        d.data.lock().unwrap().source = InputSource::Windows;
+        (d, id, error, opens)
+    }
+    fn request(id: &str, generation: u32) -> ShortcutArmRequest {
+        ShortcutArmRequest {
+            candidate_id: id.into(),
+            expected_generation: generation,
+            consent: true,
+            reviewed_configuration: true,
+        }
+    }
+    fn arm(d: &Diagnostics, r: ShortcutArmRequest) -> Result<ShortcutStatus, String> {
+        d.arm_shortcut(r, Arc::new(|_| {}), Arc::new(|_| Ok(())))
+    }
+    #[test]
+    fn rejected_attempts_stay_disarmed_with_precise_reason_and_no_private_request_data() {
+        let (d, id, _, opens) = setup();
+        for (r, reason) in [
+            (
+                ShortcutArmRequest {
+                    consent: false,
+                    ..request(&id, 0)
+                },
+                ArmReason::ConsentRequired,
+            ),
+            (request(&id, 9), ArmReason::StaleGeneration),
+            (
+                request("private-path-never-export-this", 0),
+                ArmReason::CandidateNotFound,
+            ),
+        ] {
+            assert!(arm(&d, r).is_err());
+            let s = d.shortcut_status().unwrap();
+            assert_eq!(s.phase, ShortcutPhase::Disarmed); // Original silent symptom, now explicit.
+            let a = s.last_attempt.as_ref().unwrap();
+            assert_eq!(a.outcome, ArmOutcome::Rejected);
+            assert_eq!(a.reason, Some(reason));
+            assert!(!a.hid_handle_opened);
+            assert!(!serde_json::to_string(&s)
+                .unwrap()
+                .contains("private-path-never-export-this"));
+        }
+        d.data.lock().unwrap().source = InputSource::Unsupported;
+        assert!(arm(&d, request(&id, 0)).is_err());
+        assert_eq!(
+            d.shortcut_status().unwrap().last_attempt.unwrap().reason,
+            Some(ArmReason::UnsupportedSource)
+        );
+        d.data.lock().unwrap().source = InputSource::Windows;
+        d.operations.lock().unwrap().candidates[0]
+            .public
+            .interface_number = Some(0);
+        assert!(arm(&d, request(&id, 0)).is_err());
+        assert_eq!(
+            d.shortcut_status()
+                .unwrap()
+                .last_attempt
+                .unwrap()
+                .candidate_eligible,
+            Some(false)
+        );
+        assert_eq!(opens.load(Ordering::SeqCst), 0);
+    }
+    #[test]
+    fn monitoring_and_probe_rejections_remain_visible_until_new_attempt_and_allow_recovery() {
+        let (d, id, _, opens) = setup();
+        d.start(&id, Arc::new(|_| {})).unwrap();
+        until(|| d.snapshot().unwrap().monitor.report_count > 1);
+        assert!(arm(&d, request(&id, 0)).is_err());
+        let s = d.shortcut_status().unwrap();
+        assert_eq!(s.reader_owner, ReaderOwner::Diagnostics);
+        assert_eq!(
+            s.last_attempt.unwrap().reason,
+            Some(ArmReason::MonitorActive)
+        );
+        let data = d.snapshot().unwrap();
+        d.probe_start(correlation::ProbeStartRequest {
+            expected_token: data.probe.token,
+            monitor_generation: data.monitor.session_generation,
+            candidate_id: id.clone(),
+            control: ControllerControl::A,
+            environment: Default::default(),
+            consent: true,
+        })
+        .unwrap();
+        assert!(arm(&d, request(&id, 0)).is_err());
+        assert_eq!(
+            d.shortcut_status().unwrap().last_attempt.unwrap().reason,
+            Some(ArmReason::ProbeActive)
+        );
+        d.stop().unwrap();
+        assert_eq!(
+            d.shortcut_status().unwrap().last_attempt.unwrap().reason,
+            Some(ArmReason::ProbeActive)
+        );
+        arm(&d, request(&id, 0)).unwrap();
+        until(|| d.shortcut_status().unwrap().phase == ShortcutPhase::Armed);
+        let active = d.shortcut_status().unwrap();
+        assert_eq!(
+            active.last_attempt.as_ref().unwrap().outcome,
+            ArmOutcome::Active
+        );
+        assert!(active.last_attempt.unwrap().compatible_reports_observed);
+        assert!(d
+            .start(&id, Arc::new(|_| {}))
+            .unwrap_err()
+            .contains("Disarm Shortcut"));
+        assert_eq!(d.shortcut_status().unwrap().phase, ShortcutPhase::Armed);
+        d.shortcut_disarm(1).unwrap();
+        assert_eq!(
+            d.shortcut_status().unwrap().termination_reason,
+            Some(ArmReason::UserDisarmed)
+        );
+        arm(&d, request(&id, 1)).unwrap();
+        d.shortcut_disarm(2).unwrap();
+        assert!(opens.load(Ordering::SeqCst) <= 3);
+    }
+    #[test]
+    fn rescan_stales_selection_and_spawn_failure_is_a_concrete_terminal_attempt() {
+        let (d, old, _, opens) = setup();
+        let id = d.rescan(DiagnosticsMode::Native).unwrap().candidates[0]
+            .id
+            .clone();
+        d.data.lock().unwrap().source = InputSource::Windows;
+        assert!(arm(&d, request(&old, 0)).is_err());
+        assert_eq!(
+            d.shortcut_status().unwrap().last_attempt.unwrap().reason,
+            Some(ArmReason::CandidateNotFound)
+        );
+        d.arm_shortcut_with_spawn(
+            request(&id, 0),
+            Arc::new(|_| {}),
+            Arc::new(|_| Ok(())),
+            |_| Err(std::io::Error::other("synthetic spawn failure")),
+        )
+        .unwrap();
+        let s = d.shortcut_status().unwrap();
+        assert_eq!(s.phase, ShortcutPhase::Error);
+        assert_eq!(
+            s.last_attempt.unwrap().reason,
+            Some(ArmReason::WorkerSpawnFailed)
+        );
+        assert!(!s.worker_running);
+        assert!(!s.opened);
+        assert_eq!(opens.load(Ordering::SeqCst), 0);
+        arm(&d, request(&id, 1)).unwrap();
+        d.shortcut_disarm(2).unwrap();
+    }
+    #[test]
+    fn immediate_open_read_and_unexpected_failures_are_observable_and_terminal_worker_can_be_replaced(
+    ) {
+        for (code, reason, opened) in [
+            (1, ArmReason::AccessDenied, false),
+            (6, ArmReason::DeviceBusy, false),
+            (8, ArmReason::HidOpenFailed, false),
+            (4, ArmReason::ReadFailed, true),
+            (2, ArmReason::Disconnected, true),
+            (7, ArmReason::UnexpectedTermination, true),
+        ] {
+            let (d, id, error, opens) = setup();
+            error.store(code, Ordering::SeqCst);
+            arm(&d, request(&id, 0)).unwrap();
+            until(|| !d.shortcut_status().unwrap().phase.owns_reader());
+            let s = d.shortcut_status().unwrap();
+            assert_eq!(s.termination_reason, Some(reason));
+            let a = s.last_attempt.unwrap();
+            assert_eq!(a.reason, Some(reason));
+            assert_eq!(a.hid_handle_opened, opened);
+            assert!(!a.compatible_reports_observed);
+            assert!(!s.worker_running);
+            assert!(!s.opened);
+            assert_eq!(opens.load(Ordering::SeqCst), 1);
+            // Joining a completed worker must not leave ownership stuck forever.
+            until(|| {
+                d.operations
+                    .lock()
+                    .unwrap()
+                    .worker
+                    .as_ref()
+                    .unwrap()
+                    .join
+                    .is_finished()
+            });
+            error.store(0, Ordering::SeqCst);
+            arm(&d, request(&id, 1)).unwrap();
+            d.shortcut_disarm(2).unwrap();
+        }
+    }
+    #[test]
+    fn initial_silence_reports_no_compatible_frames_without_fabricating_open_success() {
+        let state = Arc::new(State::default());
+        state.request_attempt(true);
+        let t = state.begin(0, &tests::candidate()).unwrap();
+        let t = Ticket {
+            started: Instant::now() - Duration::from_secs(5),
+            ..t
+        };
+        run(
+            Arc::new(Backend {
+                word: Arc::new(AtomicU64::new(0)),
+                error: Arc::new(AtomicU32::new(5)),
+                opens: Arc::new(AtomicUsize::new(0)),
+                drops: Arc::new(AtomicUsize::new(0)),
+            }),
+            tests::candidate(),
+            Arc::new(AtomicBool::new(false)),
+            state.clone(),
+            t,
+            Arc::new(|_| {}),
+            Arc::new(|_| panic!("no input action")),
+        );
+        let s = state.snapshot();
+        assert_eq!(s.termination_reason, Some(ArmReason::NoCompatibleReports));
+        let a = s.last_attempt.unwrap();
+        assert!(a.hid_handle_opened);
+        assert!(!a.compatible_reports_observed);
     }
 }

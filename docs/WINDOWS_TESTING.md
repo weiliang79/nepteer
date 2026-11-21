@@ -1,3 +1,22 @@
+## Step 5B Arm lifecycle reproduction — pending on the diagnostic fix
+
+The user reports ⋯ toggled Nepteer QAM successfully in Mongil: STAR DIVE, then a later Arm appeared to remain Disarmed after game close/native monitoring. This demonstrates one integration success, not a verified cause of the later failure. Do not infer HID reconnect, Steam Input state or process behavior from it. Use the same previously tested environment only; do not add game hooks, process detection, anti-cheat testing or driver/tool changes.
+
+1. Install/launch the new CI artifact as a standard user. Confirm initial Disarmed and no automatic reader.
+2. Rescan/select reviewed vendor collection; acknowledge configuration/consent and Arm. Observe request sent, worker/open/report/baseline progress, then Armed.
+3. Open the previously tested game. Confirm one ⋯ press opens/closes QAM; keyboard/dashboard/Escape remain functional.
+4. Close the game normally. Before another Arm, copy the safe summary and inspect phase, last attempt, worker termination, worker/open flags and report-observed flag. Record only safe status/context.
+5. Open Controller and try native monitoring. If shortcut owns the reader, expect explicit Disarm instruction; confirm the shortcut is not silently stopped.
+6. If shortcut ended, note its terminal reason. Explicitly Disarm any active shortcut, then Start Monitoring. Confirm one-reader ownership.
+7. Return to shortcut controls. While diagnostics owns the slot, Arm must be visibly unavailable with Stop Monitoring recovery. Controller page-leave Stop is asynchronous: note whether owner becomes None after cleanup.
+8. Explicitly stop/disarm the active mode and wait for cleanup. Rescan and select the current vendor collection. Retry Arm; observe pending and either active progress or a concrete rejection/termination reason.
+9. If it fails, use Copy Shortcut Diagnostic Summary before retrying. Verify it has no path, serial, raw bytes/word/mask, username/process path or button history. Share only this safe summary and manually stated tool context.
+10. Repeat Stop Monitoring→Arm and Disarm→Arm several times. Check stale selection recovery, no duplicate readers, no stale queued toggles and failure visibility after status polling/navigation.
+11. If naturally observable, record access denied/busy/read failure/disconnect and manually rescan/rearm. Do not force internal disconnects or change firmware/drivers/tool modes.
+12. Confirm 30-minute shortcut, five-minute diagnostics, 30-second probe limits and 350ms cooldown remain unchanged. Close main while armed, restart Disarmed; verify normal input/tools and uninstall cleanup.
+
+CI/synthetic tests cannot reproduce the actual game-close/HID lifecycle. New hardware results and summaries are still required; no merge is authorized.
+
 # Step 5B · Physical Quick Access shortcut testing
 
 **New integration tests remain pending until performed on hardware.** Supplied mapping evidence: LCD/Windows 11, Steam Deck Tools controller Desktop mode, Steam running/Input unknown; exact native profile 28DE:1205, interface 2, FFFF/0001, descriptor/actual 65, zero-prefixed65. Five clean Quick Access bit-50 press/release cycles, Steam-only negative control and Steam-held + QAM cycles support this narrow route. They are not proof of all models/modes/software or this new lifecycle/focus path.

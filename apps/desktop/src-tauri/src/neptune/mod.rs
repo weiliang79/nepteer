@@ -358,6 +358,7 @@ impl Diagnostics {
             .data
             .lock()
             .map_err(|_| "Controller state unavailable.")?;
+        status.monitor_phase = data.monitor.phase;
         status.reader_owner = if status.phase.owns_reader() || status.opened {
             shortcut::ReaderOwner::Shortcut
         } else if data.monitor.phase.active() || data.monitor.opened {
@@ -389,75 +390,118 @@ impl Diagnostics {
         notify: shortcut::NotifyShortcut,
         dispatch: shortcut::Dispatch,
     ) -> Result<shortcut::ShortcutStatus, String> {
-        if !request.consent || !request.reviewed_configuration {
-            return Err("Confirm passive observation and the reviewed Deck LCD/Windows 11/Steam Deck Tools Desktop configuration before arming.".into());
-        }
+        self.arm_shortcut_with_spawn(request, notify, dispatch, |task| {
+            std::thread::Builder::new()
+                .name("nepteer-qam-observer".into())
+                .spawn(task)
+        })
+    }
+    fn arm_shortcut_with_spawn(
+        &self,
+        request: shortcut::ShortcutArmRequest,
+        notify: shortcut::NotifyShortcut,
+        dispatch: shortcut::Dispatch,
+        spawn: impl FnOnce(Box<dyn FnOnce() + Send>) -> std::io::Result<JoinHandle<()>>,
+    ) -> Result<shortcut::ShortcutStatus, String> {
+        use shortcut::{ArmReason as Reason, ArmStage as Stage};
         let mut session = self
             .operations
             .lock()
             .map_err(|_| "Controller coordinator unavailable.")?;
-        if self.closing.load(Ordering::SeqCst) {
-            return Err("Nepteer is shutting down.".into());
-        }
-        if session
-            .worker
-            .as_ref()
-            .is_some_and(|w| !w.join.is_finished())
-            || self.probe_status()?.outcome.active()
-        {
-            return Err("A Neptune reader or probe is active. Stop diagnostics/probing or explicitly disarm before switching modes.".into());
-        }
-        Self::stop_worker(&mut session)?;
-        self.shortcut.barrier();
-        if self
-            .data
-            .lock()
-            .map_err(|_| "Controller state unavailable.")?
-            .source
-            != InputSource::Windows
-        {
-            return Err("Physical shortcut requires manually discovered native Windows interfaces; simulation is not supported.".into());
-        }
-        let candidate = session
-            .candidates
-            .iter()
-            .find(|c| c.public.id == request.candidate_id)
-            .cloned()
-            .ok_or("Select a discovered interface; rescan manually if it expired.")?;
-        let ticket = self
-            .shortcut
-            .begin(request.expected_generation, &candidate)?;
-        let worker_ticket = ticket.clone();
-        let cancel = Arc::new(AtomicBool::new(false));
-        let worker_cancel = cancel.clone();
-        let backend = self.backend.clone();
-        let state = self.shortcut.clone();
-        match std::thread::Builder::new()
-            .name("nepteer-qam-observer".into())
-            .spawn(move || {
+        self.shortcut
+            .request_attempt(!request.candidate_id.is_empty());
+        let result = (|| {
+            if !request.consent || !request.reviewed_configuration {
+                return Err(self.shortcut.reject(Reason::ConsentRequired));
+            }
+            if self.closing.load(Ordering::SeqCst) {
+                return Err(self.shortcut.reject(Reason::Shutdown));
+            }
+            self.shortcut.attempt_stage(Stage::OwnershipCheck);
+            if self
+                .probe_status()
+                .map_err(|_| self.shortcut.reject(Reason::InternalError))?
+                .outcome
+                .active()
+            {
+                return Err(self.shortcut.reject(Reason::ProbeActive));
+            }
+            if let Some(worker) = &session.worker {
+                if !worker.join.is_finished() {
+                    return Err(self
+                        .shortcut
+                        .reject(if worker.mode == WorkerMode::Shortcut {
+                            Reason::ShortcutAlreadyActive
+                        } else {
+                            Reason::MonitorActive
+                        }));
+                }
+            }
+            Self::stop_worker(&mut session)
+                .map_err(|_| self.shortcut.reject(Reason::UnexpectedTermination))?;
+            self.shortcut.barrier();
+            self.shortcut.attempt_stage(Stage::CandidateValidation);
+            if self.shortcut.snapshot().generation != request.expected_generation {
+                return Err(self.shortcut.reject(Reason::StaleGeneration));
+            }
+            if self
+                .data
+                .lock()
+                .map_err(|_| self.shortcut.reject(Reason::InternalError))?
+                .source
+                != InputSource::Windows
+            {
+                return Err(self.shortcut.reject(Reason::UnsupportedSource));
+            }
+            let candidate = session
+                .candidates
+                .iter()
+                .find(|c| c.public.id == request.candidate_id)
+                .cloned()
+                .ok_or_else(|| self.shortcut.reject(Reason::CandidateNotFound))?;
+            shortcut::gate(&candidate)
+                .map_err(|_| self.shortcut.reject(Reason::CandidateIneligible))?;
+            let ticket = self
+                .shortcut
+                .begin(request.expected_generation, &candidate)
+                .map_err(|_| self.shortcut.reject(Reason::InternalError))?;
+            let cancel = Arc::new(AtomicBool::new(false));
+            let worker_cancel = cancel.clone();
+            let backend = self.backend.clone();
+            let state = self.shortcut.clone();
+            let worker_notify = notify.clone();
+            match spawn(Box::new(move || {
                 shortcut::run(
                     backend,
                     candidate,
                     worker_cancel,
                     state,
-                    worker_ticket,
-                    notify,
+                    ticket,
+                    worker_notify,
                     dispatch,
                 )
-            }) {
-            Ok(join) => {
-                session.worker = Some(Worker {
-                    mode: WorkerMode::Shortcut,
-                    cancel,
-                    join,
-                })
+            })) {
+                Ok(join) => {
+                    session.worker = Some(Worker {
+                        mode: WorkerMode::Shortcut,
+                        cancel,
+                        join,
+                    })
+                }
+                Err(_) => {
+                    self.shortcut.fail(shortcut::ShortcutIssue::Internal);
+                    // Replace the generic issue reason with the grounded spawn outcome.
+                    self.shortcut.spawn_failed();
+                }
             }
-            Err(_) => {
-                self.shortcut.fail(shortcut::ShortcutIssue::Internal);
-                self.shortcut.invalidate();
-            }
+            self.shortcut_status()
+        })();
+        drop(session);
+        // Includes preflight rejection; emit outside all lifecycle/state locks.
+        if let Ok(status) = self.shortcut_status() {
+            notify(status);
         }
-        self.shortcut_status()
+        result
     }
     pub fn shortcut_disarm(&self, generation: u32) -> Result<shortcut::ShortcutStatus, String> {
         // Check/invalidate while serialized with Arm, before waiting for I/O or a window action.
@@ -468,6 +512,7 @@ impl Diagnostics {
         if self.shortcut.snapshot().generation != generation {
             return Err("Shortcut session changed; refresh before disarming.".into());
         }
+        self.shortcut.end_reason(shortcut::ArmReason::UserDisarmed);
         self.shortcut.invalidate();
         if session
             .worker
@@ -760,12 +805,14 @@ impl Diagnostics {
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok();
         if claimed {
+            self.shortcut.end_reason(shortcut::ArmReason::Shutdown);
             self.shortcut.invalidate();
         }
         claimed
     }
     pub fn shutdown(&self) {
         self.closing.store(true, Ordering::SeqCst);
+        self.shortcut.end_reason(shortcut::ArmReason::Shutdown);
         self.shortcut.invalidate();
         self.end_probe(correlation::ProbeEndReason::Shutdown);
         if let Ok(mut session) = self.operations.lock() {

@@ -1,3 +1,47 @@
+# Step 5B stabilization — observable physical shortcut Arm attempts
+
+Still v0.5.0-alpha.2 on `feat/neptune-qam-shortcut`, reviewed base `21bf467aa5163cbe0a695f5f823d600c63867720`. No new milestone or merge. User reports physical ⋯ successfully toggled QAM during gameplay. This fix has not been retested on the Deck.
+
+## Findings and uncertainty
+
+Proven code gaps: preflight rejections left no native attempt record while phase correctly stayed Disarmed; disabled Arm lacked an immediate prominent explanation; pending IPC had no visible request-sent indication; worker open errors shared a generic read-failure issue. Unexpected worker unwinding previously had no terminal-state guard. Original polling/accept did not clear caught frontend errors, so no evidence supports that suspected cause. Controller cleanup issues asynchronous Stop and can briefly retain the reader slot while navigation proceeds. Native monitoring actively owning the reader is a valid rejection, not permission for takeover.
+
+The exact game-close failure is unproven without the new hardware summary. No game-close callback/process observation exists. Read/disconnect/open/format errors or expiry terminate safely; later silence only invalidates baseline. We do not claim the game reconnects or reconfigures HID.
+
+## Changes and lifecycle review
+
+- `neptune/shortcut.rs`: Rust enums and one bounded attempt record separate from phase, safe rejection/termination reasons, staged HID open/report/baseline evidence, worker state and rescan recommendation. Open-versus-read failures and unexpected unwinding are distinguished; handle cleanup precedes terminal state. Old worker progress cannot replace a newer rejected attempt. Existing input semantics/fence/dispatch remain.
+- `neptune/mod.rs`: record every accepted Arm IPC attempt, including consent/source/ownership/candidate/generation rejection; emit after unlocking. Keep one worker slot and join completed workers before replacement. Separate monitor/probe/shortcut conflicts and spawn-failure diagnosis; disarm/shutdown reasons survive cleanup.
+- `PhysicalQuickAccess.tsx`, `lib/physical-shortcut.ts`: immediate pending/duplicate suppression, always-visible preflight/failure/recovery, sticky errors, native attempt/termination display, generation+revision and request-identity ordering, safe Disarm→Arm sequencing, whitelist-only copy action. Existing Controller UI already displays Start Monitoring rejection. Generated bindings and existing fixture types updated; no new IPC command/capability/dependency/version bump.
+- New Rust/React regressions cover Disarmed+explicit rejection, consent/source/profile/stale selection/generation, monitoring/probe conflicts, Stop→Arm/Disarm→Arm, spawn/open/access/busy/read/panic/silence failures, recovery and single-reader preservation, pending polls/late events/responses/errors, compact navigation and sanitized copying. Prior invalid-ticket/no-write/ACL/QAM/focus/timing tests remain.
+
+Native lifecycle lock ordering stays operations→short-lived state/data/probe locks; reader I/O, thread joins and QAM/event callbacks never hold shortcut status locks. Rejection notification releases operations first. Worker unwind drops the reader using existing safe cancel/drain before reporting terminal status. No additional handle, automatic reconnect, input history or device/game write is introduced. Only the reviewed bit-50 QAM route remains; 350ms cooldown and all three session limits are unchanged.
+
+## Validation / CI
+
+Local validation passed on macOS arm64:
+
+| Command                                   | Result                                                 |
+| ----------------------------------------- | ------------------------------------------------------ |
+| `pnpm bindings`                           | Passed; explicit DTO generation                        |
+| `pnpm format` / `pnpm format:check`       | Passed, Prettier and Rustfmt                           |
+| `pnpm typecheck` / `pnpm lint`            | Passed, zero lint warnings                             |
+| `pnpm test`                               | 61 passed in 6 files, including 18 shortcut UI tests   |
+| `pnpm bindings:check`                     | Passed, no-write drift check                           |
+| `pnpm rust:check`                         | Passed                                                 |
+| `pnpm rust:test`                          | 58 passed, 1 intentionally ignored explicit generator  |
+| `pnpm rust:lint`                          | Passed, all-target Clippy with -D warnings             |
+| `pnpm build:web`                          | Passed; also rebuilt by native beforeBuildCommand      |
+| `pnpm build --bundles app`                | Passed, actual macOS executable / 10.96 MiB app bundle |
+| `pnpm licenses:rust` / `pnpm licenses:js` | Passed; no dependency changes                          |
+| `git diff --check`                        | Passed                                                 |
+
+Five new Rust tests cover rejection/preflight, diagnostic+probe ownership/recovery, stale scans/spawn failure, immediate open/read/unexpected failures with replacement, and no-report expiry. Eleven additional shortcut UI cases cover pending/duplicate prevention, real interval polling, rejection/retry, stale events/generations/IPC responses, worker termination in compact view, safe error text/copying, Disarm fencing a late rejected Arm, and subscription failure with polling fallback. Initial TypeScript fixture errors were corrected by extending the existing test DTOs; no check or permission was disabled.
+
+Native CI/artifact results are pending push for this fix. Prior Step 5B evidence below remains historical and tied to its tested SHA. Actual game-close reproduction, Windows installer execution, new interactive GUI/focus/coexistence tests and the focused checklist at the top of WINDOWS_TESTING.md remain pending on hardware. CI does not establish their success.
+
+---
+
 # Step 5B handoff · v0.5.0-alpha.2
 
 Branch `feat/neptune-qam-shortcut`, based on main `6f1ecdd584ea8f3d53b2d4f38c7902ed3092215d`. Previous milestones were merged. **New physical shortcut integration tests remain pending before merge.** Supplied correlation evidence authorizes the narrow path below, not a universal compatibility claim. Nothing is merged to main.
