@@ -10,6 +10,7 @@ on:
         feat/neptune-discovery,
         feat/neptune-input-decoding,
         feat/neptune-button-correlation,
+        feat/neptune-qam-shortcut,
       ]
   pull_request:
   workflow_dispatch:

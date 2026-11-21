@@ -1,11 +1,21 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.5.0-alpha.1 physical button correlation evidence probe, not hardware control.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.5.0-alpha.2 opt-in physical Quick Access shortcut, not hardware control.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 5A.1 — Physical candidate-bit correlation probe
+## Current milestone: Step 5B — Physical Quick Access shortcut
+
+Work on `feat/neptune-qam-shortcut` from latest main after `6f1ecdd584ea8f3d53b2d4f38c7902ed3092215d`. Commit/push focused changes, verify native macOS/Windows CI and Windows artifacts; do not merge before review and new hardware testing. The user supplied positive A/B/X/Y/Steam/Quick Access correlations from Deck LCD/Windows 11, Steam Deck Tools controller Desktop mode, Steam running, Steam Input status unknown. Quick Access bit 50 had five presses/releases, stable released baseline, no missing/early/late/idle edges or gaps, distinct Steam bit 13, Steam-only negative control and Steam-held + QAM cycling. This authorizes only a narrowly scoped opt-in bit-50 shortcut test, not universal model/mode compatibility or any other input action.
+
+Require explicit session-only consent and reviewed-configuration acknowledgment, native source and exact profile: VID 28DE/PID 1205, interface 2, usage FFFF/0001, descriptor 65, exact zero-prefixed65 v1/type09/body64 framing. Arm starts passive validation; only compatible reports plus fresh stable released baseline permit a press. No startup arming/persistence. Enforce a native monotonic 30-minute deadline, explicit Disarm, no renewal/reconnect. Diagnostics/probe and shortcut modes share one reader slot; reject conflicts and require explicit stop/disarm before switching. Keep diagnostic five-minute and probe thirty-second limits intact. Navigation/minimization does not stop an explicitly armed app-owned session; normal exit does.
+
+Only released-to-pressed bit 50 may request existing QAM Action::Toggle. Initial held, held repeats, releases, invalid packets and timeouts cannot toggle. Require >=3 released reports over 200ms, invalidate on >1.5s stream gaps, and discard presses <350ms after an accepted press without deferred toggles. Invalid framing/read failure ends the session. Keep dispatch bounded and generation/deadline fenced after QAM lock acquisition; disarm invalidates pending work immediately and waits out already-started actions before returning. No reader/status lock during native window operations. Existing keyboard/dashboard/Escape/blur/focus/placement behavior stays authoritative in quick_access.rs.
+
+Expose only minimal safe status/metadata through three main-only arm/disarm/status commands; QAM gains no management grants. No raw reports, held states, press history, unique IDs, new sensors/writes, input injection, remapping, Steam shortcuts, tool configuration/termination, drivers/admin/services/startup, hooks or game interaction. Normal diagnostics still do not publish physical events or automatically promote verification flags; the reviewed QAM shortcut is a separate narrow route. Do not suppress other tools' ⋯ actions or claim their modes were detected. Preserve all prior safety rules; old milestone exclusions are historical. Prefer no new dependency. Document collision/fullscreen/cancellation limits and require the 28-item new hardware checklist before merge.
+
+## Completed milestone: Step 5A.1 — Physical candidate-bit correlation probe
 
 Work on `feat/neptune-button-correlation` from latest main after Step 5A merge `be08de79c369921dac541a5efcb4d4fc8762a4ca`. Commit/push focused changes and validate native macOS/Windows CI/artifacts. Do not merge before code review and hardware testing. Step 5A is complete; this milestone only gathers correlation evidence, never promotes mappings or adds live physical events.
 

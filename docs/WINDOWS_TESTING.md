@@ -1,4 +1,43 @@
-# Step 5A.1 · Physical Neptune button correlation
+# Step 5B · Physical Quick Access shortcut testing
+
+**New integration tests remain pending until performed on hardware.** Supplied mapping evidence: LCD/Windows 11, Steam Deck Tools controller Desktop mode, Steam running/Input unknown; exact native profile 28DE:1205, interface 2, FFFF/0001, descriptor/actual 65, zero-prefixed65. Five clean Quick Access bit-50 press/release cycles, Steam-only negative control and Steam-held + QAM cycles support this narrow route. They are not proof of all models/modes/software or this new lifecycle/focus path.
+
+Keep keyboard/touch available. Do not disable/configure tools, Steam/Input/HidHide/Lizard Mode, change drivers/firmware, force disconnects, elevate or test anti-cheat-protected games. Record artifact/build, Windows/scaling/window mode, manually confirmed tool context and pass/fail/not tested. Do not share raw reports, device paths, serials or press histories.
+
+1. Install the matching x64 artifact without elevation, using existing WebView2. NSIS is current-user; no drivers/services/startup entries.
+2. Launch fresh: Physical Quick Access Shortcut is Disabled, QAM hidden, no automatic HID open. Restart must require manual selection/consent again.
+3. Manually rescan/load and select reviewed native vendor interface 2, FFFF/0001, descriptor 65. Mouse/keyboard/virtual Xbox/other collections remain ineligible.
+4. Stop normal diagnostics/probe first. Confirm reviewed LCD/Windows 11/Steam Deck Tools Desktop + Steam-running context only if true (Input may be unknown), consent, then explicitly Arm Physical ⋯ Shortcut. No settings are detected/changed automatically.
+5. Confirm WaitingReports/WaitingBaseline before Armed, exact compatible reports and source WINDOWS HID. No reports after five seconds yields a terminal error, not guessed input or fallback. No diagnostic reader competes.
+6. Safely hold ⋯ while arming: no initial toggle. Continue holding: no action, status waits for release. Keep keyboard/touch Disarm available.
+7. Release and allow >=3 released samples over 200ms; then press once: QAM opens using the existing right-side window/coordinator.
+8. Release: QAM does not toggle again. A release is not an action.
+9. Hold ⋯ for several seconds after a valid press: only one toggle. Check repeated reports do not duplicate actions.
+10. Release, then press ⋯ again: QAM closes. No extra visibility cache or duplicate window.
+11. Repeat twenty open/close cycles; interleave holds/releases and check no duplicate reader, window, stuck focus or stale action.
+12. Test rapid taps. Distinct accepted observed press edges >=350ms apart should toggle once each. <350ms presses are intentionally discarded and must never trigger later merely because held through cooldown. Record driver buffering/timing limitations honestly.
+13. Steam alone: no Nepteer QAM action.
+14. A/B/X/Y alone: no Nepteer QAM action despite prior correlation evidence.
+15. Hold Steam while cycling ⋯: one toggle per valid ⋯ press, no Steam-derived action.
+16. Mix Ctrl+Alt+Q, dashboard Open and physical ⋯; all must use actual current native QAM visibility (keyboard opens/physical closes; dashboard opens/physical closes).
+17. Physical ⋯ opens, Escape/Close hides; repeat with outside-click hide. A later physical press operates the actual current state. Outside clicks must not force focus back.
+18. Check ordinary desktop and non-anti-cheat borderless-windowed games separately: right placement/DPI/touch, focus capture/return and normal game behavior. Exclusive fullscreen is not guaranteed; record invisibility/minimization/OS activation denial without invasive workarounds.
+19. Confirm Steam Deck Tools Desktop mode and ordinary controller behavior continue during/after the shortcut. Do not change settings or stop tools to improve outcomes.
+20. Observe whether Steam Deck Tools/Steam independently react to ⋯ (including their own overlay). Record conflicts, do not suppress external actions, and disarm Nepteer if undesirable.
+21. Disarm from Dashboard, Settings or the persistent bar on another main page. New edges stop immediately, pending tickets are invalidated and resources are joined/drained before Disarmed returns. Physical ⋯ no longer affects Nepteer; keyboard/dashboard fallback still works.
+22. Repeat Arm/Disarm, including switching pages/minimizing/restoring while armed. Navigation/minimization must not implicitly disarm; one app-owned session continues until explicit stop/error/expiry/exit. Stale results/actions must not revive a prior session.
+23. While diagnostics/probe owns the reader, Arm is rejected. While shortcut owns it, diagnostic Start/Stop/Rescan is rejected with explicit Disarm instructions; page-leave diagnostic cleanup must not kill the shortcut. Close the old mode before opening the next.
+24. Allow native thirty-minute expiry. It must close observation, discard pending actions and require manual rearm with a fresh released baseline. There is no auto-renewal or five-minute diagnostic-worker restart loop.
+25. Test naturally observable missing/unsupported reports or access/disconnect errors only if safe. >1.5s gaps require a new released baseline; incompatible framing/read errors terminate with a truthful status. No reconnect/interface/bit/source fallback. Synthetic tests cover faults that cannot safely be reproduced.
+26. Close main while armed and QAM open. The fence invalidates before cleanup, read cancellation drains safely and process/windows exit without orphan worker/helper. A broken driver may delay cancellation; never free pending I/O or kill threads to hide it.
+27. Restart: Disabled with no persisted arming/reader/input history. Verify Ctrl+Alt+Q and preferences/telemetry, normal diagnostic/probe functionality and source labels still work.
+28. Uninstall: no retained controller settings, driver/service, startup entry, remapping, background process or input history remains.
+
+Merge only after review and new hardware testing. Native CI is compilation/logic/packaging evidence, not Windows controller coexistence or focus validation. Other models, modes, tools and exclusive-fullscreen behavior remain outside the reviewed guarantee. No general physical input API/remapping/Steam shortcut is implemented.
+
+---
+
+## Historical Step 5A.1 · Physical Neptune button correlation
 
 **Probe hardware results are pending.** Known user-reported baseline: Steam Deck LCD/Windows 11; Steam Deck Tools installed, Steam Controller.exe running, Desktop mode. Separate Steam client/Steam Input status was not confirmed. Reported collections: mouse interface 0 (0x0001/0x0002, length 6), keyboard interface 1 (0x0001/0x0006, length 9), vendor interface 2 (0xFFFF/0x0001, descriptor 65). Vendor reports: actual 65 bytes, deck_v1_zero_prefixed65, candidate ID 0x00/type 0x09, 42,808 candidate reports, 0 unsupported/malformed; intermittent idle and increased input activity. These aggregates do not fully verify framing or any physical mapping.
 

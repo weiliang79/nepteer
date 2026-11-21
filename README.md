@@ -1,4 +1,4 @@
-# Nepteer · v0.5.0-alpha.1
+# Nepteer · v0.5.0-alpha.2
 
 An independently implemented, read-only handheld companion targeting **Windows 11 on Steam Deck LCD**, developable on macOS with Tauri 2, Rust, React and TypeScript.
 
@@ -16,7 +16,7 @@ The opaque, borderless panel fits the display work area and sits above ordinary 
 
 Open **Controller** in the main dashboard, then **Rescan interfaces**. Windows enumerates candidate Valve 0x28DE / 0x1205 HID collections and displays safe metadata only. Select an eligible vendor-defined collection and explicitly press **Start Monitoring** to attempt shared, read-only input. Discovery is not proof of readability. Steam Input may prevent access or no reports may arrive; Nepteer never takes exclusive ownership or sends configuration commands.
 
-Reports are counted and length/time summarized. A safe candidate parser recognizes a published 64-byte Deck message or its proposed zero-prefixed 65-byte Windows framing. **No physical framing or button mapping is verified; native button states stay unavailable and physical decoding is disabled.** Recognition never promotes verification. Raw input is not saved or sent to React. Stop is explicit, leaving Controller requests stop, and sessions expire after five minutes. Closing main joins the worker before exiting. No startup scan/open, auto-reconnect or controller-driven QAM action exists.
+Reports are counted and length/time summarized. A safe candidate parser recognizes a published 64-byte Deck message or its proposed zero-prefixed 65-byte Windows framing. **Normal diagnostics keep physical button states unavailable and never automatically promote verification.** Step 5B separately enables only the reviewed bit-50 QAM shortcut under explicit arming and the exact profile below. Raw input is not saved or sent to React. Stop is explicit, leaving Controller requests stop, and sessions expire after five minutes. Closing main joins the worker before exiting. No startup scan/open or auto-reconnect exists. Diagnostic/probe events cannot operate QAM.
 
 On macOS, native input discovery is unavailable. Select **Simulated diagnostics (development)** and rescan to test the complete UI/worker lifecycle without hardware. Simulation runs deterministic press/hold/release sequences through the candidate parser and transition detector: Phase 1 A/B/X/Y, D-pad, L1/R1, Steam and ⋯; it shows current simulated state and at most 32 recent transitions. Triggers, rear buttons, sticks and trackpads remain unavailable. This is independent of telemetry mock selection and always labeled SIMULATED INPUT. Read failures never choose simulation. See [research and limitations](docs/NEPTUNE_RESEARCH.md).
 
@@ -24,7 +24,17 @@ On macOS, native input discovery is unavailable. Select **Simulated diagnostics 
 
 On Windows, select the eligible vendor-defined descriptor-65 interface, start normal monitoring and observe `deck_v1_zero_prefixed65`. In **Physical Button Correlation**, nominate one of the twelve Phase 1 controls, record tool/Steam status (Unknown is valid), read/accept consent and separately press **Start Probe**. Rust guides preparation, idle control and five press/hold/release cycles, normally finishing at 29 seconds with a hard 30-second deadline. No timed Next clicks are needed; Abort remains available. Stop/rescan/page departure/owner failure or expiry ends an active probe.
 
-The result contains local, memory-only aggregates and can be shared with **Copy Safe Summary**. Observed candidate-bit correlation is pending independent review, never physical verification. Missing reports, unstable baseline, out-of-window transitions or incompatible framing give an honest inconclusive/error result. This reuses the same reader, changes no controller/tool settings and never enables native physical events or controller QAM actions. The user reported a compatible 65-byte stream with Steam Deck Tools Desktop mode; individual bits remain unverified. Follow the [Step 5A.1 checklist](docs/WINDOWS_TESTING.md).
+The result contains local, memory-only aggregates and can be shared with **Copy Safe Summary**. Observed candidate-bit correlation is pending independent review, never physical verification. Missing reports, unstable baseline, out-of-window transitions or incompatible framing give an honest inconclusive/error result. This reuses the same reader, changes no controller/tool settings and never enables native physical events or controller QAM actions itself. The separate shortcut mode requires diagnostics/probing to stop first. The user reported a compatible 65-byte stream with Steam Deck Tools Desktop mode; individual bits remain unverified. Follow the [Step 5A.1 checklist](docs/WINDOWS_TESTING.md).
+
+## Physical Quick Access Shortcut
+
+Dashboard/Settings provides **Arm Physical ⋯ Shortcut**, disabled by default and never saved. Manually rescan/select the reviewed native interface, confirm the test configuration and consent to passive observation. Required metadata is Valve 28DE:1205, interface 2, usage FFFF/0001, descriptor 65; only exact zero-prefixed65 Deck-v1 reports are accepted. The reviewed environment is Steam Deck LCD/Windows 11, Steam Deck Tools controller in Desktop mode, Steam running; Steam Input status was unknown. Nepteer does not detect or change tool settings.
+
+After compatible reports and >=3 released samples over 200ms, released→pressed bit 50 toggles the existing QAM. Initial held state, holds, releases, Steam and face buttons never trigger it. A defensive 350ms minimum between accepted presses discards shorter intervals without delayed actions. Gaps over 1.5s require a new released baseline; invalid reports, disconnect/read errors and expiry close the session. Initial silence beyond 5s ends with a clear error, without retry.
+
+The separate session lasts at most **30 minutes**, survives page navigation/minimization, and has a persistent **Disarm Shortcut** control on every main-app page. Disarm/exit cancels and joins the reader, discards pending actions and clears input state. No automatic renewal/reconnect or resident service exists. Diagnostics and correlation cannot own a reader concurrently; explicitly stop/disarm to switch. The diagnostic five-minute limit is unchanged.
+
+Steam Deck Tools/Steam may independently react to ⋯, including another overlay. Nepteer does not intercept/suppress their input; disarm if behavior conflicts. Normal desktop/windowed support and best-effort focus restrictions remain, with no exclusive-fullscreen guarantee or anti-cheat testing. [New hardware checklist](docs/WINDOWS_TESTING.md) must pass before merge. No general physical input events, remapping or hardware configuration is added.
 
 ## Run on macOS
 
@@ -55,7 +65,7 @@ pnpm build --bundles app
 
 [Desktop CI](https://github.com/weiliang79/nepteer/actions/workflows/ci.yml) validates macOS and Windows and compiles an actual x86_64 Windows application. After a successful run, download **nepteer-windows-x86_64-&lt;commit&gt;** from the run's Artifacts section. It contains a per-user NSIS installer and standalone `nepteer.exe`. Microsoft Edge WebView2 must already be installed; the installer deliberately skips runtime installation to avoid requesting privilege. No Visual Studio is needed to run the artifact.
 
-Steps 1–4 passed native CI and user-reported Windows Steam Deck checks, including 14 Step 3 tests. **Step 5A.1 probe hardware tests and physical-button verification remain pending.** See the [handoff](docs/HANDOFF.md) for this branch's validation, CI and artifacts. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
+Steps 1–4 passed native CI and user-reported Windows Steam Deck checks, including 14 Step 3 tests. **User-reported bit correlations support the narrow Step 5B profile; actual shortcut lifecycle/focus/coexistence testing remains pending.** See the [handoff](docs/HANDOFF.md) for this branch's validation, CI and artifacts. An unsigned alpha may show SmartScreen or publisher warnings; do not disable OS security. See the [Windows checklist](docs/WINDOWS_TESTING.md).
 
 ## Layout
 
