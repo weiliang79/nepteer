@@ -56,3 +56,12 @@ export type ProbeStatus = {
  */
 token: number, revision: number, monitorGeneration: number, outcome: ProbeOutcome, phase: ProbePhase, cycle: number, remainingMs: number, summary: ProbeSummary | null, };
 export type ProbeStartRequest = { expectedToken: number, monitorGeneration: number, candidateId: string, control: ControllerControl, environment: ProbeEnvironment, consent: boolean, };
+export type ShortcutPhase = "disarmed" | "arming" | "waiting_reports" | "waiting_baseline" | "armed" | "disarming" | "expired" | "disconnected" | "access_denied" | "device_busy" | "unsupported_interface" | "unsupported_format" | "error";
+export type ReaderOwner = "none" | "diagnostics" | "shortcut";
+export type ShortcutIssue = "no_compatible_reports" | "read_failed" | "incompatible_format" | "queue_full" | "dispatch_failed" | "internal";
+export type ArmStage = "request_received" | "ownership_check" | "candidate_validation" | "worker_spawn" | "hid_open" | "waiting_reports" | "waiting_baseline" | "armed" | "terminated";
+export type ArmOutcome = "pending" | "active" | "rejected" | "terminated";
+export type ArmReason = "monitor_active" | "probe_active" | "shortcut_already_active" | "stale_generation" | "candidate_not_found" | "candidate_ineligible" | "unsupported_source" | "consent_required" | "access_denied" | "device_busy" | "disconnected" | "hid_open_failed" | "worker_spawn_failed" | "read_failed" | "unsupported_format" | "no_compatible_reports" | "session_expired" | "user_disarmed" | "shutdown" | "unexpected_termination" | "queue_full" | "dispatch_failed" | "internal_error";
+export type ArmAttempt = { id: number, stage: ArmStage, outcome: ArmOutcome, reason: ArmReason | null, candidateSelected: boolean, candidateEligible: boolean | null, hidHandleOpened: boolean, compatibleReportsObserved: boolean, };
+export type ShortcutStatus = { generation: number, revision: number, phase: ShortcutPhase, remainingMs: number, opened: boolean, source: InputSource, readerOwner: ReaderOwner, interface: ProbeInterface | null, issue: ShortcutIssue | null, lastAttempt: ArmAttempt | null, terminationReason: ArmReason | null, workerRunning: boolean, monitorPhase: MonitorPhase, manualRescanRequired: boolean, };
+export type ShortcutArmRequest = { candidateId: string, expectedGeneration: number, consent: boolean, reviewedConfiguration: boolean, };

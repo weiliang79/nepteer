@@ -14,7 +14,7 @@ const items = {
   Performance:
     "Power profiles and sensor controls are planned. No TDP, clocks or fan settings can be changed here.",
   Controller:
-    "Controller mappings and Steam / ⋯ button support are planned. No input is intercepted or injected.",
+    "Controller navigation and remapping remain planned. The physical ⋯ shortcut can be armed only in the main dashboard; this panel cannot manage HID readers.",
   Display:
     "Display controls are planned. This preview does not change resolution, refresh rate or fullscreen modes.",
   Settings:

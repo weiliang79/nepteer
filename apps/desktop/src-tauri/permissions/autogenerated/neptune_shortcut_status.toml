@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-neptune-shortcut-status"
+description = "Enables the neptune_shortcut_status command without any pre-configured scope."
+commands.allow = ["neptune_shortcut_status"]
+
+[[permission]]
+identifier = "deny-neptune-shortcut-status"
+description = "Denies the neptune_shortcut_status command without any pre-configured scope."
+commands.deny = ["neptune_shortcut_status"]

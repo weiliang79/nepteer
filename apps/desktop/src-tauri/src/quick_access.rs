@@ -297,10 +297,27 @@ pub fn initialize<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<(), String> {
 }
 
 pub fn perform<R: Runtime>(app: &tauri::AppHandle<R>, action: Action) -> Result<Status, String> {
+    perform_inner(app, action, None)?.ok_or_else(|| "Quick Access request was canceled.".into())
+}
+fn perform_inner<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    action: Action,
+    ticket: Option<&crate::neptune::shortcut::Ticket>,
+) -> Result<Option<Status>, String> {
     let state = app.state::<State>();
     let mut coordinator = state
         .lock()
         .map_err(|_| "Quick Access coordinator is unavailable.")?;
+    // Acquire the native QAM coordinator first, then fence the physical request immediately
+    // before applying it. No HID reader/status lock is held during native window operations.
+    let _permit = if let Some(ticket) = ticket {
+        let Some(permit) = ticket.enter() else {
+            return Ok(None);
+        };
+        Some(permit)
+    } else {
+        None
+    };
     let before = Native { app }.visible()?;
     let result = coordinator.apply(action, &mut Native { app });
     if let Ok(status) = &result {
@@ -310,7 +327,7 @@ pub fn perform<R: Runtime>(app: &tauri::AppHandle<R>, action: Action) -> Result<
     } else if let Err(error) = &result {
         coordinator.notice = Some(error.clone());
     }
-    result
+    result.map(Some)
 }
 
 pub fn queue<R: Runtime>(app: &tauri::AppHandle<R>, action: Action) {
@@ -318,6 +335,25 @@ pub fn queue<R: Runtime>(app: &tauri::AppHandle<R>, action: Action) {
     tauri::async_runtime::spawn_blocking(move || {
         let _ = perform(&app, action);
     });
+}
+
+pub(crate) fn queue_physical<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    state: &std::sync::Arc<crate::neptune::shortcut::State>,
+    ticket: crate::neptune::shortcut::Ticket,
+) -> Result<(), ()> {
+    if state.enqueue(ticket)? {
+        let app = app.clone();
+        let state = state.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            while let Some(ticket) = state.next() {
+                if perform_inner(&app, Action::Toggle, Some(&ticket)).is_err() {
+                    state.fail_dispatch(&ticket);
+                }
+            }
+        });
+    }
+    Ok(())
 }
 
 pub fn close_behavior(label: &str) -> &'static str {
@@ -562,5 +598,21 @@ mod tests {
         assert!(small.width <= 320 && small.height <= 240);
         assert!(bounds(0, 0, 0, 800, 1.0).is_err());
         assert!(bounds(0, 0, 1280, 800, f64::NAN).is_err());
+    }
+    #[test]
+    fn keyboard_physical_dashboard_escape_and_outside_click_share_actual_visibility() {
+        let mut state = Coordinator::default();
+        let mut window = Fake::default();
+        assert!(state.apply(Action::Toggle, &mut window).unwrap().visible); // keyboard
+        assert!(!state.apply(Action::Toggle, &mut window).unwrap().visible); // physical
+        assert!(state.apply(Action::Toggle, &mut window).unwrap().visible); // physical
+        assert!(!state.apply(Action::Hide, &mut window).unwrap().visible); // Escape/Close
+        assert!(state.apply(Action::Show, &mut window).unwrap().visible); // dashboard
+        assert!(!state.apply(Action::Toggle, &mut window).unwrap().visible); // physical
+        state.apply(Action::Toggle, &mut window).unwrap();
+        window.focused.set(false);
+        assert!(!state.apply(Action::Blur, &mut window).unwrap().visible);
+        assert!(state.apply(Action::Toggle, &mut window).unwrap().visible);
+        assert_eq!(window.creates, 1);
     }
 }

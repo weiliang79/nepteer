@@ -105,7 +105,8 @@ export default function ControllerDiagnostics() {
             changes hardware, or takes exclusive access. Sessions stop after
             five minutes or when you leave this page. Physical button decoding
             remains disabled pending hardware evidence. Simulation demonstrates
-            candidate mappings; no controller button opens QAM.
+            candidate mappings; only the separate, explicitly armed physical ⋯
+            shortcut can toggle QAM.
           </p>
         </div>
       </div>

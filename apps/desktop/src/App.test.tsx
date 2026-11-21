@@ -2,6 +2,30 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
+import * as physical from "./lib/physical-shortcut";
+vi.mock("./lib/physical-shortcut", async (original) => ({
+  ...(await original<typeof import("./lib/physical-shortcut")>()),
+  shortcutStatus: vi.fn(),
+  onPhysicalShortcut: vi.fn(),
+  armShortcut: vi.fn(),
+  disarmShortcut: vi.fn(),
+}));
+const disabledPhysical = {
+  generation: 0,
+  revision: 1,
+  phase: "disarmed" as const,
+  remainingMs: 0,
+  opened: false,
+  source: "windows" as const,
+  readerOwner: "none" as const,
+  interface: null,
+  issue: null,
+  manualRescanRequired: false,
+  lastAttempt: null,
+  terminationReason: null,
+  workerRunning: false,
+  monitorPhase: "stopped" as const,
+};
 import * as diagnostics from "./lib/neptune";
 vi.mock("./lib/neptune", async (original) => ({
   ...(await original<typeof import("./lib/neptune")>()),
@@ -45,6 +69,15 @@ const fixture: Snapshot = {
   fanRpm: 2800,
 };
 beforeEach(() => {
+  vi.mocked(physical.shortcutStatus)
+    .mockReset()
+    .mockResolvedValue(disabledPhysical);
+  vi.mocked(physical.onPhysicalShortcut)
+    .mockReset()
+    .mockResolvedValue(() => {});
+  vi.mocked(physical.disarmShortcut)
+    .mockReset()
+    .mockResolvedValue({ ...disabledPhysical, revision: 5 });
   vi.mocked(quickAccessStatus).mockResolvedValue({
     visible: false,
     shortcutAvailable: true,
@@ -69,7 +102,9 @@ test("renders mock readings, unavailable values and refreshes through the IPC wr
   expect(screen.getByText("54 °C")).toBeInTheDocument();
   expect(screen.getByText("2,800 RPM")).toBeInTheDocument();
   expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
-  expect(screen.getByText(/No hardware is monitored/)).toBeInTheDocument();
+  expect(
+    screen.getByText(/All telemetry readings are fixed samples/),
+  ).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Refresh snapshot" }));
   await waitFor(() => expect(getTelemetry).toHaveBeenCalledTimes(2));
 });
@@ -99,7 +134,9 @@ test("loading and IPC rejection are recoverable", async () => {
   vi.mocked(getTelemetry).mockRejectedValueOnce(new Error("IPC failed"));
   const user = userEvent.setup();
   render(<App />);
-  expect(screen.getByRole("status")).toHaveTextContent("Reading");
+  expect(
+    screen.getByText("Reading the selected Rust provider…"),
+  ).toHaveAttribute("role", "status");
   expect(await screen.findByRole("alert")).toHaveTextContent("IPC failed");
   expect(screen.queryByText("78 %")).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Try again" }));
@@ -323,4 +360,27 @@ test("Controller is a practical diagnostics page; leaving stops observation and 
   expect(
     screen.getByRole("button", { name: "Open Quick Access" }),
   ).toBeInTheDocument();
+});
+
+test("physical shortcut remains app-owned across navigation and minimization; disarm stays available", async () => {
+  vi.mocked(physical.shortcutStatus).mockResolvedValue({
+    ...disabledPhysical,
+    generation: 1,
+    revision: 3,
+    phase: "armed",
+    opened: true,
+    remainingMs: 60000,
+    readerOwner: "shortcut",
+  });
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByText("78 %");
+  await screen.findByText(/Armed · 1 min remaining/);
+  await user.click(screen.getByRole("button", { name: "Quick Access" }));
+  expect(screen.getByRole("button", { name: "Disarm Shortcut" })).toBeEnabled();
+  document.dispatchEvent(new Event("visibilitychange"));
+  expect(physical.disarmShortcut).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Disarm Shortcut" }));
+  expect(physical.disarmShortcut).toHaveBeenCalledWith(1);
+  expect(showQuickAccess).not.toHaveBeenCalled(); // physical status is not a frontend window-visibility cache
 });

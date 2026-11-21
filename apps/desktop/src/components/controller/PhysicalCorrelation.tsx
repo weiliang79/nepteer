@@ -196,8 +196,9 @@ export default function PhysicalCorrelation({
       <h2>Physical Button Correlation</h2>
       <p className="muted">
         Local read-only candidate-bit evidence, pending independent review. No
-        physical mapping is promoted or published as live events. Steam/⋯ never
-        opens QAM. This probe does not change Steam Deck Tools or Steam Input.
+        physical mapping is promoted or published as live events. Probe events
+        never toggle QAM. Stop diagnostics before arming the separate physical
+        shortcut. This probe does not change Steam Deck Tools or Steam Input.
       </p>
       <p>
         Selected interface: {selectedCandidateId || "None"} · Required format:

@@ -1,7 +1,7 @@
 {
   "name": "nepteer-workspace",
   "private": true,
-  "version": "0.5.0-alpha.1",
+  "version": "0.5.0-alpha.2",
   "packageManager": "pnpm@12.21.0",
   "scripts": {
     "dev": "pnpm --filter @nepteer/desktop tauri dev",

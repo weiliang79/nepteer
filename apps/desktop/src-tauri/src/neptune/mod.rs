@@ -2,6 +2,7 @@
 pub mod correlation;
 mod monitor;
 mod reports;
+pub mod shortcut;
 #[cfg(windows)]
 mod windows;
 use serde::{Deserialize, Serialize};
@@ -297,7 +298,13 @@ trait DiscoveryBackend: Send + Sync {
     fn open(&self, candidate: &PrivateCandidate) -> Result<Box<dyn InputReader>, InputFailure>;
 }
 type Notify = Arc<dyn Fn(&DiagnosticsSnapshot) + Send + Sync>;
+#[derive(Clone, Copy, PartialEq)]
+enum WorkerMode {
+    Diagnostics,
+    Shortcut,
+}
 struct Worker {
+    mode: WorkerMode,
     cancel: Arc<AtomicBool>,
     join: JoinHandle<()>,
 }
@@ -316,6 +323,7 @@ pub struct Diagnostics {
     shutdown_complete: AtomicBool,
     limit: Duration,
     probe: Arc<Mutex<correlation::Runtime>>,
+    shortcut: Arc<shortcut::State>,
 }
 impl Default for Diagnostics {
     fn default() -> Self {
@@ -332,6 +340,7 @@ impl Diagnostics {
             shutdown_complete: AtomicBool::new(false),
             limit,
             probe: Arc::new(Mutex::new(correlation::Runtime::default())),
+            shortcut: Arc::new(shortcut::State::default()),
         }
     }
     pub fn snapshot(&self) -> Result<DiagnosticsSnapshot, String> {
@@ -342,6 +351,194 @@ impl Diagnostics {
             .clone();
         value.probe = self.probe_status()?;
         Ok(value)
+    }
+    pub fn shortcut_status(&self) -> Result<shortcut::ShortcutStatus, String> {
+        let mut status = self.shortcut.snapshot();
+        let data = self
+            .data
+            .lock()
+            .map_err(|_| "Controller state unavailable.")?;
+        status.monitor_phase = data.monitor.phase;
+        status.reader_owner = if status.phase.owns_reader() || status.opened {
+            shortcut::ReaderOwner::Shortcut
+        } else if data.monitor.phase.active() || data.monitor.opened {
+            shortcut::ReaderOwner::Diagnostics
+        } else {
+            shortcut::ReaderOwner::None
+        };
+        Ok(status)
+    }
+    pub fn shortcut_arm<R: tauri::Runtime>(
+        &self,
+        app: tauri::AppHandle<R>,
+        request: shortcut::ShortcutArmRequest,
+    ) -> Result<shortcut::ShortcutStatus, String> {
+        let notify_app = app.clone();
+        let monitor_data = self.data.clone();
+        let notify: shortcut::NotifyShortcut = Arc::new(move |mut status| {
+            use tauri::Emitter;
+            // Worker snapshots know only shortcut state. Attach the same actual diagnostic
+            // phase as polling, instead of emitting the DTO's default Stopped value.
+            if let Ok(data) = monitor_data.lock() {
+                status.monitor_phase = data.monitor.phase;
+            }
+            let _ = notify_app.emit_to("main", shortcut::EVENT, status);
+        });
+        let dispatch_state = self.shortcut.clone();
+        let dispatch: shortcut::Dispatch = Arc::new(move |ticket| {
+            crate::quick_access::queue_physical(&app, &dispatch_state, ticket)
+        });
+        self.arm_shortcut(request, notify, dispatch)
+    }
+    fn arm_shortcut(
+        &self,
+        request: shortcut::ShortcutArmRequest,
+        notify: shortcut::NotifyShortcut,
+        dispatch: shortcut::Dispatch,
+    ) -> Result<shortcut::ShortcutStatus, String> {
+        self.arm_shortcut_with_spawn(request, notify, dispatch, |task| {
+            std::thread::Builder::new()
+                .name("nepteer-qam-observer".into())
+                .spawn(task)
+        })
+    }
+    fn arm_shortcut_with_spawn(
+        &self,
+        request: shortcut::ShortcutArmRequest,
+        notify: shortcut::NotifyShortcut,
+        dispatch: shortcut::Dispatch,
+        spawn: impl FnOnce(Box<dyn FnOnce() + Send>) -> std::io::Result<JoinHandle<()>>,
+    ) -> Result<shortcut::ShortcutStatus, String> {
+        use shortcut::{ArmReason as Reason, ArmStage as Stage};
+        let mut session = self
+            .operations
+            .lock()
+            .map_err(|_| "Controller coordinator unavailable.")?;
+        self.shortcut
+            .request_attempt(!request.candidate_id.is_empty());
+        let result = (|| {
+            if !request.consent || !request.reviewed_configuration {
+                return Err(self.shortcut.reject(Reason::ConsentRequired));
+            }
+            if self.closing.load(Ordering::SeqCst) {
+                return Err(self.shortcut.reject(Reason::Shutdown));
+            }
+            self.shortcut.attempt_stage(Stage::OwnershipCheck);
+            if self
+                .probe_status()
+                .map_err(|_| self.shortcut.reject(Reason::InternalError))?
+                .outcome
+                .active()
+            {
+                return Err(self.shortcut.reject(Reason::ProbeActive));
+            }
+            if let Some(worker) = &session.worker {
+                if !worker.join.is_finished() {
+                    return Err(self
+                        .shortcut
+                        .reject(if worker.mode == WorkerMode::Shortcut {
+                            Reason::ShortcutAlreadyActive
+                        } else {
+                            Reason::MonitorActive
+                        }));
+                }
+            }
+            Self::stop_worker(&mut session)
+                .map_err(|_| self.shortcut.reject(Reason::UnexpectedTermination))?;
+            self.shortcut.barrier();
+            self.shortcut.attempt_stage(Stage::CandidateValidation);
+            if self.shortcut.snapshot().generation != request.expected_generation {
+                return Err(self.shortcut.reject(Reason::StaleGeneration));
+            }
+            if self
+                .data
+                .lock()
+                .map_err(|_| self.shortcut.reject(Reason::InternalError))?
+                .source
+                != InputSource::Windows
+            {
+                return Err(self.shortcut.reject(Reason::UnsupportedSource));
+            }
+            let candidate = session
+                .candidates
+                .iter()
+                .find(|c| c.public.id == request.candidate_id)
+                .cloned()
+                .ok_or_else(|| self.shortcut.reject(Reason::CandidateNotFound))?;
+            shortcut::gate(&candidate)
+                .map_err(|_| self.shortcut.reject(Reason::CandidateIneligible))?;
+            let ticket = self
+                .shortcut
+                .begin(request.expected_generation, &candidate)
+                .map_err(|_| self.shortcut.reject(Reason::InternalError))?;
+            let cancel = Arc::new(AtomicBool::new(false));
+            let worker_cancel = cancel.clone();
+            let backend = self.backend.clone();
+            let state = self.shortcut.clone();
+            let worker_notify = notify.clone();
+            match spawn(Box::new(move || {
+                shortcut::run(
+                    backend,
+                    candidate,
+                    worker_cancel,
+                    state,
+                    ticket,
+                    worker_notify,
+                    dispatch,
+                )
+            })) {
+                Ok(join) => {
+                    session.worker = Some(Worker {
+                        mode: WorkerMode::Shortcut,
+                        cancel,
+                        join,
+                    })
+                }
+                Err(_) => {
+                    self.shortcut.fail(shortcut::ShortcutIssue::Internal);
+                    // Replace the generic issue reason with the grounded spawn outcome.
+                    self.shortcut.spawn_failed();
+                }
+            }
+            self.shortcut_status()
+        })();
+        drop(session);
+        // Includes preflight rejection; emit outside all lifecycle/state locks.
+        if let Ok(status) = self.shortcut_status() {
+            notify(status);
+        }
+        result
+    }
+    pub fn shortcut_disarm(&self, generation: u32) -> Result<shortcut::ShortcutStatus, String> {
+        // Check/invalidate while serialized with Arm, before waiting for I/O or a window action.
+        let mut session = self
+            .operations
+            .lock()
+            .map_err(|_| "Controller coordinator unavailable.")?;
+        if self.shortcut.snapshot().generation != generation {
+            return Err("Shortcut session changed; refresh before disarming.".into());
+        }
+        self.shortcut.end_reason(shortcut::ArmReason::UserDisarmed);
+        self.shortcut.invalidate();
+        if session
+            .worker
+            .as_ref()
+            .is_some_and(|w| w.mode == WorkerMode::Shortcut)
+        {
+            Self::stop_worker(&mut session)?;
+        }
+        self.shortcut.disarmed();
+        self.shortcut_status()
+    }
+    fn reject_shortcut_owner(session: &Session) -> Result<(), String> {
+        if session
+            .worker
+            .as_ref()
+            .is_some_and(|w| w.mode == WorkerMode::Shortcut && !w.join.is_finished())
+        {
+            return Err("Physical Quick Access shortcut owns the Neptune reader. Explicitly Disarm Shortcut before diagnostics or rescan.".into());
+        }
+        Ok(())
     }
     pub fn probe_status(&self) -> Result<correlation::ProbeStatus, String> {
         self.probe
@@ -435,6 +632,8 @@ impl Diagnostics {
         if self.closing.load(Ordering::SeqCst) {
             return Err("Nepteer is shutting down.".into());
         }
+        Self::reject_shortcut_owner(&session)?;
+        self.shortcut.barrier();
         self.end_probe(correlation::ProbeEndReason::Rescan);
         Self::stop_worker(&mut session)?;
         session.candidates.clear();
@@ -497,6 +696,8 @@ impl Diagnostics {
         if self.closing.load(Ordering::SeqCst) {
             return Err("Nepteer is shutting down.".into());
         }
+        Self::reject_shortcut_owner(&session)?;
+        self.shortcut.barrier();
         if let Some(worker) = &session.worker {
             let data = self.snapshot()?;
             if !worker.join.is_finished() && data.monitor.phase.active() {
@@ -558,7 +759,13 @@ impl Diagnostics {
                 )
             });
         match join {
-            Ok(join) => session.worker = Some(Worker { cancel, join }),
+            Ok(join) => {
+                session.worker = Some(Worker {
+                    mode: WorkerMode::Diagnostics,
+                    cancel,
+                    join,
+                })
+            }
             Err(_) => {
                 self.end_probe(correlation::ProbeEndReason::MonitorError);
                 let mut data = self
@@ -580,6 +787,8 @@ impl Diagnostics {
             .operations
             .lock()
             .map_err(|_| "Controller coordinator is unavailable.")?;
+        Self::reject_shortcut_owner(&session)?;
+        self.shortcut.barrier();
         Self::stop_worker(&mut session)?;
         let mut data = self
             .data
@@ -597,15 +806,24 @@ impl Diagnostics {
         self.shutdown_complete.load(Ordering::SeqCst)
     }
     pub fn claim_shutdown(&self) -> bool {
-        self.closing
+        let claimed = self
+            .closing
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok()
+            .is_ok();
+        if claimed {
+            self.shortcut.end_reason(shortcut::ArmReason::Shutdown);
+            self.shortcut.invalidate();
+        }
+        claimed
     }
     pub fn shutdown(&self) {
-        self.end_probe(correlation::ProbeEndReason::Shutdown);
         self.closing.store(true, Ordering::SeqCst);
-        let _ = self.stop();
+        self.shortcut.end_reason(shortcut::ArmReason::Shutdown);
+        self.shortcut.invalidate();
+        self.end_probe(correlation::ProbeEndReason::Shutdown);
         if let Ok(mut session) = self.operations.lock() {
+            let _ = Self::stop_worker(&mut session);
+            self.shortcut.disarmed();
             session.candidates.clear();
         }
         self.shutdown_complete.store(true, Ordering::SeqCst);
@@ -732,6 +950,7 @@ pub(crate) fn declarations() -> Vec<String> {
         DiagnosticsSnapshot::decl(),
     ];
     declarations.extend(correlation::declarations());
+    declarations.extend(shortcut::declarations());
     declarations
 }
 
