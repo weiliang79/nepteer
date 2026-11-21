@@ -54,7 +54,7 @@ Host: macOS arm64, Node 24.14.1, pnpm 12.21.0, Rust/Cargo 1.100.0.
 | `pnpm licenses:rust` / `pnpm licenses:js` | Passed; dependency package graph unchanged                     |
 | `git diff --check`                        | Passed                                                         |
 
-During implementation a synthetic test counter needed an explicit u32 before to_le_bytes; corrected without weakening checks. Test-only bindings declarations are conditionally compiled. The final checks pass; no test/security check was disabled. Final runtime checks and the native macOS build passed again after the transport-error/privacy refinements. Native CI evidence is recorded below after run inspection.
+During implementation a synthetic test counter needed an explicit u32 before to_le_bytes; corrected without weakening checks. Test-only bindings declarations are conditionally compiled. The final checks pass; no test/security check was disabled. Final runtime checks and the native macOS build passed again after the transport-error/privacy refinements. Inspected native CI evidence is recorded below.
 
 New pure tests cover exact format/metadata gate, unsupported controls, absent/multiple/unreleased baseline, five cycles, held deduplication, early/late/missing/repeated/idle edges, simultaneous/unrelated/unknown changes, counter-only changes, framing/malformed failure, gaps, deadline, token/duplicate/abort/owner reasons, no verification and private serialized fields. Synthetic worker tests cover one reader, stale monitor/token, Stop/Rescan/disconnect/framing change/expiry/shutdown and native physical suppression. Existing cancellation/parser/QAM/telemetry tests remain. React tests cover explicit selections/consent, ineligible/missing/simulated input, environment labels, guidance/countdown, native deadline, Abort/page departure/context change, safe copying, late start cleanup and stale-response protection, plus existing dashboard/QAM/settings regressions. These are synthetic transports/jsdom, not actual Windows hardware tests.
 
@@ -62,7 +62,14 @@ Local outputs: `target/release/nepteer`, `target/release/bundle/macos/Nepteer.ap
 
 ## CI / Windows artifact
 
-Pending push and native CI inspection. Expected artifact `nepteer-windows-x86_64-<commit>` contains `nepteer.exe` and `bundle/nsis/Nepteer_0.5.0-alpha.1_x64-setup.exe`, built natively under `target/x86_64-pc-windows-msvc/release/`. All validation steps, MSVC/NSIS, both-output checks and asInvoker/uiAccess=false manifest verification must pass. This section will record actual run/job/artifact URLs after inspection. CI cannot establish physical verification.
+Implementation commit: `61f7a11`; documentation/CI commit: [`e82fe6b3051762703f2120924b6d765fcdedc58a`](https://github.com/weiliang79/nepteer/commit/e82fe6b3051762703f2120924b6d765fcdedc58a). [Native CI run 44865560721](https://github.com/weiliang79/nepteer/actions/runs/44865560721) **passed on macOS and Windows**. Job steps and decoded logs were inspected:
+
+- [macOS job 136728315891](https://github.com/weiliang79/nepteer/actions/runs/44865560721/job/136728315891): all applicable validation steps, 42 frontend tests, 42 Rust tests (one ignored explicit generator), binding drift, Clippy, production app bundle and license upload passed.
+- [Windows job 136728315689](https://github.com/weiliang79/nepteer/actions/runs/44865560721/job/136728315689): all validations and the same test counts, x86_64 MSVC executable, NSIS packaging, both-output/manifest verification and uploads passed. The produced executable manifest was verified as **asInvoker, uiAccess=false**. Only platform-inapplicable packaging steps were skipped.
+
+[Windows artifact](https://github.com/weiliang79/nepteer/actions/runs/44865560721/artifacts/14691563438): `nepteer-windows-x86_64-e82fe6b3051762703f2120924b6d765fcdedc58a`, ID `14691563438`, 5,230,998-byte ZIP. Output/build/upload logs confirm `nepteer.exe` (9,861,632 bytes) and `bundle/nsis/Nepteer_0.5.0-alpha.1_x64-setup.exe` (2,157,305 bytes), built natively under `target/x86_64-pc-windows-msvc/release/`. Artifact digest: `sha256:9a532d624cef5951b636f1ae0cf43c1bb176a7948bde78ebc008fc96cfab764a`. License artifacts: [Windows](https://github.com/weiliang79/nepteer/actions/runs/44865560721/artifacts/14691792270), [macOS](https://github.com/weiliang79/nepteer/actions/runs/44865560721/artifacts/14691538236).
+
+Installer remains currentUser and requires existing WebView2. This documentation-only follow-up records the validated runtime/artifact provenance above. CI establishes build/test results, not physical button verification, finger timing or controller-tool coexistence. Nothing was merged to main.
 
 ## Real Deck handoff / required human review
 
