@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-neptune-probe-status"
+description = "Enables the neptune_probe_status command without any pre-configured scope."
+commands.allow = ["neptune_probe_status"]
+
+[[permission]]
+identifier = "deny-neptune-probe-status"
+description = "Denies the neptune_probe_status command without any pre-configured scope."
+commands.deny = ["neptune_probe_status"]

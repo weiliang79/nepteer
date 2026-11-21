@@ -8,8 +8,21 @@ pub(super) fn run(
     data: Arc<Mutex<DiagnosticsSnapshot>>,
     notify: Notify,
     limit: Duration,
+    probe: Arc<Mutex<correlation::Runtime>>,
 ) {
-    let result = observe(backend, candidate, &cancel, &data, &notify, limit);
+    let result = observe(backend, candidate, &cancel, &data, &notify, limit, &probe);
+    if let Ok(mut p) = probe.lock() {
+        if matches!(&result, Err(issue) if issue.kind == InputErrorKind::UnsupportedReportFormat) {
+            p.invalid_transport();
+        }
+        p.end_owner(match &result {
+            Ok(()) => correlation::ProbeEndReason::MonitoringStopped,
+            Err(issue) if issue.kind == InputErrorKind::SessionLimit => {
+                correlation::ProbeEndReason::SessionExpired
+            }
+            _ => correlation::ProbeEndReason::MonitorError,
+        });
+    }
     // observe has returned and its reader/buffers/OS handles have already been dropped.
     if let Ok(mut state) = data.lock() {
         state.monitor.opened = false;
@@ -29,6 +42,10 @@ pub(super) fn run(
         }
         let snapshot = state.clone();
         drop(state);
+        let mut snapshot = snapshot;
+        if let Ok(mut p) = probe.lock() {
+            snapshot.probe = p.snapshot();
+        }
         notify(&snapshot);
     }
 }
@@ -39,6 +56,7 @@ fn observe(
     data: &Mutex<DiagnosticsSnapshot>,
     notify: &Notify,
     limit: Duration,
+    probe: &Mutex<correlation::Runtime>,
 ) -> Result<(), InputFailure> {
     if cancel.load(Ordering::SeqCst) {
         return Ok(());
@@ -55,6 +73,8 @@ fn observe(
     let mut buffer = vec![0u8; MAX_REPORT];
     let start = Instant::now();
     let mut last_emit = Instant::now();
+    let mut last_probe_outcome = correlation::ProbeOutcome::NotStarted;
+    let mut reports_changed = false;
     let descriptor_length = usize::from(candidate.public.input_report_length.unwrap_or(0));
     let result = (|| {
         while !cancel.load(Ordering::SeqCst) {
@@ -63,6 +83,10 @@ fn observe(
             }
             if let Some(length) = reader.read(&mut buffer, 100)? {
                 reports::inspect(length, descriptor_length)?;
+                reports_changed = true;
+                if let Ok(mut p) = probe.lock() {
+                    p.observe(&buffer[..length]);
+                }
                 // Parse/update outside the shared mutex; callbacks also run after releasing it.
                 let mut status = data
                     .lock()
@@ -76,21 +100,37 @@ fn observe(
                     start.elapsed().as_millis().min(u128::from(u32::MAX)) as u32,
                     &mut status,
                 );
+                buffer[..length].fill(0); // Drop raw packet contents immediately after analysis.
                 if let Ok(mut state) = data.lock() {
                     state.monitor = status;
                     state.monitor.report_count = state.monitor.report_count.saturating_add(1);
                     state.monitor.last_report_length = Some(length as u16);
                     state.monitor.last_report_at_unix_ms = now_ms();
-                    if last_emit.elapsed() >= Duration::from_millis(250) {
-                        let snapshot = state.clone();
-                        drop(state);
-                        notify(&snapshot);
-                        last_emit = Instant::now();
-                    }
                 }
                 // Bound CPU even if a driver returns buffered reports immediately.
                 std::thread::sleep(Duration::from_millis(1));
             }
+            let progress = probe
+                .lock()
+                .map_err(|_| InputFailure::new(InputErrorKind::Internal, "Probe unavailable."))?
+                .snapshot();
+            let terminal = progress.outcome != last_probe_outcome && !progress.outcome.active();
+            if (last_emit.elapsed() >= Duration::from_millis(250)
+                && (reports_changed || progress.outcome.active()))
+                || terminal
+            {
+                let mut snapshot = data
+                    .lock()
+                    .map_err(|_| {
+                        InputFailure::new(InputErrorKind::Internal, "Controller state unavailable.")
+                    })?
+                    .clone();
+                snapshot.probe = progress.clone();
+                notify(&snapshot);
+                last_emit = Instant::now();
+                reports_changed = false;
+            }
+            last_probe_outcome = progress.outcome;
         }
         Ok(())
     })();
@@ -174,6 +214,7 @@ mod tests {
                         data,
                         Arc::new(|_| {}),
                         Duration::from_secs(2),
+                        Arc::new(Mutex::new(correlation::Runtime::default())),
                     )
                 })
             };

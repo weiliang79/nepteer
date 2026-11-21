@@ -9,6 +9,7 @@ on:
         feat/quick-access-menu,
         feat/neptune-discovery,
         feat/neptune-input-decoding,
+        feat/neptune-button-correlation,
       ]
   pull_request:
   workflow_dispatch:

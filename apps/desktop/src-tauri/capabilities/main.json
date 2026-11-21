@@ -14,6 +14,9 @@
     "allow-neptune-start",
     "allow-neptune-stop",
     "allow-neptune-status",
+    "allow-neptune-probe-start",
+    "allow-neptune-probe-status",
+    "allow-neptune-probe-abort",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

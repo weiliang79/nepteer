@@ -144,6 +144,48 @@ async fn neptune_stop<R: tauri::Runtime>(
     .await
     .map_err(|_| "Monitor stop worker failed.".to_string())?
 }
+#[tauri::command]
+async fn neptune_probe_start<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    request: neptune::correlation::ProbeStartRequest,
+) -> Result<neptune::correlation::ProbeStatus, String> {
+    ensure_diagnostics_window(&window)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = app.state::<neptune::Diagnostics>().probe_start(request);
+        if result.is_ok() {
+            if let Ok(data) = app.state::<neptune::Diagnostics>().snapshot() {
+                let _ = app.emit_to("main", neptune::EVENT, data);
+            }
+        }
+        result
+    })
+    .await
+    .map_err(|_| "Probe startup failed.".to_string())?
+}
+#[tauri::command]
+async fn neptune_probe_status<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+) -> Result<neptune::correlation::ProbeStatus, String> {
+    ensure_diagnostics_window(&window)?;
+    app.state::<neptune::Diagnostics>().probe_status()
+}
+#[tauri::command]
+async fn neptune_probe_abort<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    token: u32,
+) -> Result<neptune::correlation::ProbeStatus, String> {
+    ensure_diagnostics_window(&window)?;
+    let result = app.state::<neptune::Diagnostics>().probe_abort(token);
+    if result.is_ok() {
+        if let Ok(data) = app.state::<neptune::Diagnostics>().snapshot() {
+            let _ = app.emit_to("main", neptune::EVENT, data);
+        }
+    }
+    result
+}
 pub fn request_exit<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     let state = app.state::<neptune::Diagnostics>();
     if state.shutdown_complete() {
@@ -172,7 +214,10 @@ fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R>
             neptune_rescan,
             neptune_start,
             neptune_stop,
-            neptune_status
+            neptune_status,
+            neptune_probe_start,
+            neptune_probe_status,
+            neptune_probe_abort
         ])
 }
 
@@ -285,27 +330,43 @@ mod tests {
             "neptune_start",
             "neptune_stop",
             "neptune_status",
+            "neptune_probe_start",
+            "neptune_probe_status",
+            "neptune_probe_abort",
         ] {
             let mut diagnostic = request();
             diagnostic.cmd = command.into();
             diagnostic.body = tauri::ipc::InvokeBody::Json(
-                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1"}),
+                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1", "token":0,
+                    "request":{"expectedToken":0,"monitorGeneration":0,"candidateId":"scan1-candidate1","control":"a","consent":false,
+                    "environment":{"steamDeckToolsRunning":"unknown","steamDeckToolsMode":"unknown","steamRunning":"unknown","steamInput":"unknown"}}}),
             );
             assert!(tauri::test::get_ipc_response(&qam, diagnostic).is_err());
             let mut forbidden = request();
             forbidden.cmd = command.into();
             forbidden.body = tauri::ipc::InvokeBody::Json(
-                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1"}),
+                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1", "token":0,
+                    "request":{"expectedToken":0,"monitorGeneration":0,"candidateId":"scan1-candidate1","control":"a","consent":false,
+                    "environment":{"steamDeckToolsRunning":"unknown","steamDeckToolsMode":"unknown","steamRunning":"unknown","steamInput":"unknown"}}}),
             );
             assert!(tauri::test::get_ipc_response(&other, forbidden).is_err());
             let mut remote = request();
             remote.cmd = command.into();
             remote.url = "https://example.com".parse().unwrap();
             remote.body = tauri::ipc::InvokeBody::Json(
-                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1"}),
+                serde_json::json!({"mode":"simulated","candidateId":"scan1-candidate1", "token":0,
+                    "request":{"expectedToken":0,"monitorGeneration":0,"candidateId":"scan1-candidate1","control":"a","consent":false,
+                    "environment":{"steamDeckToolsRunning":"unknown","steamDeckToolsMode":"unknown","steamRunning":"unknown","steamInput":"unknown"}}}),
             );
             assert!(tauri::test::get_ipc_response(&main, remote).is_err());
         }
+        let mut probe_query = request();
+        probe_query.cmd = "neptune_probe_status".into();
+        let result = tauri::test::get_ipc_response(&main, probe_query)
+            .unwrap()
+            .deserialize::<serde_json::Value>()
+            .unwrap();
+        assert_eq!(result["outcome"], "not_started");
         let mut cached = request();
         cached.cmd = "neptune_list".into();
         let result = tauri::test::get_ipc_response(&main, cached)

@@ -38,5 +38,21 @@ export type ReportDiagnostics = { recognition: ReportRecognition, format: Report
 reportId: number | null, messageType: number | null, framingVerified: boolean, physicalButtonsVerified: boolean, candidateReportCount: number, unsupportedReportCount: number, malformedReportCount: number, lastIssue: ParseIssue | null, };
 export type ControlObservation = { control: ControllerControl, pressed: boolean | null, verification: MappingVerification, };
 export type ButtonTransition = { sequence: number, atSessionMs: number, source: InputSource, control: ControllerControl, pressed: boolean, };
-export type MonitorStatus = { phase: MonitorPhase, candidateId: string | null, opened: boolean, reportCount: number, lastReportLength: number | null, lastReportAtUnixMs: number | null, issue: InputFailure | null, buttonDecodingSupported: boolean, report: ReportDiagnostics, controls: Array<ControlObservation>, transitions: Array<ButtonTransition>, };
-export type DiagnosticsSnapshot = { source: InputSource, discovery: DiscoveryPhase, candidates: Array<Candidate>, discoveryIssue: InputFailure | null, monitor: MonitorStatus, };
+export type MonitorStatus = { phase: MonitorPhase, sessionGeneration: number, candidateId: string | null, opened: boolean, reportCount: number, lastReportLength: number | null, lastReportAtUnixMs: number | null, issue: InputFailure | null, buttonDecodingSupported: boolean, report: ReportDiagnostics, controls: Array<ControlObservation>, transitions: Array<ButtonTransition>, };
+export type DiagnosticsSnapshot = { probe: ProbeStatus, source: InputSource, discovery: DiscoveryPhase, candidates: Array<Candidate>, discoveryIssue: InputFailure | null, monitor: MonitorStatus, };
+export type KnownState = "yes" | "no" | "unknown";
+export type ToolsMode = "desktop" | "x360" | "other" | "unknown";
+export type SteamInputState = "enabled" | "disabled" | "unknown";
+export type ProbeEnvironment = { steamDeckToolsRunning: KnownState, steamDeckToolsMode: ToolsMode, steamRunning: KnownState, steamInput: SteamInputState, };
+export type ProbeOutcome = "not_started" | "preparing" | "running" | "observed" | "inconclusive" | "aborted" | "error";
+export type ProbePhase = "preparation" | "idle" | "press" | "hold" | "release" | "finalizing" | "done";
+export type ProbeEndReason = "completed" | "baseline_missing" | "deadline" | "incomplete_evidence" | "framing_changed" | "user_aborted" | "monitoring_stopped" | "monitor_error" | "session_expired" | "rescan" | "shutdown";
+export type ProbeCounts = { compatibleReports: number, incompatibleReports: number, malformedReports: number, baselineEstablished: boolean, observedPressEdges: number, observedReleaseEdges: number, expectedPressEdges: number, expectedReleaseEdges: number, repeatedHeldReports: number, missingPresses: number, missingReleases: number, idleTransitions: number, outsidePhaseEdges: number, earlyEdges: number, lateEdges: number, repeatedEdges: number, unrelatedKnownChanges: number, unknownBitChanges: number, reportGaps: number, completedCycles: number, finalReleased: boolean | null, framingChanged: boolean, };
+export type ProbeInterface = { vendorId: number, productId: number, usagePage: number | null, usage: number | null, interfaceNumber: number | null, inputReportLength: number | null, };
+export type ProbeSummary = { version: string, interface: ProbeInterface, format: ReportFormat, control: ControllerControl, candidateBit: number, environment: ProbeEnvironment, outcome: ProbeOutcome, reason: ProbeEndReason | null, elapsedMs: number, counts: ProbeCounts, };
+export type ProbeStatus = {
+/**
+ * Ephemeral coordination values, deliberately excluded from Copy Safe Summary.
+ */
+token: number, revision: number, monitorGeneration: number, outcome: ProbeOutcome, phase: ProbePhase, cycle: number, remainingMs: number, summary: ProbeSummary | null, };
+export type ProbeStartRequest = { expectedToken: number, monitorGeneration: number, candidateId: string, control: ControllerControl, environment: ProbeEnvironment, consent: boolean, };

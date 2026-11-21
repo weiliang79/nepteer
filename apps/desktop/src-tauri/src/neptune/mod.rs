@@ -1,4 +1,5 @@
 //! Opt-in, read-only controller observation, independent of system telemetry.
+pub mod correlation;
 mod monitor;
 mod reports;
 #[cfg(windows)]
@@ -124,7 +125,7 @@ pub struct Candidate {
     pub capabilities: InputCapabilities,
     pub issue: Option<InputFailure>,
 }
-#[derive(Debug, Clone, Copy, Serialize, TS, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, TS, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ControllerControl {
     Steam,
@@ -222,6 +223,7 @@ pub struct ButtonTransition {
 #[serde(rename_all = "camelCase")]
 pub struct MonitorStatus {
     pub phase: MonitorPhase,
+    pub session_generation: u32,
     pub candidate_id: Option<String>,
     pub opened: bool,
     pub report_count: u32,
@@ -238,6 +240,7 @@ impl Default for MonitorStatus {
     fn default() -> Self {
         Self {
             phase: MonitorPhase::Stopped,
+            session_generation: 0,
             candidate_id: None,
             opened: false,
             report_count: 0,
@@ -254,6 +257,7 @@ impl Default for MonitorStatus {
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DiagnosticsSnapshot {
+    pub probe: correlation::ProbeStatus,
     pub source: InputSource,
     pub discovery: DiscoveryPhase,
     pub candidates: Vec<Candidate>,
@@ -263,6 +267,7 @@ pub struct DiagnosticsSnapshot {
 impl Default for DiagnosticsSnapshot {
     fn default() -> Self {
         Self {
+            probe: correlation::ProbeStatus::default(),
             source: if cfg!(windows) {
                 InputSource::Windows
             } else {
@@ -298,6 +303,7 @@ struct Worker {
 }
 #[derive(Default)]
 struct Session {
+    monitor_generation: u32,
     generation: u64,
     candidates: Vec<PrivateCandidate>,
     worker: Option<Worker>,
@@ -309,6 +315,7 @@ pub struct Diagnostics {
     closing: AtomicBool,
     shutdown_complete: AtomicBool,
     limit: Duration,
+    probe: Arc<Mutex<correlation::Runtime>>,
 }
 impl Default for Diagnostics {
     fn default() -> Self {
@@ -324,13 +331,91 @@ impl Diagnostics {
             closing: AtomicBool::new(false),
             shutdown_complete: AtomicBool::new(false),
             limit,
+            probe: Arc::new(Mutex::new(correlation::Runtime::default())),
         }
     }
     pub fn snapshot(&self) -> Result<DiagnosticsSnapshot, String> {
-        self.data
+        let mut value = self
+            .data
             .lock()
-            .map(|d| d.clone())
-            .map_err(|_| "Controller diagnostics state is unavailable.".into())
+            .map_err(|_| "Controller diagnostics state is unavailable.")?
+            .clone();
+        value.probe = self.probe_status()?;
+        Ok(value)
+    }
+    pub fn probe_status(&self) -> Result<correlation::ProbeStatus, String> {
+        self.probe
+            .lock()
+            .map(|mut p| p.snapshot())
+            .map_err(|_| "Probe is unavailable.".into())
+    }
+    pub fn probe_start(
+        &self,
+        request: correlation::ProbeStartRequest,
+    ) -> Result<correlation::ProbeStatus, String> {
+        let correlation::ProbeStartRequest {
+            expected_token,
+            monitor_generation,
+            candidate_id,
+            control,
+            environment,
+            consent,
+        } = request;
+        if !consent {
+            return Err("Explicit consent is required before Start Probe.".into());
+        }
+        let session = self
+            .operations
+            .lock()
+            .map_err(|_| "Controller coordinator is unavailable.")?;
+        if self.closing.load(Ordering::SeqCst) {
+            return Err("Nepteer is shutting down.".into());
+        }
+        let data = self
+            .data
+            .lock()
+            .map_err(|_| "Controller state is unavailable.")?
+            .clone();
+        if data.source != InputSource::Windows
+            || !data.monitor.phase.active()
+            || !data.monitor.opened
+            || data.monitor.session_generation != monitor_generation
+            || data.monitor.candidate_id.as_deref() != Some(candidate_id.as_str())
+            || data.monitor.report.format != Some(ReportFormat::DeckV1ZeroPrefixed65)
+            || data.monitor.report.recognition != ReportRecognition::Candidate
+            || !session
+                .worker
+                .as_ref()
+                .is_some_and(|w| !w.join.is_finished())
+        {
+            return Err("Start the selected native monitor and observe the 65-byte candidate format before probing.".into());
+        }
+        let candidate = session
+            .candidates
+            .iter()
+            .find(|c| c.public.id == candidate_id && c.mode == DiagnosticsMode::Native)
+            .ok_or("Probe candidate expired. Rescan manually.")?;
+        self.probe
+            .lock()
+            .map_err(|_| "Probe is unavailable.")?
+            .start(
+                expected_token,
+                monitor_generation,
+                &candidate.public,
+                control,
+                environment,
+            )
+    }
+    pub fn probe_abort(&self, token: u32) -> Result<correlation::ProbeStatus, String> {
+        self.probe
+            .lock()
+            .map_err(|_| "Probe is unavailable.")?
+            .abort(token)
+    }
+    fn end_probe(&self, reason: correlation::ProbeEndReason) {
+        if let Ok(mut probe) = self.probe.lock() {
+            probe.end_owner(reason);
+        }
     }
     fn stop_worker(session: &mut Session) -> Result<(), String> {
         if let Some(worker) = session.worker.take() {
@@ -350,6 +435,7 @@ impl Diagnostics {
         if self.closing.load(Ordering::SeqCst) {
             return Err("Nepteer is shutting down.".into());
         }
+        self.end_probe(correlation::ProbeEndReason::Rescan);
         Self::stop_worker(&mut session)?;
         session.candidates.clear();
         session.generation = session.generation.saturating_add(1);
@@ -400,7 +486,8 @@ impl Diagnostics {
                 data.discovery_issue = Some(issue);
             }
         }
-        Ok(data.clone())
+        drop(data);
+        self.snapshot()
     }
     pub fn start(&self, id: &str, notify: Notify) -> Result<DiagnosticsSnapshot, String> {
         let mut session = self
@@ -420,6 +507,7 @@ impl Diagnostics {
                 };
             }
         }
+        self.end_probe(correlation::ProbeEndReason::MonitoringStopped);
         Self::stop_worker(&mut session)?;
         let candidate = session
             .candidates
@@ -430,12 +518,17 @@ impl Diagnostics {
         if !candidate.public.capabilities.passive_read_eligible {
             return Err("This interface is discovery-only. Keyboard, mouse and unknown collections cannot be monitored.".into());
         }
+        session.monitor_generation = session
+            .monitor_generation
+            .checked_add(1)
+            .ok_or("Restart Nepteer before monitoring again.")?;
         {
             let mut data = self
                 .data
                 .lock()
                 .map_err(|_| "Controller state is unavailable.")?;
             data.monitor = MonitorStatus {
+                session_generation: session.monitor_generation,
                 phase: MonitorPhase::Starting,
                 candidate_id: Some(id.into()),
                 ..Default::default()
@@ -446,12 +539,28 @@ impl Diagnostics {
         let backend = self.backend.clone();
         let data = self.data.clone();
         let limit = self.limit;
+        self.probe
+            .lock()
+            .map_err(|_| "Probe unavailable.")?
+            .bind_owner(session.monitor_generation);
+        let probe = self.probe.clone();
         let join = std::thread::Builder::new()
             .name("nepteer-input-observer".into())
-            .spawn(move || monitor::run(backend, candidate, worker_cancel, data, notify, limit));
+            .spawn(move || {
+                monitor::run(
+                    backend,
+                    candidate,
+                    worker_cancel,
+                    data,
+                    notify,
+                    limit,
+                    probe,
+                )
+            });
         match join {
             Ok(join) => session.worker = Some(Worker { cancel, join }),
             Err(_) => {
+                self.end_probe(correlation::ProbeEndReason::MonitorError);
                 let mut data = self
                     .data
                     .lock()
@@ -466,6 +575,7 @@ impl Diagnostics {
         self.snapshot()
     }
     pub fn stop(&self) -> Result<DiagnosticsSnapshot, String> {
+        self.end_probe(correlation::ProbeEndReason::MonitoringStopped);
         let mut session = self
             .operations
             .lock()
@@ -480,7 +590,8 @@ impl Diagnostics {
         data.monitor.button_decoding_supported = false;
         data.monitor.transitions.clear();
         data.monitor.controls = reports::unavailable_controls();
-        Ok(data.clone())
+        drop(data);
+        self.snapshot()
     }
     pub fn shutdown_complete(&self) -> bool {
         self.shutdown_complete.load(Ordering::SeqCst)
@@ -491,6 +602,7 @@ impl Diagnostics {
             .is_ok()
     }
     pub fn shutdown(&self) {
+        self.end_probe(correlation::ProbeEndReason::Shutdown);
         self.closing.store(true, Ordering::SeqCst);
         let _ = self.stop();
         if let Ok(mut session) = self.operations.lock() {
@@ -599,7 +711,7 @@ impl InputReader for SimulatedReader {
 }
 #[cfg(test)]
 pub(crate) fn declarations() -> Vec<String> {
-    vec![
+    let mut declarations = vec![
         DiagnosticsMode::decl(),
         InputSource::decl(),
         DiscoveryPhase::decl(),
@@ -618,7 +730,9 @@ pub(crate) fn declarations() -> Vec<String> {
         ButtonTransition::decl(),
         MonitorStatus::decl(),
         DiagnosticsSnapshot::decl(),
-    ]
+    ];
+    declarations.extend(correlation::declarations());
+    declarations
 }
 
 #[cfg(test)]
@@ -935,5 +1049,183 @@ mod tests {
         );
         assert!(expired.monitor.controls.iter().all(|c| c.pressed.is_none()));
         assert_eq!(expired.source, InputSource::Simulated);
+    }
+}
+
+#[cfg(test)]
+mod probe_integration_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU8, AtomicUsize};
+    use std::time::Instant;
+    struct Backend {
+        opens: Arc<AtomicUsize>,
+        drops: Arc<AtomicUsize>,
+        mode: Arc<AtomicU8>,
+    }
+    struct Reader {
+        drops: Arc<AtomicUsize>,
+        mode: Arc<AtomicU8>,
+    }
+    impl Drop for Reader {
+        fn drop(&mut self) {
+            self.drops.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+    impl DiscoveryBackend for Backend {
+        fn discover(&self, _: DiagnosticsMode) -> Result<Vec<PrivateCandidate>, InputFailure> {
+            let mut c = simulated_candidate();
+            c.mode = DiagnosticsMode::Native;
+            c.public.input_report_length = Some(65);
+            c.public.usage_page = Some(0xffff);
+            Ok(vec![c])
+        }
+        fn open(&self, _: &PrivateCandidate) -> Result<Box<dyn InputReader>, InputFailure> {
+            self.opens.fetch_add(1, Ordering::SeqCst);
+            Ok(Box::new(Reader {
+                drops: self.drops.clone(),
+                mode: self.mode.clone(),
+            }))
+        }
+    }
+    impl InputReader for Reader {
+        fn read(&mut self, buffer: &mut [u8], _: u32) -> Result<Option<usize>, InputFailure> {
+            std::thread::sleep(Duration::from_millis(2));
+            match self.mode.load(Ordering::SeqCst) {
+                1 => Err(InputFailure::new(
+                    InputErrorKind::Disconnected,
+                    "Synthetic disconnect",
+                )),
+                3 => Ok(Some(66)),
+                2 => {
+                    buffer[..64].copy_from_slice(&reports::synthetic_report(0));
+                    Ok(Some(64))
+                }
+                _ => {
+                    buffer[0] = 0;
+                    buffer[1..65].copy_from_slice(&reports::synthetic_report(0));
+                    Ok(Some(65))
+                }
+            }
+        }
+    }
+    fn wait_until(test: impl Fn() -> bool) {
+        let end = Instant::now() + Duration::from_secs(2);
+        while !test() {
+            assert!(Instant::now() < end);
+            std::thread::sleep(Duration::from_millis(2));
+        }
+    }
+    fn setup(
+        limit: Duration,
+    ) -> (
+        Diagnostics,
+        Arc<AtomicUsize>,
+        Arc<AtomicUsize>,
+        Arc<AtomicU8>,
+        String,
+    ) {
+        let opens = Arc::new(AtomicUsize::new(0));
+        let drops = Arc::new(AtomicUsize::new(0));
+        let mode = Arc::new(AtomicU8::new(0));
+        let d = Diagnostics::new(
+            Arc::new(Backend {
+                opens: opens.clone(),
+                drops: drops.clone(),
+                mode: mode.clone(),
+            }),
+            limit,
+        );
+        let c = d.rescan(DiagnosticsMode::Native).unwrap().candidates[0]
+            .id
+            .clone();
+        // Synthetic transport only: simulate Windows source on macOS without calling Windows APIs.
+        d.data.lock().unwrap().source = InputSource::Windows;
+        d.start(&c, Arc::new(|_| {})).unwrap();
+        wait_until(|| d.snapshot().unwrap().monitor.report_count > 1);
+        (d, opens, drops, mode, c)
+    }
+    fn request(d: &Diagnostics, id: &str) -> correlation::ProbeStartRequest {
+        let data = d.snapshot().unwrap();
+        correlation::ProbeStartRequest {
+            expected_token: data.probe.token,
+            monitor_generation: data.monitor.session_generation,
+            candidate_id: id.into(),
+            control: ControllerControl::A,
+            environment: Default::default(),
+            consent: true,
+        }
+    }
+    #[test]
+    fn probe_uses_one_reader_and_stale_session_or_token_cannot_rearm_it() {
+        let (d, opens, drops, _, id) = setup(Duration::from_secs(5));
+        let mut no_consent = request(&d, &id);
+        no_consent.consent = false;
+        assert!(d.probe_start(no_consent).is_err());
+        let old = request(&d, &id);
+        let started = d.probe_start(old.clone()).unwrap();
+        assert!(d.probe_start(old.clone()).is_err());
+        assert!(d.probe_abort(0).is_err());
+        assert_eq!(opens.load(Ordering::SeqCst), 1);
+        let stopped = d.stop().unwrap();
+        assert_eq!(stopped.probe.outcome, correlation::ProbeOutcome::Aborted);
+        assert_eq!(
+            stopped.probe.summary.unwrap().reason,
+            Some(correlation::ProbeEndReason::MonitoringStopped)
+        );
+        d.start(&id, Arc::new(|_| {})).unwrap();
+        wait_until(|| d.snapshot().unwrap().monitor.report_count > 1);
+        assert!(d.probe_start(old).is_err());
+        let next = d.probe_start(request(&d, &id)).unwrap();
+        assert!(next.token > started.token);
+        assert!(d.probe_abort(started.token).is_err());
+        let rescanned = d.rescan(DiagnosticsMode::Native).unwrap();
+        assert_eq!(
+            rescanned.probe.summary.unwrap().reason,
+            Some(correlation::ProbeEndReason::Rescan)
+        );
+        assert_eq!(opens.load(Ordering::SeqCst), 2);
+        assert_eq!(drops.load(Ordering::SeqCst), 2);
+    }
+    #[test]
+    fn disconnect_framing_expiry_and_shutdown_end_probe_without_live_button_events() {
+        for reason in 0..5 {
+            let (d, opens, drops, mode, id) = setup(if reason == 2 {
+                Duration::from_millis(300)
+            } else {
+                Duration::from_secs(5)
+            });
+            d.probe_start(request(&d, &id)).unwrap();
+            match reason {
+                0 => mode.store(1, Ordering::SeqCst),
+                1 => mode.store(2, Ordering::SeqCst),
+                2 => {}
+                3 => d.shutdown(),
+                _ => mode.store(3, Ordering::SeqCst),
+            }
+            wait_until(|| !d.probe_status().unwrap().outcome.active());
+            let data = d.snapshot().unwrap();
+            assert!(
+                data.monitor.controls.iter().all(|v| v.pressed.is_none())
+                    && data.monitor.transitions.is_empty()
+            );
+            assert!(
+                !data.monitor.report.framing_verified
+                    && !data.monitor.report.physical_buttons_verified
+            );
+            let expected = match reason {
+                0 => correlation::ProbeEndReason::MonitorError,
+                1 => correlation::ProbeEndReason::FramingChanged,
+                2 => correlation::ProbeEndReason::SessionExpired,
+                3 => correlation::ProbeEndReason::Shutdown,
+                _ => correlation::ProbeEndReason::FramingChanged,
+            };
+            assert_eq!(data.probe.summary.unwrap().reason, Some(expected));
+            if reason == 1 {
+                assert!(data.monitor.phase.active());
+            }
+            d.stop().unwrap();
+            assert_eq!(opens.load(Ordering::SeqCst), 1);
+            assert_eq!(drops.load(Ordering::SeqCst), 1);
+        }
     }
 }

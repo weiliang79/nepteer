@@ -1,11 +1,23 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.5.0-alpha.0 candidate Neptune input decoding and diagnostics, not hardware control.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.5.0-alpha.1 physical button correlation evidence probe, not hardware control.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 5A — Evidence-gated Neptune input decoding
+## Current milestone: Step 5A.1 — Physical candidate-bit correlation probe
+
+Work on `feat/neptune-button-correlation` from latest main after Step 5A merge `be08de79c369921dac541a5efcb4d4fc8762a4ca`. Commit/push focused changes and validate native macOS/Windows CI/artifacts. Do not merge before code review and hardware testing. Step 5A is complete; this milestone only gathers correlation evidence, never promotes mappings or adds live physical events.
+
+User-reported Windows 11 Deck LCD evidence: Steam Deck Tools installed, Steam Controller.exe running in Desktop mode; separate Steam/Steam Input status not confirmed. Interfaces: mouse 0x0001/0x0002 length 6, keyboard 0x0001/0x0006 length 9 (discovery only), vendor 0xFFFF/0x0001 descriptor 65 (eligible). The vendor interface returned length 65, zero-prefixed candidate type 0x09, 42,808 candidate reports and zero unsupported/malformed reports, with intermittent idle/increased activity during input. These aggregate observations do not fully verify framing or any bit mapping. Preserve the evidence at that strength.
+
+Require manual discovery/interface/normal monitoring/control selection, separate explicit consent and Start Probe. Only the existing checked zero-prefixed 65-byte classifier and twelve candidate controls may feed the probe. No arbitrary offsets/masks, alternate interface selection or separate reader. Rust owns a fixed <=30s monotonic procedure, baseline/idle/five press-hold-release cycles/final release, deadline even without packets, stale-token/generation checks, immediate Abort and owner stop/rescan/error/disconnect/expiry/shutdown cleanup.
+
+Keep only bounded aggregate counters and minimal private comparison state in memory. Expose/copy safe build/interface/format/control/status/environment labels/counts, never raw packets, changed masks, paths, serials or input history. No recordings, analytics, remote data or persistence. Unrelated changes are edge counts separated into known/unknown candidate-word bits, not changes to packet counters/analog fields. Observed candidate-bit correlation is pending independent review; missing/ambiguous/incompatible evidence cannot be positive. Never set framing_verified, physical_buttons_verified or ButtonVerified; normal physical states stay unavailable, native transition history empty, and physical Steam/⋯ QAM actions disabled.
+
+Preserve native shared GENERIC_READ, one opt-in worker, bounded reads/cancellation, five-minute monitor limit, no auto-reconnect, main-only permissions/CSP, QAM shortcut/focus, read-only telemetry and explicit simulation. No HID writes, output/feature/configuration reports, exclusive access, mode/driver/service/admin changes, input injection, tools/Steam shutdown, remapping or new sensors/power controls. Manual environment labels are observation only. Do not consult/copy/translate Steam Deck Tools source. Prefer no new dependency. Report synthetic/CI results separately from actual probe hardware tests.
+
+## Completed milestone: Step 5A — Evidence-gated Neptune input decoding
 
 Work on `feat/neptune-input-decoding` from latest main after Step 4 merge `fdafc925451d2ae2753e54ad6b188d9b728c2bbd`. The user reports Step 4 hardware checks passed. No Windows report IDs, lengths, framing or physical-button correlations were supplied for Step 5A; those remain unverified. Commit/push focused changes to the feature branch, confirm native macOS/Windows CI/artifacts, and do not merge before code review and hardware testing.
 
