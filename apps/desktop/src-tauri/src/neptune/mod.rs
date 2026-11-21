@@ -374,8 +374,14 @@ impl Diagnostics {
         request: shortcut::ShortcutArmRequest,
     ) -> Result<shortcut::ShortcutStatus, String> {
         let notify_app = app.clone();
-        let notify: shortcut::NotifyShortcut = Arc::new(move |status| {
+        let monitor_data = self.data.clone();
+        let notify: shortcut::NotifyShortcut = Arc::new(move |mut status| {
             use tauri::Emitter;
+            // Worker snapshots know only shortcut state. Attach the same actual diagnostic
+            // phase as polling, instead of emitting the DTO's default Stopped value.
+            if let Ok(data) = monitor_data.lock() {
+                status.monitor_phase = data.monitor.phase;
+            }
             let _ = notify_app.emit_to("main", shortcut::EVENT, status);
         });
         let dispatch_state = self.shortcut.clone();
