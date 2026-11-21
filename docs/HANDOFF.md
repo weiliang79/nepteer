@@ -61,7 +61,15 @@ Local outputs: `target/release/nepteer`, `target/release/bundle/macos/Nepteer.ap
 
 ## CI / Windows artifact
 
-Pending push/native run inspection. Expected `nepteer-windows-x86_64-<commit>` contains `nepteer.exe` and `bundle/nsis/Nepteer_0.5.0-alpha.2_x64-setup.exe` under the native `target/x86_64-pc-windows-msvc/release/` build. Preserve all validations, MSVC/NSIS, both-output checks, currentUser, asInvoker/uiAccess=false and existing WebView2 requirement. Actual run/job/artifact links will be recorded after inspection. CI cannot establish new hardware success.
+Implementation commit `9b5adcb`, documentation/CI-trigger commit `eb631ba3701914101043299a5426599922df5859`. [Desktop CI run 44873112355](https://github.com/weiliang79/nepteer/actions/runs/44873112355) passed on both native platforms:
+
+- [macOS job](https://github.com/weiliang79/nepteer/actions/runs/44873112355/job/136751814507): all validations and actual macOS application bundle succeeded.
+- [Windows job](https://github.com/weiliang79/nepteer/actions/runs/44873112355/job/136751814765): all validations, x86_64 MSVC build, NSIS packaging, output/manifest checks and artifact upload succeeded.
+- Both jobs: 50 frontend tests passed; 53 Rust tests passed, one explicit generator intentionally ignored; `bindings_are_current` passed within the Rust suite. Formatting, TypeScript, ESLint, Rust check, all-target Clippy and production frontend build succeeded.
+- [Windows executable + installer artifact](https://github.com/weiliang79/nepteer/actions/runs/44873112355/artifacts/14694836494), `nepteer-windows-x86_64-eb631ba3701914101043299a5426599922df5859`. Contains `nepteer.exe` (10,013,696 bytes) and `bundle/nsis/Nepteer_0.5.0-alpha.2_x64-setup.exe` (2,190,222 bytes), uploaded from `target/x86_64-pc-windows-msvc/release/`.
+- Extracted executable manifest verification printed `Verified executable manifest: asInvoker, uiAccess=false`. Existing current-user NSIS configuration and WebView2 requirement are preserved. Installer execution and actual standard-user device operation still require manual testing.
+
+This evidence is tied to the exact tested commit above. Subsequent handoff-only commits do not change the implementation. CI cannot establish new hardware success; no merge has been performed.
 
 ## Real Deck handoff
 
