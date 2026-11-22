@@ -374,11 +374,14 @@ test("physical shortcut remains app-owned across navigation and minimization; di
     opened: true,
     remainingMs: 60000,
     readerOwner: "shortcut",
+    workerRunning: true,
   });
   const user = userEvent.setup();
   render(<App />);
   await screen.findByText("78 %");
-  await screen.findByText(/Armed · 1 min remaining/);
+  await screen.findByText(
+    /Shortcut armed — navigation disabled · 1 min remaining/,
+  );
   await user.click(screen.getByRole("button", { name: "Quick Access" }));
   expect(screen.getByRole("button", { name: "Disarm Shortcut" })).toBeEnabled();
   document.dispatchEvent(new Event("visibilitychange"));

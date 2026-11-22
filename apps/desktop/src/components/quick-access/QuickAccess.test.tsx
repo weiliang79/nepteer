@@ -396,3 +396,82 @@ test("a paused claim response is discarded and completed, without late activatio
   expect(completeQamNavigation).toHaveBeenCalledWith(event.request, false);
   now.mockRestore();
 });
+
+test("static help adds no focus targets; platform hint, Tab, Space and touch/click behaviors stay local", async () => {
+  vi.mocked(quickAccessStatus).mockResolvedValue({
+    ...status,
+    shortcutHint: "Control + Option + Q",
+  });
+  const user = userEvent.setup();
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const guidance = screen.getByRole("complementary", {
+    name: "Quick Access input guidance",
+  });
+  expect(guidance).toHaveTextContent("Controller navigation: desktop only");
+  expect(guidance).toHaveTextContent(
+    "Games and other tools may still receive the same buttons",
+  );
+  expect(guidance).toHaveTextContent("When enabled:");
+  expect(guidance.querySelector("button, input, a, [tabindex]")).toBeNull();
+  expect(
+    screen.getByText("Keyboard: Control + Option + Q"),
+  ).toBeInTheDocument();
+  const buttons = screen.getAllByRole("button");
+  expect(buttons.map((b) => b.textContent?.trim())).toEqual([
+    "✕",
+    "Refresh battery",
+    "PerformancePlanned↗",
+    "ControllerPlanned↗",
+    "DisplayPlanned↗",
+    "SettingsDashboard↗",
+  ]);
+  for (let i = 1; i <= buttons.length; i++) {
+    await user.tab();
+    expect(buttons[i % buttons.length]).toHaveFocus();
+  }
+  await user.click(screen.getByRole("button", { name: /Controller/ }));
+  expect(screen.getByRole("button", { name: /Controller/ })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await user.keyboard(" ");
+  expect(screen.getByRole("button", { name: /Controller/ })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await user.keyboard("{Enter}");
+  expect(screen.getByRole("button", { name: /Controller/ })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  expect(claimQamNavigation).not.toHaveBeenCalled();
+});
+
+test("reduced motion suppresses opening animation while genuine openings retain initial focus", async () => {
+  const media = vi
+    .spyOn(window, "matchMedia")
+    .mockReturnValue({ matches: true } as MediaQueryList);
+  const animate = vi.fn();
+  const previous = HTMLElement.prototype.animate;
+  HTMLElement.prototype.animate = animate;
+  try {
+    render(<QuickAccess />);
+    await screen.findByText("78 %");
+    expect(animate).not.toHaveBeenCalled();
+    const display = screen.getByRole("button", { name: /Display/ });
+    display.focus();
+    await act(async () => changed(status));
+    expect(display).toHaveFocus();
+    await act(async () => changed({ ...status, visible: false, epoch: 2 }));
+    await act(async () => changed({ ...status, epoch: 3 }));
+    expect(animate).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Close Quick Access" }),
+    ).toHaveFocus();
+  } finally {
+    media.mockRestore();
+    if (previous) HTMLElement.prototype.animate = previous;
+    else delete (HTMLElement.prototype as Partial<HTMLElement>).animate;
+  }
+});

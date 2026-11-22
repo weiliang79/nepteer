@@ -14,6 +14,7 @@ on:
         feat/neptune-dpad-correlation,
         feat/qam-controller-navigation,
         research/controller-input-routing,
+        feat/qam-navigation-ux,
       ]
   pull_request:
   workflow_dispatch:

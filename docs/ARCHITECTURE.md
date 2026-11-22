@@ -1,5 +1,13 @@
 # Architecture
 
+## Step 5E frontend UX
+
+The Step 5D decision remains unchanged. `PhysicalQuickAccess` presents native radio cards for the existing boolean Arm payload: **Physical shortcut only** = false/default/reviewed SDT Desktop; **Controller navigation (desktop only)** = true/reviewed SDT X360. Neither changes/detects external tools. Both acknowledgments reset on selection changes. The existing owned/pending/busy fieldset lock and native preflight checks remain; no automatic arm, mode persistence or native change.
+
+Cards choose the next request, while current readiness comes from native source/phase/readerOwner/opened/workerRunning plus navigation.configured/issue. Only a confirmed active Windows shortcut reports navigation enabled; waiting/terminal states never do. Pending Disarm and native Disarming remain cleanup in progress. Connection failure retains explicitly last-known state; an identical successful revision can reconfirm connectivity without replacing the state or accepting older generations. Errors remain visible; only a confirmed active connection/session promises continued physical ⋯ fallback.
+
+The existing App-owned native shortcut hint is passed to setup; QAM keeps its existing native hint. No new IPC is added. Technical counters, safe copy and timing details move into a native details disclosure, while failures stay outside. Static QAM guidance is conditional ('when enabled') because QAM has no mode-management permission or live mode API. No new QAM button/link/tabindex is added: the six existing controls and claim/complete handlers are unchanged. Short-viewport CSS compacts informational spacing, retaining >=48px actionable targets, theme and reduced-motion behavior. Synthetic layouts are not native Windows validation.
+
 ## Step 5D input-routing decision
 
 The [Step 5D decision record](decisions/step-5d-controller-input-routing.md) audits the merged observer and separates its private QAM route from external SDT/Windows/Steam/game consumers. It includes an input-flow diagram, API-version-specific focus analysis, seven-option matrices and fifteen failure/recovery cases. Recommendation: retain desktop-only navigation and non-invasive UX. There is no approved public cross-application routing integration established by this research. Shared HID access and local visibility epochs cannot control another producer's virtual output. No production architecture, dependency or permission changes are made; only this research branch is added to existing CI triggers.

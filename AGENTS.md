@@ -1,11 +1,21 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 5D controller input-routing research; no production input isolation or behavior changes.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 5E non-invasive QAM UX, accessibility and regression testing; no new input capability or isolation.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 5D — Controller input-routing feasibility
+## Current milestone: Step 5E — Non-invasive QAM UX
+
+Work on `feat/qam-navigation-ux` from main `335f1e2a6cc1b9871cb04429ad9d2f1bbdb7888e` (PR #9). Step 5D is merged; its decision remains authoritative: retain desktop-only controller navigation and improve non-invasive UX. Commit/push validated changes with native Windows/macOS CI/artifacts; do not merge before review and new UI hardware acceptance.
+
+Frontend-only scope: accessible native radio-style session choices, shortcut-only default (`navigation: false`), explicit desktop navigation (`navigation: true`), both existing acknowledgments reset on mode changes, no auto-arm or saved opt-in. Choices describe a manually confirmed existing SDT Desktop/X360 configuration, never detection or reconfiguration. Active reader sessions lock setup; readiness must come from current native phase/ownership/opened/worker/navigation/error status, not the selected next-session card. Connection failure means last-known state; Disarming is not completed cleanup. Keep safe diagnostics and actionable failures visible.
+
+Prominent text warning before Arm: controller navigation does not block game input; desktop without an active game only. Explain the existing D-pad Up/Down, A, B, Left/Right no-op and physical ⋯ behavior. Reuse platform-native shortcut hints and keyboard/touch/dashboard alternatives. QAM guidance must be static/conditional copy without assuming current navigation mode, adding focus targets or resetting focus. Preserve its exact six-control order, actual focus, wrapping/disabled skipping, A/B handlers, claim/complete, epochs, telemetry and reduced motion.
+
+Do not modify Rust/HID/parser/mappings/session/cooldown/ownership/navigation/window lifecycle/cleanup barriers, Tauri permissions or DTOs/bindings, manifest/installer, dependency graph or runtime version. No new commands, readers, writes, interception, output, hooks, injection, virtual devices, filtering, drivers/elevation/services, provider settings or routing experiments. Add only the feature branch to unchanged CI triggers. Run all standard checks and native packaging CI. Synthetic browser layouts/React tests are not physical Windows acceptance; preserve historical handoffs and Step 5D decision unchanged.
+
+## Completed milestone: Step 5D — Controller input-routing feasibility
 
 Work on `research/controller-input-routing` from main `6f879e542feeee37c95a85615d926e6d5a48d64f` (PR #8). The user reports completed Step 5C.2 Windows acceptance. Preserve historical evidence and scope below; prior pending statements describe their original handoffs. This milestone is documentation/research only: audit the existing observer, compare documented Windows/provider input semantics and record an explicit recommendation in `docs/decisions/step-5d-controller-input-routing.md`. Commit/push reviewed research and verify existing native CI; do not merge.
 

@@ -6,9 +6,9 @@ Windows defaults to **LIVE WINDOWS**: actual battery percentage/charging status 
 
 macOS uses the preserved **MOCK DATA** provider. On any host, Settings → Telemetry provider → Mock samples deliberately selects fixed development samples. This selection resets to Automatic at restart; it is never a fallback for failed Windows reads. Theme/units persist separately. Telemetry refresh is manual, with an additional read on QAM open/provider change: no timer, subprocess, service, driver, unique-identifier collection or hardware write is added.
 
-## Current research: Step 5D
+## Current milestone: Step 5E UX
 
-Step 5C.2 passed user-reported Windows Steam Deck acceptance. The [controller input-routing decision record](docs/decisions/step-5d-controller-input-routing.md) recommends retaining **desktop-only controller navigation** and non-invasive touch/keyboard alternatives. QAM navigation observes buttons without suppressing input to games or other tools. Research does not identify a universal supported isolation API under the current safety boundaries; controlling game-visible virtual output or device filtering would require separate architectural/security approval. No runtime behavior or version changes in Step 5D.
+Step 5C.2 passed user-reported Windows Steam Deck acceptance. The [controller input-routing decision record](docs/decisions/step-5d-controller-input-routing.md) recommends retaining **desktop-only controller navigation** and non-invasive touch/keyboard alternatives. QAM navigation observes buttons without suppressing input to games or other tools. Research does not identify a universal supported isolation API under the current safety boundaries; controlling game-visible virtual output or device filtering would require separate architectural/security approval. Step 5E improves setup, guidance and readiness messages without changing native input behavior or the runtime version. New UI hardware acceptance is pending.
 
 ## Quick Access Menu
 
@@ -16,9 +16,20 @@ Use **Open Quick Access** in the dashboard or **Ctrl + Alt + Q** on Windows (**C
 
 The opaque, borderless panel fits the display work area and sits above ordinary desktop windows while visible. Shortcut conflicts leave the dashboard button available. Windows focus return is best effort and respects OS restrictions; outside clicks do not force focus back. macOS uses the pointer's display and returns focus to the dashboard on explicit hide; external-app/Spaces restoration is not implemented. Exclusive fullscreen is not guaranteed. Performance/controller/display rows remain informational. No game hooks or hardware controls are added.
 
-## Desktop-only physical QAM navigation (Step 5C.2)
+## Physical controller sessions (Step 5E)
 
-The existing shared reader can optionally navigate QAM on the reviewed LCD/Windows 11 configuration with Steam Deck Tools manually confirmed in **X360 mode**, Steam running/Input unknown. In Dashboard/Settings, stop diagnostics, select the exact native vendor collection, choose **X360 — ⋯ toggle and desktop-only QAM navigation**, confirm both acknowledgments and Arm. The default Desktop session retains the original ⋯ toggle only. This selector records your reviewed context; it does not detect or change controller tools. There is no automatic arming or saved enabled preference.
+Choose an explicitly armed, session-only mode under **Physical Quick Access Shortcut** in Dashboard/Settings:
+
+| Session choice                           | Existing behavior                                    | Manually reviewed environment                                      |
+| ---------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------ |
+| **Physical shortcut only** (default)     | Physical ⋯ opens/closes QAM; no D-pad/A/B navigation | Steam Deck Tools Desktop mode                                      |
+| **Controller navigation (desktop only)** | ⋯ toggle, Up/Down focus, A activate, B back/close    | Steam Deck Tools X360 mode, Windows desktop without an active game |
+
+These choices describe your existing configuration; Nepteer does not detect or change Steam Deck Tools or Steam Input. Stop diagnostics, rescan/select the reviewed vendor collection, choose a mode and complete both acknowledgments before Arm. Changing modes clears both acknowledgments and never arms automatically. Disarm before reconfiguring an active session. Opt-in is not persisted; restart is Disarmed/shortcut-only.
+
+The status bar reflects native phase, reader ownership and navigation status independently of the next-session selection. It distinguishes navigation enabled/disabled/error, waiting for a released baseline, Disarming and terminal states. Connection failure shows **Last known**, not confirmed readiness. A navigation-only error can leave ⋯ available if native status confirms it; otherwise use the dashboard, keyboard or touch. Disarm/rearm explicitly to recover, respecting any pending cleanup. **Technical session diagnostics** retains safe summary copying and detailed troubleshooting.
+
+The navigation warning appears before Arm, with the essential controls alongside it. **Other ways to use Quick Access** explains the native platform shortcut, Tab/Shift+Tab, Enter/Space, Escape, dashboard Open Quick Access and mouse/touch. QAM repeats compact static guidance without assuming that navigation is currently enabled. These alternatives do not pause or isolate gameplay.
 
 Open with ⋯, move using Up/Down, activate the focused enabled button with A, and use B to collapse an informational section or close. Left/Right do nothing because there are no adjustable QAM controls. Release before pressing again; held buttons, diagonals or multiple controls do not repeat navigation. Keyboard, mouse and touch remain available. Disarm ends both routes; only one reader exists and the thirty-minute shortcut limit is unchanged.
 

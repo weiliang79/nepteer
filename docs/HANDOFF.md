@@ -1,3 +1,42 @@
+# Step 5E — Non-invasive QAM UX
+
+Branch `feat/qam-navigation-ux`, based on merged main `335f1e2a6cc1b9871cb04429ad9d2f1bbdb7888e` (PR #9). No merge authorized. Runtime remains v0.5.0-alpha.2. Step 5D decision unchanged; new UI hardware acceptance pending.
+
+## Changes and contracts
+
+Before: a Desktop/X360 dropdown mixed with detailed reader diagnostics, generic Armed status and footer-only pass-through copy. After: native radio cards with explicit **Physical shortcut only** (false/default/Desktop reviewed context) and **Controller navigation (desktop only)** (true/X360 reviewed context), prominent pre-Arm pass-through warning, concise mode-specific controls and platform-aware keyboard/touch/dashboard alternatives. Both existing acknowledgments still reset on mode changes; active/busy/pending setup stays disabled; no persistence or automatic Arm. Cards choose the next request, not a detected tool mode.
+
+Native phase/source/owner/handle/worker plus configured/error fields determine displayed readiness independently of card selection. Waiting/terminal/disarming states never advertise navigation enabled. Last-known wording survives status connection failure; exact successful repeat status can reconfirm connection without overwriting state or accepting stale updates. Pending Disarm is not successful cleanup. Navigation error recovery only promises physical ⋯ when native active status and connection permit it; failures remain outside the technical disclosure. Safe summary copying, counters and timing details are retained under Technical session diagnostics.
+
+QAM gains static 'when enabled' guidance near the header and native shortcut/Tab/Enter/Space/Escape footer help. No mode API or assumption, new interactive element, permission or claim/complete change. Existing six-control order and keyboard/controller/touch handlers remain intact. CSS adds responsive cards, text/border warning, focus indicators and compact short-viewport information spacing while preserving >=48px targets, themes and reduced motion.
+
+Files: App.tsx passes its existing native hint; PhysicalQuickAccess.tsx handles presentation/status text; QuickAccess.tsx changes static copy only; styles.css handles layout; their existing tests and App.test.tsx cover updated labels/fixtures and new integration cases. Documentation updates AGENTS/README/architecture/safety/Windows checklist/this handoff. CI adds only the feature-branch trigger. No Rust, report mapping, reader/session/lifecycle, bindings, permissions, manifest, installer, dependency graph, runtime version or Step 5D decision changes.
+
+## Validation
+
+Local macOS validation passed (Node v24.14.1, pnpm 12.21.0, rustc 1.100.0):
+
+- `pnpm format:check` — Prettier and Rust formatting passed.
+- `pnpm typecheck` — passed.
+- `pnpm lint` — passed with zero warnings.
+- `pnpm test` — 89 passed in six files: 32 shortcut, 15 QAM, 15 correlation, 12 diagnostics, 13 App, two telemetry. Includes fifteen added cases for native radio keyboard operation/default/consent/payload, warnings/control help, native readiness/remount/terminal/error/connection/disarm, static QAM focus/help/keyboard behavior and reduced motion. Existing stale event/claim/completion/controller/settings regressions remain.
+- `pnpm bindings:check` — one drift test passed, generated file unchanged.
+- `pnpm rust:check` — passed.
+- `pnpm rust:test` — 74 passed, zero failures, one intentionally ignored explicit bindings generator; main/doc targets zero tests.
+- `pnpm rust:lint` — Clippy all targets with warnings denied passed.
+- `pnpm build:web` — TypeScript/Vite production build passed (48 modules).
+- `pnpm licenses:js`, `pnpm licenses:rust` — inventories generated and JSON parsed (ten JavaScript license groups, 459 Rust packages). No dependency/license-policy changes.
+- Inline Python check — documentation relative links and unchanged native/IPC/bindings/dependency/decision boundaries passed.
+- `git diff --check` — passed.
+
+Initial regression run passed 74 existing tests. Added tests initially exposed three assertions that needed to include the remaining-time suffix; corrected assertions then passed. No tests/checks were disabled. Local native packaging is delegated to the unchanged Windows/macOS CI matrix; results/URLs will be recorded after push.
+
+Synthetic layout experiment: isolated headless Chrome, loopback Vite and temporary in-memory IPC fixtures, no native hardware/API access. At 1280×800 setup had no horizontal overflow; at 400×760 QAM document height was 760 with all six controls visible, heights 49–51px. Dark/light screenshots were inspected; fixtures/screenshots live only under /tmp and are not shipped. This is browser evidence, not Windows WebView2/DPI/touch/assistive-technology acceptance. Opening local test listeners required sandbox approval; no runtime permission changed.
+
+New manual scenarios A–D in WINDOWS_TESTING cover shortcut-only, navigation consent/help, recovery/remount/last-known state and display/accessibility. Run on the desktop without an active game, in an already reviewed environment; record unmatched provider modes as Not run instead of altering tools. Existing native cleanup-barrier delays remain; no input isolation, interception or suppression is implemented.
+
+---
+
 # Step 5D — Controller input-routing feasibility
 
 Branch `research/controller-input-routing`, based on main `6f879e542feeee37c95a85615d926e6d5a48d64f` (PR #8). Runtime version stays 0.5.0-alpha.2. The user reports Step 5C.2 hardware acceptance; earlier handoffs retain their historical pending status. No merge is authorized.

@@ -334,6 +334,17 @@ export default function QuickAccess() {
           ✕
         </Button>
       </header>
+      <aside
+        className="qam-input-help"
+        aria-label="Quick Access input guidance"
+      >
+        <strong>Controller navigation: desktop only</strong>
+        <p>Games and other tools may still receive the same buttons.</p>
+        <p>
+          When enabled: ↑/↓ move · A select · B back/close. Left/Right: no
+          action. Tap or click any control.
+        </p>
+      </aside>
       <section className="qam-battery" aria-label="Battery status">
         <span className="source-pill">{source}</span>
         <p className="eyebrow">BATTERY</p>
@@ -400,12 +411,8 @@ export default function QuickAccess() {
         ))}
       </nav>
       <footer className="qam-footer">
-        <p>
-          Desktop testing only. Controller navigation observes physical buttons
-          without suppressing them. Games or other controller utilities may
-          still receive the same input.
-        </p>
-        <p>{hint}</p>
+        <p>Keyboard: {hint}</p>
+        <p>Tab / Shift+Tab move · Enter / Space select · Escape close</p>
         {notice && <p role="status">{notice}</p>}
         <span>v{version} · READ-ONLY PREVIEW</span>
       </footer>

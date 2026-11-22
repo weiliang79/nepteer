@@ -1,3 +1,47 @@
+# Step 5E · QAM UX acceptance
+
+**New UI hardware acceptance: pending.** Step 5C.2 previously passed user-reported hardware acceptance; earlier checklist status is historical. Use this branch's matching artifact/SHA on Steam Deck LCD / Windows 11 with existing WebView2, standard-user install and the reviewed native collection (28DE:1205, interface 2, FFFF/0001, descriptor/actual65, deck_v1_zero_prefixed65). Keep keyboard/touch available. All navigation testing is desktop-only, without an active game. Do not run game input-suppression experiments or alter drivers/tool settings. Run a scenario only when the corresponding SDT profile is already manually confirmed; otherwise record Not run. Steam must be manually confirmed running for the reviewed profile; Steam Input status may be unknown.
+
+## A. Physical shortcut only
+
+1. Launch/relaunch: confirm Shortcut disarmed, shortcut-only radio selected, both acknowledgments clear, QAM hidden and no automatic reader.
+2. Confirm the existing reviewed SDT Desktop configuration; stop diagnostics, rescan and select the eligible vendor collection. Choose **Physical shortcut only**. Check only ⋯ is advertised in controller help and other tools may also react.
+3. Complete both acknowledgments and explicitly Arm. Confirm startup/report/released-baseline stages before **Shortcut armed — navigation disabled**, with remaining time. Selection alone must never arm.
+4. Press/release ⋯: QAM toggles. D-pad/A/B must not navigate QAM. Use the displayed keyboard shortcut, Tab/Shift+Tab, Enter/Space, Escape and mouse/touch instead.
+5. Disarm. Wait for native confirmation before treating cleanup as complete or changing modes.
+
+## B. Controller navigation (desktop only)
+
+1. Confirm the existing reviewed SDT X360 configuration, Steam running/Input unknown if applicable. Stop/disarm the active reader. Choose **Controller navigation (desktop only)**; both acknowledgments must reset.
+2. Before Arm, read the prominent warning: controller navigation does not block game input; desktop without an active game. Verify it is associated with the radio group and not conveyed by color alone. Selection must not change external tools or arm.
+3. Check help: ⋯ toggle; Up previous; Down next; A focused-item activation; B collapse/close; Left/Right no action. No stick navigation or held repeat is promised.
+4. Complete both acknowledgments, explicitly Arm and wait for **Shortcut armed — navigation enabled (desktop only)**, not just configured/waiting baseline.
+5. Open with ⋯. Down/Up wrap Close → enabled Refresh → Performance → Controller → Display → Settings. Disabled Refresh is skipped; help text is never a focus target.
+6. A activates enabled controls, B collapses an expanded section then closes, Left/Right do nothing. Hold/release/repress behavior is unchanged. Test Escape, ⋯, Ctrl+Alt+Q and touch/click as well.
+7. Disarm and confirm physical navigation stops. Re-arm explicitly for a short repeat smoke test; no duplicate reader or automatic renewal.
+
+## C. Status and recovery
+
+1. Check startup, expiry, disconnect/read error and Disarm messages when naturally observable. Waiting baseline/terminal status must never show navigation enabled. Do not forcibly disconnect internal hardware or reproduce driver failures.
+2. Attempt mode changes after completing both acknowledgments while disarmed: both clear, Arm disables. During an active session, cards/setup are locked; Disarm remains available in the persistent bar on other pages.
+3. Failed Arm must retain a safe reason/recovery action and must not show armed. Monitoring/probe ownership must block Arm; an armed shortcut must still block diagnostics until explicit Disarm.
+4. If a navigation-only error occurs, check keyboard/touch/dashboard fallback and physical ⋯ availability against native status. Do not assume ⋯ works after worker termination. Expand **Technical session diagnostics** to copy the sanitized summary if needed.
+5. Navigate pages/remount: current availability comes from native status, not the next-session card. Relaunch must reset opted-in mode/consent. A temporary status connection failure must say **Last known**; this transport case is synthetic-test covered and may be Not observed on hardware.
+6. Disarming/pending completion must not claim cleanup completed. Respect the existing frozen-renderer/transport limitation; do not kill or reconfigure another tool as recovery.
+7. Confirm ordinary QAM operation after successful disarm/rearm; no new device configuration or reader ownership changes.
+
+## D. Display and accessibility
+
+1. At 1280×800 and the actual Windows DPI setting, check readable radio cards, warning/help and acknowledgments without excessive scrolling. Repeat dark/light themes; technical detail may be expanded separately.
+2. Keyboard-only: Tab into the native radio group, use arrows/Space, verify selected state/focus outline, fieldset/legend and accessible names/descriptions with a screen reader where available. Confirm checks remain explicit.
+3. Check warning text/contrast and status announcements without continual repetition. Check touch targets and pointer selection.
+4. QAM: compact limitation/help, native platform shortcut and keyboard alternatives remain readable. All six controls remain reachable; no help becomes a Tab/controller stop. Verify true opening focuses Close, redundant visible/provider updates preserve actual focus, refresh behavior and settings/theme regression.
+5. Enable reduced-motion preference and confirm restrained opening animation is suppressed. Check keyboard, mouse and touch; browser automation is not a substitute for Windows screen-reader/touch validation.
+
+Record build/SHA, screen/DPI/theme, manually supplied environment, each scenario's Pass/Fail/Not run, and safe diagnostic summaries only. No raw reports, serials, device paths or controller history. No gameplay-isolation claim follows from these tests. Normal shutdown/uninstall must still leave no process, driver or service added by Nepteer.
+
+---
+
 # Step 5C.2 · Desktop-only physical QAM navigation acceptance
 
 **New navigation hardware results are pending.** The user supplied Step 5C.1 evidence: eight positive D-pad sessions/two per direction, 40/40 cycles, sixteen idle/opposite/A/B negatives with zero false nominated edges, no incompatible/malformed reports/gaps/unexpected bit changes in clean positives. The manually reported mode was **X360**, Steam running/Input unknown, on LCD/Windows 11, native 28DE:1205 interface2 FFFF/0001 length65, deck_v1_zero_prefixed65. Earlier Desktop-mode evidence was for ⋯, not automatic certification of navigation in Desktop mode.
