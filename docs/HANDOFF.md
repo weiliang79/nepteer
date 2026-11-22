@@ -19,9 +19,12 @@ Local macOS checks passed (Node v24.14.1, pnpm 12.21.0, rustc 1.100.0):
 - `pnpm bindings:check` — one binding-drift test passed; generated files unchanged.
 - `pnpm build:web` — TypeScript/Vite production build passed (48 modules).
 - Inline Python documentation consistency check — seven documents' relative links, 21 source references, A–H decision sections, fifteen failure rows and docs/CI-only scope passed; workflow diff adds exactly one branch trigger.
+- `pnpm licenses:js` and `pnpm licenses:rust` — passed; temporary JSON inventories parsed successfully (JavaScript: ten license groups; Rust: 459 packages). No dependency or license-policy changes.
 - `git diff --check` — passed.
 
-No new automated tests were needed for a documentation-only change. Existing synthetic tests do not prove input isolation. Native CI results will be recorded after push. Local native packaging is intentionally skipped for documentation-only changes, as authorized for Step 5D. Existing Windows/macOS CI packaging remains enabled. Research/source inspection is not a test of game isolation. No new physical test is required for this docs-only change; unresolved consumer/provider paths and future approval gates are in the decision record.
+No new automated tests were needed for a documentation-only change. Existing synthetic tests do not prove input isolation. Native CI for research commit `30a67a93cd70b213a52735b2036a10301efbe3dd` passed on both macOS and Windows: [run 45054234250](https://github.com/weiliang79/nepteer/actions/runs/45054234250). Each matrix job ran the unchanged validation and license inventory steps; macOS built its app bundle, Windows built x86_64 MSVC/NSIS and verified the executable manifest `asInvoker`, `uiAccess=false`. [Windows executable + installer artifact](https://github.com/weiliang79/nepteer/actions/runs/45054234250/artifacts/14767176220). These are the unchanged application, not an input-routing prototype.
+
+A follow-up documentation commit fixes adjacent reference-link rendering, qualifies the XInput conclusion as a documented-authority limitation, and records validation. Its matching CI is available under [research branch runs](https://github.com/weiliang79/nepteer/actions?query=branch%3Aresearch%2Fcontroller-input-routing); the final delivery report identifies that commit/run. This avoids asserting future CI success in the file being tested. Local native packaging is intentionally skipped for documentation-only changes, as authorized for Step 5D. Existing Windows/macOS CI packaging remains enabled. Research/source inspection is not a test of game isolation. No new physical test is required for this docs-only change; unresolved consumer/provider paths and future approval gates are in the decision record.
 
 ---
 
