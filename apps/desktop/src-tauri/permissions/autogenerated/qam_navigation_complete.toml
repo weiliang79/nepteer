@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-qam-navigation-complete"
+description = "Enables the qam_navigation_complete command without any pre-configured scope."
+commands.allow = ["qam_navigation_complete"]
+
+[[permission]]
+identifier = "deny-qam-navigation-complete"
+description = "Denies the qam_navigation_complete command without any pre-configured scope."
+commands.deny = ["qam_navigation_complete"]

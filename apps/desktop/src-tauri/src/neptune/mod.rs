@@ -1,6 +1,7 @@
 //! Opt-in, read-only controller observation, independent of system telemetry.
 pub mod correlation;
 mod monitor;
+pub mod navigation;
 mod reports;
 pub mod shortcut;
 #[cfg(windows)]
@@ -352,6 +353,9 @@ impl Diagnostics {
         value.probe = self.probe_status()?;
         Ok(value)
     }
+    pub(crate) fn navigation(&self) -> Arc<navigation::State> {
+        self.shortcut.navigation.clone()
+    }
     pub fn shortcut_status(&self) -> Result<shortcut::ShortcutStatus, String> {
         let mut status = self.shortcut.snapshot();
         let data = self
@@ -386,7 +390,12 @@ impl Diagnostics {
         });
         let dispatch_state = self.shortcut.clone();
         let dispatch: shortcut::Dispatch = Arc::new(move |ticket| {
-            crate::quick_access::queue_physical(&app, &dispatch_state, ticket)
+            if ticket.navigation.is_some() {
+                crate::quick_access::queue_navigation(&app, &dispatch_state.navigation, ticket);
+                Ok(())
+            } else {
+                crate::quick_access::queue_physical(&app, &dispatch_state, ticket)
+            }
         });
         self.arm_shortcut(request, notify, dispatch)
     }
@@ -471,6 +480,9 @@ impl Diagnostics {
                 .shortcut
                 .begin(request.expected_generation, &candidate)
                 .map_err(|_| self.shortcut.reject(Reason::InternalError))?;
+            self.shortcut
+                .navigation
+                .start(ticket.generation, request.navigation);
             let cancel = Arc::new(AtomicBool::new(false));
             let worker_cancel = cancel.clone();
             let backend = self.backend.clone();
@@ -951,6 +963,7 @@ pub(crate) fn declarations() -> Vec<String> {
     ];
     declarations.extend(correlation::declarations());
     declarations.extend(shortcut::declarations());
+    declarations.extend(navigation::declarations());
     declarations
 }
 

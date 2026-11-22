@@ -151,6 +151,12 @@ export function shortcutDiagnosticSummary(
       : null,
     terminationReason: value.terminationReason,
     workerRunning: value.workerRunning,
+    navigation: {
+      configured: value.navigation.configured,
+      pending: value.navigation.pending,
+      delivering: value.navigation.delivering,
+      issue: value.navigation.issue,
+    },
     hidHandleCurrentlyOpened: value.opened,
     interface: i
       ? {

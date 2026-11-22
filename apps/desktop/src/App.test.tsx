@@ -20,6 +20,7 @@ const disabledPhysical = {
   readerOwner: "none" as const,
   interface: null,
   issue: null,
+  navigation: { configured: false, pending: 0, delivering: false, issue: null },
   manualRescanRequired: false,
   lastAttempt: null,
   terminationReason: null,
@@ -80,6 +81,7 @@ beforeEach(() => {
     .mockResolvedValue({ ...disabledPhysical, revision: 5 });
   vi.mocked(quickAccessStatus).mockResolvedValue({
     visible: false,
+    epoch: 1,
     shortcutAvailable: true,
     shortcutHint: "Ctrl + Alt + Q",
     notice: null,
@@ -87,6 +89,7 @@ beforeEach(() => {
   vi.mocked(showQuickAccess).mockReset();
   vi.mocked(showQuickAccess).mockResolvedValue({
     visible: true,
+    epoch: 1,
     shortcutAvailable: true,
     shortcutHint: "Ctrl + Alt + Q",
     notice: null,

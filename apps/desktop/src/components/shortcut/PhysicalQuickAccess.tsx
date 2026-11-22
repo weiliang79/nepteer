@@ -48,6 +48,7 @@ export default function PhysicalQuickAccess({
   const [selected, setSelected] = useState("");
   const [consent, setConsent] = useState(false);
   const [configuration, setConfiguration] = useState(false);
+  const [navigation, setNavigation] = useState(false);
   const [armPending, setArmPending] = useState(false);
   const [copyNotice, setCopyNotice] = useState("");
   const pending = useRef(false);
@@ -150,6 +151,7 @@ export default function PhysicalQuickAccess({
         expectedGeneration: status.generation,
         consent,
         reviewedConfiguration: configuration,
+        navigation,
       });
       if (id === requestId.current) accept(value);
     } catch {
@@ -381,6 +383,31 @@ export default function PhysicalQuickAccess({
                 ))}
               </select>
             </label>
+            <label className="controller-source">
+              Reviewed session mode (manually confirmed)
+              <select
+                value={navigation ? "x360" : "desktop"}
+                onChange={(e) => {
+                  setNavigation(e.target.value === "x360");
+                  setConsent(false);
+                  setConfiguration(false);
+                }}
+              >
+                <option value="desktop">
+                  Desktop — existing ⋯ toggle only
+                </option>
+                <option value="x360">
+                  X360 — ⋯ toggle and desktop-only QAM navigation
+                </option>
+              </select>
+            </label>
+            <p className="muted">
+              Controller navigation observes physical buttons without
+              suppressing them. Games or other controller utilities may still
+              receive the same input. Select X360 only if already running in
+              that reviewed configuration; Nepteer does not detect or change
+              tool modes. Initial navigation testing requires no active game.
+            </p>
             <label className="probe-consent">
               <input
                 type="checkbox"
@@ -388,9 +415,10 @@ export default function PhysicalQuickAccess({
                 onChange={(e) => setConfiguration(e.target.checked)}
               />
               I confirm the reviewed test configuration: Steam Deck LCD, Windows
-              11, Steam Deck Tools controller in Desktop mode, Steam running.
-              Steam Input status may be unknown. Nepteer has not detected these
-              tool settings.
+              11, Steam Deck Tools controller in{" "}
+              {navigation ? "X360" : "Desktop"} mode, Steam running. Steam Input
+              status may be unknown. Nepteer has not detected these tool
+              settings.
             </label>
             <label className="probe-consent">
               <input
@@ -433,6 +461,12 @@ export default function PhysicalQuickAccess({
             failure closes the session; rearm manually.
           </p>
         </>
+      )}
+      {status?.navigation.issue && (
+        <p role="alert">
+          QAM navigation stopped: {status.navigation.issue.replaceAll("_", " ")}
+          . Keyboard/touch and ⋯ remain available; Disarm and rearm manually.
+        </p>
       )}
       {status?.issue && (
         <p className="qam-error">

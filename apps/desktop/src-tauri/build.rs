@@ -6,6 +6,8 @@ fn main() {
             "hide_quick_access",
             "toggle_quick_access",
             "quick_access_status",
+            "qam_navigation_claim",
+            "qam_navigation_complete",
             "neptune_list",
             "neptune_rescan",
             "neptune_start",

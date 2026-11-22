@@ -1,11 +1,21 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is v0.5.0-alpha.2 opt-in physical Quick Access shortcut, not hardware control.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 5C.2 desktop-only QAM controller navigation, not hardware control or input isolation.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 5B — Physical Quick Access shortcut
+## Current milestone: Step 5C.2 — Read-only QAM controller navigation
+
+Work on `feat/qam-controller-navigation` from merged main `f638bdd23981aceaf523beaa4e805f387abeb223` (PR #7). Commit/push verified changes and native CI/artifacts; do not merge before hardware acceptance. User-provided LCD/Windows 11 evidence in manually reported Steam Deck Tools **X360 mode**, Steam running/Input unknown: eight positive sessions (two per direction), 40/40 cycles and sixteen idle/opposite/A/B negatives without false nominated edges; clean positives had no framing errors, gaps or unexpected known/unknown changes. Reviewed navigation mappings: Up 8, Down 11, Left 10, Right 9, A 7, B 5. This authorizes only desktop validation on exact 28DE:1205 interface 2, FFFF/0001, descriptor/actual65, deck_v1_zero_prefixed65. No alternative models/modes/formats are implied.
+
+Reuse the existing armed reader and thirty-minute lifecycle. Desktop mode retains the existing ⋯-only path; explicit X360 session selection enables navigation, with both acknowledgments renewed and no setting persisted/detected/changed. Keep the ⋯ bit-50 behavior/cooldown exactly separate. Navigation has independent released baselines per control/opening, no held repeats, no diagonals/multiple navigation controls, and conservative suppression while X/Y/Steam/⋯ is held. Normal diagnostics/probe remain mutually exclusive with armed mode and keep their five-minute/thirty-second limits and non-promotion policy.
+
+Only abstract Previous/Next/Left/Right/Activate/Back actions and ephemeral session/epoch/sequence tokens may target local quick-access. Native actual visibility/epoch and the shortcut fence must validate each claim. Bound pending work to four plus one delivery, including queued-age expiry. A granted UI delivery is a cleanup barrier until trusted completion or destruction of that specific renderer instance. No reader/status locks during window calls or IPC callbacks; no stale failure may disable a new generation. Never claim successful disarm while a granted delivery is outstanding. Document broken-renderer/transport delays honestly. Two QAM-only claim/complete commands may manage only these native offers, never HID ownership. Keep remote navigation/CSP and main-only arming boundaries intact.
+
+React changes local DOM focus/uses existing handlers only: enabled-button wrapping, A activation, B collapse/close, Left/Right no-op. No synthetic OS/keyboard/gamepad input. Native opening epochs initialize focus once; redundant visibility/provider refresh must not steal focus. Initial tests require desktop with no active game. Shared read-only input is **not game input isolation**; no game/tool detection, interception, exclusive access, remapping/emulation, driver/admin/service, writes or game hooks. Preserve all historical architectural/safety rules below; their milestone exclusions describe prior scope. All new hardware behavior remains pending user acceptance.
+
+## Completed milestone: Step 5B — Physical Quick Access shortcut
 
 Work on `feat/neptune-qam-shortcut` from latest main after `6f1ecdd584ea8f3d53b2d4f38c7902ed3092215d`. Commit/push focused changes, verify native macOS/Windows CI and Windows artifacts; do not merge before review and new hardware testing. The user supplied positive A/B/X/Y/Steam/Quick Access correlations from Deck LCD/Windows 11, Steam Deck Tools controller Desktop mode, Steam running, Steam Input status unknown. Quick Access bit 50 had five presses/releases, stable released baseline, no missing/early/late/idle edges or gaps, distinct Steam bit 13, Steam-only negative control and Steam-held + QAM cycling. This authorizes only a narrowly scoped opt-in bit-50 shortcut test, not universal model/mode compatibility or any other input action.
 

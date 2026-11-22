@@ -8,6 +8,9 @@ import {
   quickAccessStatus,
   onQuickAccessChange,
   onProviderChange,
+  onQamNavigation,
+  claimQamNavigation,
+  completeQamNavigation,
   type QuickAccessStatus,
 } from "@/lib/quick-access";
 import type { Snapshot } from "@/lib/bindings";
@@ -17,9 +20,13 @@ vi.mock("@/lib/quick-access", () => ({
   quickAccessStatus: vi.fn(),
   onQuickAccessChange: vi.fn(),
   onProviderChange: vi.fn(),
+  onQamNavigation: vi.fn(),
+  claimQamNavigation: vi.fn(),
+  completeQamNavigation: vi.fn(),
 }));
 const status: QuickAccessStatus = {
   visible: true,
+  epoch: 1,
   shortcutAvailable: true,
   shortcutHint: "Ctrl + Alt + Q",
   notice: null,
@@ -50,6 +57,7 @@ const fixture: Snapshot = {
 };
 let changed: (status: QuickAccessStatus) => void;
 let providerChanged: () => void;
+let navigation: (event: import("@/lib/bindings").NavigationEvent) => void;
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
@@ -60,6 +68,12 @@ beforeEach(() => {
     changed = callback;
     return vi.fn();
   });
+  vi.mocked(onQamNavigation).mockImplementation(async (callback) => {
+    navigation = callback;
+    return vi.fn();
+  });
+  vi.mocked(claimQamNavigation).mockReset();
+  vi.mocked(completeQamNavigation).mockReset().mockResolvedValue();
   vi.mocked(onProviderChange).mockImplementation(async (callback) => {
     providerChanged = callback;
     return vi.fn();
@@ -146,10 +160,239 @@ test("hidden startup performs no telemetry read; open/provider events refresh an
     "nepteer.preferences",
     JSON.stringify({ theme: "light", unit: "fahrenheit" }),
   );
-  await act(async () => changed(status));
+  await act(async () => changed({ ...status, epoch: 2 }));
   expect(await screen.findByText("78 %")).toBeInTheDocument();
   expect(document.documentElement.dataset.theme).toBe("light");
-  vi.mocked(quickAccessStatus).mockResolvedValue(status);
+  vi.mocked(quickAccessStatus).mockResolvedValue({ ...status, epoch: 2 });
   await act(async () => providerChanged());
   await waitFor(() => expect(getTelemetry).toHaveBeenCalledTimes(2));
+});
+
+let navSequence = 0;
+async function send(
+  action: import("@/lib/bindings").NavigationAction,
+  epoch = 1,
+) {
+  const event = {
+    request: { generation: 1, epoch, sequence: ++navSequence },
+    action,
+  };
+  vi.mocked(claimQamNavigation).mockResolvedValueOnce({
+    event,
+    validForMs: 500,
+  });
+  await act(async () => navigation(event));
+  await waitFor(() =>
+    expect(completeQamNavigation).toHaveBeenCalledWith(
+      event.request,
+      expect.any(Boolean),
+    ),
+  );
+  return event;
+}
+test("native Next/Previous wrap actual enabled focus; Activate and Back reuse section/close behavior", async () => {
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const close = screen.getByRole("button", { name: "Close Quick Access" });
+  const refresh = screen.getByRole("button", { name: "Refresh battery" });
+  expect(close).toHaveFocus();
+  await send("next");
+  expect(refresh).toHaveFocus();
+  await send("previous");
+  expect(close).toHaveFocus();
+  await send("previous");
+  const settings = screen.getByRole("button", { name: /Settings/ });
+  expect(settings).toHaveFocus();
+  await send("next");
+  expect(close).toHaveFocus();
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  performance.focus();
+  await send("activate");
+  expect(performance).toHaveAttribute("aria-expanded", "true");
+  await send("left");
+  await send("right");
+  expect(performance).toHaveFocus();
+  expect(performance).toHaveAttribute("aria-expanded", "true");
+  await send("back");
+  expect(performance).toHaveAttribute("aria-expanded", "false");
+  expect(performance).toHaveFocus();
+  const event = await send("back");
+  expect(completeQamNavigation).toHaveBeenCalledWith(event.request, true);
+  expect(hideQuickAccess).not.toHaveBeenCalled(); // Native completion performs context-fenced Hide.
+});
+test("disabled Refresh is skipped and its disappearing focus has deterministic fallback", async () => {
+  let finish!: (s: Snapshot) => void;
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const refresh = screen.getByRole("button", { name: "Refresh battery" });
+  refresh.focus();
+  vi.mocked(getTelemetry).mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        finish = r;
+      }),
+  );
+  await send("activate");
+  expect(refresh).toBeDisabled();
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  expect(performance).toHaveFocus();
+  await send("previous");
+  expect(
+    screen.getByRole("button", { name: "Close Quick Access" }),
+  ).toHaveFocus();
+  await send("next");
+  expect(performance).toHaveFocus();
+  await act(async () => finish(fixture));
+  expect(performance).toHaveFocus();
+});
+test("redundant visible and provider events refresh data without resetting user focus", async () => {
+  const user = userEvent.setup();
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const display = screen.getByRole("button", { name: /Display/ });
+  await user.click(display);
+  await act(async () => changed(status));
+  expect(display).toHaveFocus();
+  expect(getTelemetry).toHaveBeenCalledTimes(1);
+  await act(async () => providerChanged());
+  expect(display).toHaveFocus();
+  expect(getTelemetry).toHaveBeenCalledTimes(2);
+  vi.mocked(quickAccessStatus).mockResolvedValue({ ...status, epoch: 3 });
+  await act(async () => changed({ ...status, visible: false, epoch: 2 }));
+  await act(async () => changed({ ...status, epoch: 3 }));
+  expect(
+    screen.getByRole("button", { name: "Close Quick Access" }),
+  ).toHaveFocus();
+  display.focus();
+  await act(async () => changed({ ...status, epoch: 1 }));
+  expect(display).toHaveFocus();
+});
+test("hidden and old epoch navigation cannot activate after reopen; stale generation denied natively", async () => {
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  performance.focus();
+  vi.mocked(quickAccessStatus).mockResolvedValue({
+    ...status,
+    visible: false,
+    epoch: 2,
+  });
+  const hidden = {
+    request: { generation: 1, epoch: 1, sequence: 100 },
+    action: "activate" as const,
+  };
+  await act(async () => navigation(hidden));
+  expect(claimQamNavigation).not.toHaveBeenCalled();
+  expect(performance).toHaveAttribute("aria-expanded", "false");
+  vi.mocked(quickAccessStatus).mockResolvedValue({ ...status, epoch: 3 });
+  await act(async () => changed({ ...status, epoch: 3 }));
+  performance.focus();
+  await act(async () => navigation(hidden));
+  expect(claimQamNavigation).not.toHaveBeenCalled();
+  vi.mocked(claimQamNavigation).mockResolvedValueOnce(null);
+  await act(async () =>
+    navigation({ ...hidden, request: { ...hidden.request, epoch: 3 } }),
+  );
+  expect(performance).toHaveAttribute("aria-expanded", "false");
+});
+test("late granted response after hide/reopen is acknowledged without applying old action", async () => {
+  let complete!: (v: import("@/lib/bindings").NavigationClaim | null) => void;
+  vi.mocked(claimQamNavigation).mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        complete = r;
+      }),
+  );
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  performance.focus();
+  const event = {
+    request: { generation: 1, epoch: 1, sequence: 500 },
+    action: "activate" as const,
+  };
+  await act(async () => navigation(event));
+  await waitFor(() => expect(claimQamNavigation).toHaveBeenCalled());
+  await act(async () => {
+    changed({ ...status, visible: false, epoch: 2 });
+    changed({ ...status, epoch: 3 });
+  });
+  await act(async () => complete({ event, validForMs: 500 }));
+  expect(performance).toHaveAttribute("aria-expanded", "false");
+  expect(completeQamNavigation).toHaveBeenCalledWith(event.request, false);
+});
+test("Close activation uses native lease completion once; subscription cleanup releases in-flight claim", async () => {
+  const stop = vi.fn();
+  vi.mocked(onQamNavigation).mockImplementationOnce(async (callback) => {
+    navigation = callback;
+    return stop;
+  });
+  const view = render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const event = await send("activate");
+  expect(completeQamNavigation).toHaveBeenCalledWith(event.request, true);
+  expect(hideQuickAccess).not.toHaveBeenCalled();
+  let resolve!: (
+    value: import("@/lib/bindings").NavigationClaim | null,
+  ) => void;
+  vi.mocked(claimQamNavigation).mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+  );
+  const late = { ...event, request: { ...event.request, sequence: 901 } };
+  await act(async () => navigation(late));
+  view.unmount();
+  expect(stop).toHaveBeenCalledTimes(1);
+  await act(async () => resolve({ event: late, validForMs: 500 }));
+  expect(completeQamNavigation).toHaveBeenCalledWith(late.request, false);
+});
+
+test("duplicate offers never double activate; next offer can arrive before previous completion resolves", async () => {
+  let finish!: () => void;
+  vi.mocked(completeQamNavigation).mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        finish = r;
+      }),
+  );
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  performance.focus();
+  const first = await send("activate");
+  expect(performance).toHaveAttribute("aria-expanded", "true");
+  await act(async () => navigation(first));
+  expect(claimQamNavigation).toHaveBeenCalledTimes(1);
+  await send("next");
+  expect(screen.getByRole("button", { name: /Controller/ })).toHaveFocus();
+  await act(async () => finish());
+});
+test("a paused claim response is discarded and completed, without late activation", async () => {
+  let resolve!: (v: import("@/lib/bindings").NavigationClaim) => void;
+  vi.mocked(claimQamNavigation).mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+  );
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  performance.focus();
+  const now = vi
+    .spyOn(performance.ownerDocument.defaultView!.performance, "now")
+    .mockReturnValue(0);
+  const event = {
+    request: { generation: 1, epoch: 1, sequence: 1200 },
+    action: "activate" as const,
+  };
+  await act(async () => navigation(event));
+  await waitFor(() => expect(claimQamNavigation).toHaveBeenCalled());
+  now.mockReturnValue(600);
+  await act(async () => resolve({ event, validForMs: 500 }));
+  expect(performance).toHaveAttribute("aria-expanded", "false");
+  expect(completeQamNavigation).toHaveBeenCalledWith(event.request, false);
+  now.mockRestore();
 });

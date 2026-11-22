@@ -12,6 +12,7 @@ on:
         feat/neptune-button-correlation,
         feat/neptune-qam-shortcut,
         feat/neptune-dpad-correlation,
+        feat/qam-controller-navigation,
       ]
   pull_request:
   workflow_dispatch:
