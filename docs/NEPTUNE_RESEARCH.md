@@ -1,5 +1,11 @@
 # Neptune protocol evidence · Step 5B
 
+## Step 5D: observation versus game-visible output
+
+Step 5C.2 navigation acceptance is user-reported for the reviewed LCD/Windows 11 profile; SDT X360 was manually reported, Steam running and Steam Input unknown. No stronger claim about the game's actual consumer API or exclusive input path follows. Existing bit mappings and decoder evidence remain unchanged.
+
+The [routing decision and primary source register](decisions/step-5d-controller-input-routing.md) distinguish native Neptune collection observation, SDT virtual output, Steam Input translation and Windows consumer APIs. Published provider documentation was read; no Steam Deck Tools source was consulted. Research found no suitable documented temporary provider-routing contract in the reviewed surfaces. This bounded finding is not proof of absolute absence. Recommendation is desktop-only navigation and non-invasive UX, without output filtering, device hiding, mode changes or a new reader. No physical routing experiments or new mapping evidence were gathered.
+
 Reviewed 2026-11-21. Step 4 passed user-reported hardware checks after merge `fdafc925451d2ae2753e54ad6b188d9b728c2bbd`. At Step 5A implementation no Windows framing or bit correlations were supplied. The user has since reported the following real Windows observations for Step 5A.1. These are aggregate evidence, not a fully reviewed framing certification or independently verified physical mappings. CI/synthetic tests cannot strengthen them.
 
 ### User-reported Windows baseline (Step 5A.1)

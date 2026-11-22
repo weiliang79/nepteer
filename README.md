@@ -6,6 +6,10 @@ Windows defaults to **LIVE WINDOWS**: actual battery percentage/charging status 
 
 macOS uses the preserved **MOCK DATA** provider. On any host, Settings → Telemetry provider → Mock samples deliberately selects fixed development samples. This selection resets to Automatic at restart; it is never a fallback for failed Windows reads. Theme/units persist separately. Telemetry refresh is manual, with an additional read on QAM open/provider change: no timer, subprocess, service, driver, unique-identifier collection or hardware write is added.
 
+## Current research: Step 5D
+
+Step 5C.2 passed user-reported Windows Steam Deck acceptance. The [controller input-routing decision record](docs/decisions/step-5d-controller-input-routing.md) recommends retaining **desktop-only controller navigation** and non-invasive touch/keyboard alternatives. QAM navigation observes buttons without suppressing input to games or other tools. Research does not identify a universal supported isolation API under the current safety boundaries; controlling game-visible virtual output or device filtering would require separate architectural/security approval. No runtime behavior or version changes in Step 5D.
+
 ## Quick Access Menu
 
 Use **Open Quick Access** in the dashboard or **Ctrl + Alt + Q** on Windows (**Control + Option + Q** on macOS). The separate panel starts hidden and shows battery/source information from the same session provider. Escape or Close hides it; clicking outside hides it after activation. Closing the dashboard exits the app and panel. No tray/startup persistence is added.

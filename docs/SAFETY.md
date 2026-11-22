@@ -1,5 +1,11 @@
 # Read-only safety boundary
 
+## Step 5D research boundary
+
+The [routing feasibility decision](decisions/step-5d-controller-input-routing.md) does not authorize input isolation. No new hardware experiment, device/provider configuration or production behavior is added. Do not equate window focus, QAM visibility, local navigation claims or reported X360 mode with exclusive gameplay routing. Windows input focus behavior depends on the consumer API/version/policy; other consumers may continue receiving input. No anti-cheat compatibility guarantee is made.
+
+A future router would need authority over every game-consumed output and recovery independent of Nepteer's survival. Virtual output, device hiding/filtering or interception requires separate architectural/security review, licensing/deployment review and crash/kill/sleep/held-state validation. Existing shared read-only access, one-reader coordination, opt-in limits, privacy and no-reconnect rules remain. Step 5C.2 acceptance is user-reported hardware evidence for navigation, not isolation. Historical safety sections below retain their original milestone scope.
+
 Step 5A adds candidate report interpretation and simulated transitions to opt-in native HID observation to the completed read-only telemetry and QAM foundation. `get_telemetry` remains the shared system telemetry command; four fixed QAM commands manage only Nepteer windows and five main-only commands coordinate controller diagnostics. It reads `GetSystemPowerStatus` and the two non-unique manufacturer/model fields of local `Win32_ComputerSystem`. There are no hardware writes, drivers, privileged helpers, game hooks, input injection, HID feature reports, game overlays/injection, shell execution or Steam Deck Tools dependencies. Nepteer does not install a service; WMI uses Windows' existing infrastructure.
 
 Windows selects live reads by default. Mock mode requires deliberate Settings selection and is labeled MOCK DATA, with simulated device labels and sample values. It resets to Automatic at restart. API or WMI failure never selects mock. Null/unknown/error/no-battery are distinct from valid zero. Native CPU/GPU temperatures and fan RPM remain unsupported. Provider capabilities describe implemented read paths, not hardware detection or a successful current reading.

@@ -13,6 +13,7 @@ on:
         feat/neptune-qam-shortcut,
         feat/neptune-dpad-correlation,
         feat/qam-controller-navigation,
+        research/controller-input-routing,
       ]
   pull_request:
   workflow_dispatch:
