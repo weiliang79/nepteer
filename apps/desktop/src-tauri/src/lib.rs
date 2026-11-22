@@ -67,6 +67,36 @@ async fn quick_access_status<R: tauri::Runtime>(
     qam_operation(app, quick_access::Action::Query).await
 }
 
+#[tauri::command]
+async fn qam_navigation_claim<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    request: neptune::navigation::NavigationRequest,
+) -> Result<Option<neptune::navigation::NavigationClaim>, String> {
+    if window.label() != quick_access::LABEL {
+        return Err("Only local Quick Access may claim navigation.".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || quick_access::claim_navigation(&app, &request))
+        .await
+        .map_err(|_| "Navigation unavailable".to_string())?
+}
+#[tauri::command]
+async fn qam_navigation_complete<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    request: neptune::navigation::NavigationRequest,
+    hide: bool,
+) -> Result<(), String> {
+    if window.label() != quick_access::LABEL {
+        return Err("Only local Quick Access may complete navigation.".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        quick_access::complete_navigation(&app, &request, hide)
+    })
+    .await
+    .map_err(|_| "Navigation completion unavailable".to_string())?
+}
+
 fn ensure_diagnostics_window<R: tauri::Runtime>(
     window: &tauri::WebviewWindow<R>,
 ) -> Result<(), String> {
@@ -261,7 +291,9 @@ fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R>
             neptune_probe_abort,
             neptune_shortcut_arm,
             neptune_shortcut_disarm,
-            neptune_shortcut_status
+            neptune_shortcut_status,
+            qam_navigation_claim,
+            qam_navigation_complete
         ])
 }
 
@@ -427,5 +459,47 @@ mod tests {
         let mut remote_request = request();
         remote_request.url = "https://example.com".parse().unwrap();
         assert!(tauri::test::get_ipc_response(&main, remote_request).is_err());
+    }
+    #[test]
+    fn only_local_qam_may_claim_or_complete_abstract_navigation() {
+        let app = super::configure(tauri::test::mock_builder())
+            .build(super::context())
+            .unwrap();
+        let main = tauri::WebviewWindowBuilder::new(
+            &app,
+            "main",
+            tauri::WebviewUrl::App("index.html".into()),
+        )
+        .build()
+        .unwrap();
+        let qam = tauri::WebviewWindowBuilder::new(
+            &app,
+            "quick-access",
+            tauri::WebviewUrl::App("index.html?qam".into()),
+        )
+        .build()
+        .unwrap();
+        let other = tauri::WebviewWindowBuilder::new(&app, "other", Default::default())
+            .build()
+            .unwrap();
+        for cmd in ["qam_navigation_claim", "qam_navigation_complete"] {
+            let request = || tauri::webview::InvokeRequest {
+                cmd: cmd.into(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: app.config().build.dev_url.clone().unwrap(),
+                body: tauri::ipc::InvokeBody::Json(
+                    serde_json::json!({"request":{"generation":0,"epoch":0,"sequence":0},"hide":false}),
+                ),
+                headers: Default::default(),
+                invoke_key: tauri::test::INVOKE_KEY.to_string(),
+            };
+            assert!(tauri::test::get_ipc_response(&main, request()).is_err());
+            assert!(tauri::test::get_ipc_response(&other, request()).is_err());
+            assert!(tauri::test::get_ipc_response(&qam, request()).is_ok());
+            let mut remote = request();
+            remote.url = "https://example.com".parse().unwrap();
+            assert!(tauri::test::get_ipc_response(&qam, remote).is_err());
+        }
     }
 }

@@ -27,6 +27,7 @@ const disabled: ShortcutStatus = {
   readerOwner: "none",
   interface: null,
   issue: null,
+  navigation: { configured: false, pending: 0, delivering: false, issue: null },
   manualRescanRequired: false,
   lastAttempt: null,
   terminationReason: null,
@@ -108,6 +109,7 @@ test("disabled startup opens no HID; explicit profile, consent and Arm are requi
     expectedGeneration: 0,
     consent: true,
     reviewedConfiguration: true,
+    navigation: false,
   });
   expect(
     await screen.findByText(/Armed · 30 min remaining/),
@@ -543,4 +545,35 @@ test("event subscription failure is visible while status polling remains availab
   ).toBeInTheDocument();
   expect(screen.getByText("Disabled")).toBeInTheDocument();
   expect(screen.queryByText(/private transport text/)).not.toBeInTheDocument();
+});
+
+test("X360 desktop navigation requires explicit reviewed-mode selection and renewed acknowledgments", async () => {
+  render(<PhysicalQuickAccess expanded onManage={() => {}} />);
+  const user = await ready();
+  await user.selectOptions(
+    screen.getByLabelText("Reviewed session mode (manually confirmed)"),
+    "x360",
+  );
+  expect(
+    screen.getByRole("button", { name: "Arm Physical ⋯ Shortcut" }),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole("checkbox", { name: /reviewed test configuration/ }),
+  ).toHaveAccessibleName(/X360/);
+  await user.click(
+    screen.getByRole("checkbox", { name: /reviewed test configuration/ }),
+  );
+  await user.click(
+    screen.getByRole("checkbox", { name: /consent to passive/ }),
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Arm Physical ⋯ Shortcut" }),
+  );
+  expect(api.armShortcut).toHaveBeenCalledWith(
+    expect.objectContaining({
+      navigation: true,
+      consent: true,
+      reviewedConfiguration: true,
+    }),
+  );
 });

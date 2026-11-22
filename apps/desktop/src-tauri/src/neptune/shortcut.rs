@@ -159,6 +159,7 @@ pub struct ShortcutStatus {
     pub worker_running: bool,
     pub monitor_phase: MonitorPhase,
     pub manual_rescan_required: bool,
+    pub navigation: navigation::NavigationDiagnostics,
 }
 impl Default for ShortcutStatus {
     fn default() -> Self {
@@ -181,6 +182,7 @@ impl Default for ShortcutStatus {
             worker_running: false,
             monitor_phase: MonitorPhase::Stopped,
             manual_rescan_required: false,
+            navigation: Default::default(),
         }
     }
 }
@@ -191,6 +193,8 @@ pub struct ShortcutArmRequest {
     pub expected_generation: u32,
     pub consent: bool,
     pub reviewed_configuration: bool,
+    #[serde(default)]
+    pub navigation: bool,
 }
 pub(super) fn gate(candidate: &PrivateCandidate) -> Result<(), String> {
     let c = &candidate.public;
@@ -308,12 +312,20 @@ impl Fence {
 #[derive(Clone)]
 pub(crate) struct Ticket {
     fence: Arc<Fence>,
-    generation: u32,
+    pub(crate) generation: u32,
+    pub(crate) navigation: Option<(u32, navigation::NavigationAction)>,
     started: Instant,
     deadline: Instant,
     attempt_id: u32,
 }
 impl Ticket {
+    pub(crate) fn remaining_ms(&self) -> u32 {
+        self.deadline
+            .saturating_duration_since(Instant::now())
+            .as_millis()
+            .min(u128::from(u32::MAX)) as u32
+    }
+
     pub(crate) fn valid(&self) -> bool {
         self.fence.current.load(Ordering::SeqCst) == self.generation
             && Instant::now() < self.deadline
@@ -345,6 +357,7 @@ pub(crate) struct State {
     inner: Mutex<Inner>,
     fence: Arc<Fence>,
     pending: Mutex<Pending>,
+    pub(crate) navigation: Arc<navigation::State>,
 }
 impl State {
     pub(super) fn request_attempt(&self, selected: bool) -> u32 {
@@ -436,6 +449,7 @@ impl State {
             .and_then(|a| a.reason)
             .or(s.status.termination_reason)
             .is_some_and(ArmReason::needs_rescan);
+        s.status.navigation = self.navigation.snapshot();
         s.status.clone()
     }
     pub(super) fn begin(
@@ -487,6 +501,7 @@ impl State {
         Ok(Ticket {
             fence: self.fence.clone(),
             generation,
+            navigation: None,
             started,
             deadline,
             attempt_id: s.status.last_attempt.as_ref().map_or(0, |a| a.id),
@@ -494,6 +509,7 @@ impl State {
     }
     pub(super) fn invalidate(&self) {
         self.fence.invalidate();
+        self.navigation.invalidate();
         if let Ok(mut p) = self.pending.lock() {
             p.queue.clear();
         }
@@ -505,6 +521,7 @@ impl State {
     }
     pub(super) fn barrier(&self) {
         self.fence.barrier();
+        self.navigation.barrier();
     }
     fn phase(&self, token: &Ticket, phase: ShortcutPhase, opened: bool) {
         if let Ok(mut s) = self.inner.lock() {
@@ -552,6 +569,7 @@ impl State {
                 return;
             }
             self.fence.invalidate();
+            self.navigation.invalidate();
             if let Ok(mut pending) = self.pending.lock() {
                 pending.queue.clear();
             }
@@ -568,6 +586,18 @@ impl State {
         reason: ArmReason,
     ) {
         self.fence.invalidate();
+        self.navigation.invalidate();
+        if let Ok(mut s) = self.inner.lock() {
+            if s.status.generation == token.generation {
+                s.status.opened = false; // observe already dropped/drained the reader.
+                if s.status.phase.owns_reader() {
+                    s.status.phase = ShortcutPhase::Disarming;
+                }
+                if s.status.termination_reason.is_none() {
+                    Self::terminate_attempt(&mut s.status, reason);
+                }
+            }
+        }
         self.barrier();
         if let Ok(mut p) = self.pending.lock() {
             p.queue.clear();
@@ -706,6 +736,7 @@ fn observe(
     state.phase(token, ShortcutPhase::WaitingReports, true);
     notify(state.snapshot());
     let mut edges = Edges::default();
+    let mut nav_edges = navigation::Edges::default();
     let mut buffer = [0u8; 65];
     let mut emitted = Instant::now();
     let result = (|| {
@@ -722,6 +753,20 @@ fn observe(
                         break;
                     }
                     let result = edges.report(token.elapsed(), &buffer);
+                    if result.is_ok() {
+                        let context = if edges.phase == ShortcutPhase::Armed {
+                            state.navigation.context()
+                        } else {
+                            None
+                        };
+                        if let Ok(word) = reports::correlation_word(&buffer) {
+                            if let Some(action) = nav_edges.report(token.elapsed(), context, word) {
+                                let mut command = token.clone();
+                                command.navigation = context.map(|epoch| (epoch, action));
+                                let _ = dispatch(command);
+                            }
+                        }
+                    }
                     buffer.fill(0);
                     match result {
                         Ok(toggle) => toggle,
@@ -1060,6 +1105,7 @@ mod worker_tests {
             expected_generation: generation,
             consent: true,
             reviewed_configuration: true,
+            navigation: false,
         };
         let actions = Arc::new(AtomicUsize::new(0));
         let dispatch: Dispatch = {
@@ -1193,6 +1239,7 @@ mod worker_tests {
                         expected_generation: 0,
                         consent: true,
                         reviewed_configuration: true,
+                        navigation: false,
                     },
                     Arc::new(|_| {}),
                     Arc::new(|_| Ok(())),
@@ -1243,6 +1290,7 @@ mod worker_tests {
             expected_generation: generation,
             consent: true,
             reviewed_configuration: true,
+            navigation: false,
         }
     }
     fn arm(d: &Diagnostics, r: ShortcutArmRequest) -> Result<ShortcutStatus, String> {
@@ -1451,4 +1499,98 @@ mod worker_tests {
         assert!(a.hid_handle_opened);
         assert!(!a.compatible_reports_observed);
     }
+    #[test]
+    fn opted_in_navigation_and_toggle_use_one_reader_and_errors_stop_both() {
+        let word = Arc::new(AtomicU64::new(0));
+        let error = Arc::new(AtomicU32::new(0));
+        let opens = Arc::new(AtomicUsize::new(0));
+        let drops = Arc::new(AtomicUsize::new(0));
+        let d = Arc::new(Diagnostics::new(
+            Arc::new(Backend {
+                word: word.clone(),
+                error: error.clone(),
+                opens: opens.clone(),
+                drops: drops.clone(),
+            }),
+            Duration::from_secs(5),
+        ));
+        let id = d.rescan(DiagnosticsMode::Native).unwrap().candidates[0]
+            .id
+            .clone();
+        d.data.lock().unwrap().source = InputSource::Windows;
+        let navigation = d.navigation();
+        navigation.sync(1, true);
+        let actions = Arc::new(Mutex::new(Vec::new()));
+        let toggles = Arc::new(AtomicUsize::new(0));
+        let dispatch: Dispatch = {
+            let d = d.clone();
+            let actions = actions.clone();
+            let toggles = toggles.clone();
+            Arc::new(move |ticket| {
+                assert!(d.shortcut.inner.try_lock().is_ok());
+                if ticket.valid() {
+                    if let Some((_, action)) = ticket.navigation {
+                        actions.lock().unwrap().push(action);
+                    } else {
+                        toggles.fetch_add(1, Ordering::SeqCst);
+                    }
+                }
+                Ok(())
+            })
+        };
+        let mut r = request(&id, 0);
+        r.navigation = true;
+        d.arm_shortcut(r, Arc::new(|_| {}), dispatch).unwrap();
+        until(|| d.shortcut_status().unwrap().phase == ShortcutPhase::Armed);
+        word.store(1 << 8, Ordering::SeqCst);
+        until(|| actions.lock().unwrap().len() == 1);
+        std::thread::sleep(Duration::from_millis(60));
+        assert_eq!(actions.lock().unwrap().len(), 1);
+        word.store(0, Ordering::SeqCst);
+        std::thread::sleep(Duration::from_millis(25));
+        word.store(1 << 7, Ordering::SeqCst);
+        until(|| actions.lock().unwrap().len() == 2);
+        navigation.sync(2, false);
+        word.store(0, Ordering::SeqCst);
+        std::thread::sleep(Duration::from_millis(25));
+        word.store(1 << 8, Ordering::SeqCst);
+        std::thread::sleep(Duration::from_millis(25));
+        navigation.sync(3, true);
+        std::thread::sleep(Duration::from_millis(25));
+        assert_eq!(actions.lock().unwrap().len(), 2);
+        word.store(0, Ordering::SeqCst);
+        std::thread::sleep(Duration::from_millis(25));
+        word.store(1 << 5, Ordering::SeqCst);
+        until(|| actions.lock().unwrap().len() == 3);
+        assert_eq!(
+            *actions.lock().unwrap(),
+            vec![
+                navigation::NavigationAction::Previous,
+                navigation::NavigationAction::Activate,
+                navigation::NavigationAction::Back
+            ]
+        );
+        word.store((1u64 << 50) | (1 << 13), Ordering::SeqCst);
+        until(|| toggles.load(Ordering::SeqCst) == 1);
+        assert!(d.start(&id, Arc::new(|_| {})).is_err());
+        assert_eq!(opens.load(Ordering::SeqCst), 1);
+        error.store(4, Ordering::SeqCst);
+        until(|| {
+            let s = d.shortcut_status().unwrap();
+            s.phase == ShortcutPhase::Error && !s.worker_running
+        });
+        assert!(!navigation.snapshot().configured);
+        assert_eq!(drops.load(Ordering::SeqCst), 1);
+        d.shortcut_disarm(1).unwrap();
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn test_navigation_ticket(expired: bool) -> (Arc<State>, Ticket) {
+    let s = Arc::new(State::default());
+    let mut t = s.begin(0, &tests::candidate()).unwrap();
+    if expired {
+        t.deadline = Instant::now() - Duration::from_millis(1);
+    }
+    (s, t)
 }

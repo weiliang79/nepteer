@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getTelemetry } from "@/lib/telemetry";
-import type { Snapshot } from "@/lib/bindings";
+import type { Snapshot, Status, NavigationAction } from "@/lib/bindings";
 import {
   hideQuickAccess,
   quickAccessStatus,
   onQuickAccessChange,
   onProviderChange,
+  onQamNavigation,
+  claimQamNavigation,
+  completeQamNavigation,
 } from "@/lib/quick-access";
 import { loadPreferences } from "@/lib/preferences";
 import { version } from "@/lib/app-info";
@@ -14,7 +17,7 @@ const items = {
   Performance:
     "Power profiles and sensor controls are planned. No TDP, clocks or fan settings can be changed here.",
   Controller:
-    "Controller navigation and remapping remain planned. The physical ⋯ shortcut can be armed only in the main dashboard; this panel cannot manage HID readers.",
+    "Desktop-only controller navigation can be enabled when arming in the main dashboard for the reviewed X360 configuration. This panel cannot manage HID readers or remap controllers.",
   Display:
     "Display controls are planned. This preview does not change resolution, refresh rate or fullscreen modes.",
   Settings:
@@ -30,6 +33,62 @@ export default function QuickAccess() {
   const close = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
   const sequence = useRef(0);
+  const nativeStatus = useRef<Status | null>(null);
+  const navBusy = useRef(false);
+  const pendingNavigation = useRef<
+    import("@/lib/bindings").NavigationEvent | null
+  >(null);
+  const lastNavigation = useRef<
+    import("@/lib/bindings").NavigationRequest | null
+  >(null);
+  const activeNavigation = useRef<{ hide: boolean } | null>(null);
+  const sectionRef = useRef<keyof typeof items | null>(null);
+  const refreshButton = useRef<HTMLButtonElement>(null);
+  function changeSection(value: keyof typeof items | null) {
+    sectionRef.current = value;
+    setSection(value);
+  }
+  function navigate(action: NavigationAction) {
+    const buttons = Array.from(
+      panel.current?.querySelectorAll<HTMLButtonElement>(
+        "button:not(:disabled)",
+      ) ?? [],
+    );
+    if (!buttons.length) return;
+    const focused = buttons.findIndex(
+      (button) => button === document.activeElement,
+    );
+    const index = focused < 0 ? 0 : focused;
+    if (action === "previous" || action === "next") {
+      buttons[
+        (index + (action === "next" ? 1 : -1) + buttons.length) % buttons.length
+      ].focus();
+    } else if (action === "activate") {
+      if (focused < 0) buttons[0].focus();
+      else buttons[index].click();
+    } else if (action === "back") {
+      const current = sectionRef.current;
+      if (current) {
+        changeSection(null);
+        panel.current
+          ?.querySelector<HTMLButtonElement>(
+            `button[data-section="${current}"]`,
+          )
+          ?.focus();
+      } else void hide();
+    }
+    // Left/Right have no adjustable control in this interface.
+  }
+  const navigateRef = useRef(navigate);
+  useEffect(() => {
+    navigateRef.current = navigate;
+  });
+  useEffect(() => {
+    if (loading && document.activeElement === refreshButton.current)
+      panel.current
+        ?.querySelector<HTMLButtonElement>("button[data-section]")
+        ?.focus();
+  }, [loading]);
   const alive = useRef(true);
   async function refresh() {
     const request = ++sequence.current;
@@ -47,6 +106,10 @@ export default function QuickAccess() {
     }
   }
   async function hide() {
+    if (activeNavigation.current) {
+      activeNavigation.current.hide = true;
+      return;
+    }
     try {
       await hideQuickAccess();
     } catch (reason) {
@@ -75,28 +138,125 @@ export default function QuickAccess() {
       close.current?.focus();
       void refresh();
     };
-    // Subscribe before querying so an open before webview readiness cannot be lost.
+    const acceptStatus = (status: Status) => {
+      const before = nativeStatus.current;
+      if (before && status.epoch < before.epoch) return;
+      nativeStatus.current = status;
+      setHint(status.shortcutHint);
+      setNotice(status.notice);
+      if (status.visible && (!before?.visible || before.epoch !== status.epoch))
+        opened();
+      if (!status.visible) sequence.current += 1;
+    };
+    // All navigation is revalidated by native claim, not by a React visibility flag.
+    const navigation = async (
+      event: import("@/lib/bindings").NavigationEvent,
+    ): Promise<void> => {
+      if (disposed) return;
+      const last = lastNavigation.current;
+      if (
+        last &&
+        (event.request.generation < last.generation ||
+          (event.request.generation === last.generation &&
+            event.request.sequence <= last.sequence))
+      )
+        return;
+      if (navBusy.current) {
+        const pending = pendingNavigation.current?.request;
+        if (
+          !pending ||
+          event.request.generation > pending.generation ||
+          (event.request.generation === pending.generation &&
+            event.request.sequence > pending.sequence)
+        )
+          pendingNavigation.current = event;
+        return;
+      }
+      lastNavigation.current = event.request;
+      navBusy.current = true;
+      let lease: { hide: boolean } | null = null;
+      const started = performance.now();
+      try {
+        // Resynchronize native status if an open notification was delayed or the webview just mounted.
+        acceptStatus(await quickAccessStatus());
+        if (
+          disposed ||
+          !nativeStatus.current?.visible ||
+          nativeStatus.current.epoch !== event.request.epoch
+        )
+          return;
+        const claim = await claimQamNavigation(event.request);
+        if (
+          !claim ||
+          disposed ||
+          claim.event.request.generation !== event.request.generation ||
+          claim.event.request.sequence !== event.request.sequence ||
+          claim.event.request.epoch !== nativeStatus.current?.epoch ||
+          !nativeStatus.current.visible ||
+          document.visibilityState === "hidden" ||
+          !document.hasFocus() ||
+          performance.now() - started >= claim.validForMs
+        )
+          return;
+        lease = { hide: false };
+        activeNavigation.current = lease;
+        navigateRef.current(claim.event.action);
+      } catch {
+        if (!disposed)
+          setError(
+            "Controller navigation unavailable. Use keyboard/touch, then Disarm and rearm manually.",
+          );
+      } finally {
+        activeNavigation.current = null;
+        // Native still permits only one claimed delivery. Do not hold the client guard
+        // across the completion response: the next native offer may arrive before it.
+        navBusy.current = false;
+        const pending = pendingNavigation.current;
+        pendingNavigation.current = null;
+        const completion = completeQamNavigation(
+          event.request,
+          lease?.hide ?? false,
+        );
+        if (pending) void navigation(pending);
+        // Complete even after a lost claim response/unmount: release any granted native lease.
+        try {
+          await completion;
+        } catch {
+          if (!disposed)
+            setError(
+              "Navigation completion unavailable; reader cleanup may remain pending. Do not assume Disarm completed.",
+            );
+        }
+      }
+    };
     void (async () => {
-      for (const subscription of [
+      for (const subscribe of [
         () =>
           onQuickAccessChange((status) => {
-            if (disposed) return;
-            setHint(status.shortcutHint);
-            setNotice(status.notice);
-            if (status.visible) opened();
+            if (!disposed) acceptStatus(status);
           }),
         () =>
           onProviderChange(() => {
             void quickAccessStatus()
               .then((status) => {
-                if (status.visible && !disposed) opened();
+                if (!disposed) {
+                  acceptStatus(status);
+                  if (status.visible) {
+                    preferences();
+                    void refresh();
+                  }
+                }
               })
               .catch((reason) => {
                 if (!disposed) setError(String(reason));
               });
           }),
+        () =>
+          onQamNavigation((event) => {
+            void navigation(event);
+          }),
       ]) {
-        const stop = await subscription();
+        const stop = await subscribe();
         if (disposed) {
           stop();
           return;
@@ -104,10 +264,7 @@ export default function QuickAccess() {
         stops.push(stop);
       }
       const status = await quickAccessStatus();
-      if (disposed) return;
-      setHint(status.shortcutHint);
-      setNotice(status.notice);
-      if (status.visible) opened();
+      if (!disposed) acceptStatus(status);
     })().catch((reason) => {
       if (!disposed) setError(String(reason));
     });
@@ -210,6 +367,7 @@ export default function QuickAccess() {
         </p>
       ))}
       <Button
+        ref={refreshButton}
         variant="outline"
         onClick={() => void refresh()}
         disabled={loading}
@@ -221,10 +379,13 @@ export default function QuickAccess() {
           <div key={name}>
             <Button
               variant="ghost"
+              data-section={name}
               aria-expanded={section === name}
               onClick={() =>
-                setSection(
-                  section === name ? null : (name as keyof typeof items),
+                changeSection(
+                  sectionRef.current === name
+                    ? null
+                    : (name as keyof typeof items),
                 )
               }
             >
@@ -239,6 +400,11 @@ export default function QuickAccess() {
         ))}
       </nav>
       <footer className="qam-footer">
+        <p>
+          Desktop testing only. Controller navigation observes physical buttons
+          without suppressing them. Games or other controller utilities may
+          still receive the same input.
+        </p>
         <p>{hint}</p>
         {notice && <p role="status">{notice}</p>}
         <span>v{version} · READ-ONLY PREVIEW</span>

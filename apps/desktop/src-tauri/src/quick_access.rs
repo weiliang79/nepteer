@@ -15,6 +15,7 @@ pub const SHORTCUT_HINT: &str = "Ctrl + Alt + Q";
 #[serde(rename_all = "camelCase")]
 pub struct Status {
     pub visible: bool,
+    pub epoch: u32,
     pub shortcut_available: bool,
     pub shortcut_hint: String,
     pub notice: Option<String>,
@@ -34,6 +35,8 @@ pub enum Action {
 /// Native visibility is always queried. Only focus context and startup diagnostics are retained.
 #[derive(Default)]
 pub struct Coordinator {
+    epoch: u32,
+    observed: Option<(bool, bool)>,
     previous: Option<isize>,
     focus_established: bool,
     shortcut_available: bool,
@@ -65,19 +68,25 @@ impl Coordinator {
     }
     fn status(&mut self, backend: &impl Backend) -> Result<Status, String> {
         let visible = backend.visible()?;
+        let observed = (backend.exists(), visible);
+        if self.observed != Some(observed) {
+            self.epoch = self.epoch.saturating_add(1);
+            self.observed = Some(observed);
+        }
         if !visible {
             self.previous = None;
             self.focus_established = false;
         }
         Ok(Status {
             visible,
+            epoch: self.epoch,
             shortcut_available: self.shortcut_available,
             shortcut_hint: SHORTCUT_HINT.into(),
             notice: self.notice.clone(),
         })
     }
     fn apply(&mut self, action: Action, backend: &mut impl Backend) -> Result<Status, String> {
-        let visible = backend.visible()?;
+        let visible = self.status(backend)?.visible;
         match action {
             Action::Show if !visible => self.show(backend)?,
             Action::Toggle if !visible => self.show(backend)?,
@@ -95,6 +104,7 @@ impl Coordinator {
         self.previous = backend.capture();
         self.focus_established = false;
         if !backend.exists() {
+            self.epoch = self.epoch.saturating_add(1);
             backend.create()?;
         }
         backend.place()?;
@@ -194,7 +204,9 @@ impl<R: Runtime> Backend for Native<'_, R> {
         } else {
             None
         };
-        tauri::WebviewWindowBuilder::new(
+        let navigation = self.app.state::<crate::neptune::Diagnostics>().navigation();
+        let instance = navigation.new_window();
+        let window = tauri::WebviewWindowBuilder::new(
             self.app,
             LABEL,
             tauri::WebviewUrl::App("index.html?qam".into()),
@@ -212,6 +224,11 @@ impl<R: Runtime> Backend for Native<'_, R> {
         .background_color(tauri::webview::Color(25, 33, 31, 255))
         .build()
         .map_err(|e| e.to_string())?;
+        window.on_window_event(move |event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                navigation.destroyed(instance);
+            }
+        });
         Ok(())
     }
     fn place(&self) -> Result<(), String> {
@@ -304,30 +321,116 @@ fn perform_inner<R: Runtime>(
     action: Action,
     ticket: Option<&crate::neptune::shortcut::Ticket>,
 ) -> Result<Option<Status>, String> {
-    let state = app.state::<State>();
-    let mut coordinator = state
-        .lock()
-        .map_err(|_| "Quick Access coordinator is unavailable.")?;
-    // Acquire the native QAM coordinator first, then fence the physical request immediately
-    // before applying it. No HID reader/status lock is held during native window operations.
-    let _permit = if let Some(ticket) = ticket {
-        let Some(permit) = ticket.enter() else {
-            return Ok(None);
+    let navigation = app.state::<crate::neptune::Diagnostics>().navigation();
+    loop {
+        if !matches!(action, Action::Query) {
+            navigation.barrier();
+        }
+        let state = app.state::<State>();
+        let mut coordinator = state
+            .lock()
+            .map_err(|_| "Quick Access coordinator is unavailable.")?;
+        if !matches!(action, Action::Query) && navigation.claimed() {
+            drop(coordinator);
+            continue;
+        }
+        let _permit = if let Some(ticket) = ticket {
+            let Some(permit) = ticket.enter() else {
+                return Ok(None);
+            };
+            Some(permit)
+        } else {
+            None
         };
-        Some(permit)
+        // No new claim can pass the QAM coordinator while a visibility action is applied.
+        let before = coordinator.epoch;
+        let result = coordinator.apply(action, &mut Native { app });
+        if let Ok(status) = &result {
+            navigation.sync(status.epoch, status.visible);
+            if status.epoch != before {
+                let _ = app.emit_to(LABEL, EVENT, status);
+            }
+        } else if let Err(error) = &result {
+            coordinator.notice = Some(error.clone());
+        }
+        return result.map(Some);
+    }
+}
+
+pub(crate) fn queue_navigation<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    navigation: &std::sync::Arc<crate::neptune::navigation::State>,
+    ticket: crate::neptune::shortcut::Ticket,
+) {
+    if !navigation.enqueue(ticket) {
+        return;
+    }
+    let app = app.clone();
+    let navigation = navigation.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        while let Some(event) = navigation.offer() {
+            let delivered = (|| -> Result<(), String> {
+                let state = app.state::<State>();
+                let mut coordinator = state.lock().map_err(|_| "QAM unavailable")?;
+                let status = coordinator.status(&Native { app: &app })?;
+                navigation.sync(status.epoch, status.visible);
+                if !status.visible || status.epoch != event.request.epoch {
+                    return Ok(());
+                }
+                app.emit_to(LABEL, crate::neptune::navigation::EVENT, &event)
+                    .map_err(|_| "Navigation delivery failed".into())
+            })();
+            navigation.wait_delivery(&event.request, delivered.is_err());
+        }
+    });
+}
+
+pub(crate) fn claim_navigation<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    request: &crate::neptune::navigation::NavigationRequest,
+) -> Result<Option<crate::neptune::navigation::NavigationClaim>, String> {
+    let state = app.state::<State>();
+    let mut coordinator = state.lock().map_err(|_| "QAM unavailable")?;
+    let status = coordinator.status(&Native { app })?;
+    let navigation = app.state::<crate::neptune::Diagnostics>().navigation();
+    navigation.sync(status.epoch, status.visible);
+    Ok(if status.visible && status.epoch == request.epoch {
+        navigation.claim(request)
     } else {
         None
-    };
-    let before = Native { app }.visible()?;
-    let result = coordinator.apply(action, &mut Native { app });
-    if let Ok(status) = &result {
-        if status.visible != before {
-            let _ = app.emit_to(LABEL, EVENT, status);
+    })
+}
+
+pub(crate) fn complete_navigation<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    request: &crate::neptune::navigation::NavigationRequest,
+    hide: bool,
+) -> Result<(), String> {
+    let navigation = app.state::<crate::neptune::Diagnostics>().navigation();
+    let state = app.state::<State>();
+    let mut coordinator = match state.lock() {
+        Ok(coordinator) => coordinator,
+        Err(_) => {
+            // The trusted view reported execution complete. Release its exact lease
+            // even if window inspection failed; never turn that failure into Hide.
+            navigation.complete(request);
+            return Err("QAM coordinator unavailable; navigation completed without Hide.".into());
         }
-    } else if let Err(error) = &result {
-        coordinator.notice = Some(error.clone());
+    };
+    let status = match coordinator.status(&Native { app }) {
+        Ok(status) => status,
+        Err(_) => {
+            navigation.complete(request);
+            return Err("QAM visibility unavailable; navigation completed without Hide.".into());
+        }
+    };
+    navigation.sync(status.epoch, status.visible);
+    if navigation.complete(request) && hide {
+        let status = coordinator.apply(Action::Hide, &mut Native { app })?;
+        navigation.sync(status.epoch, status.visible);
+        let _ = app.emit_to(LABEL, EVENT, status);
     }
-    result.map(Some)
+    Ok(())
 }
 
 pub fn queue<R: Runtime>(app: &tauri::AppHandle<R>, action: Action) {
@@ -368,6 +471,10 @@ pub fn close_behavior(label: &str) -> &'static str {
 
 pub fn events<R: Runtime>(window: &tauri::Window<R>, event: &tauri::WindowEvent) {
     match event {
+        tauri::WindowEvent::Destroyed if window.label() == LABEL => {
+            // Reconcile actual state; a late old-window event must not advance a replacement epoch.
+            queue(window.app_handle(), Action::Query);
+        }
         tauri::WindowEvent::CloseRequested { api, .. }
             if close_behavior(window.label()) == "hide" =>
         {
@@ -614,5 +721,29 @@ mod tests {
         assert!(!state.apply(Action::Blur, &mut window).unwrap().visible);
         assert!(state.apply(Action::Toggle, &mut window).unwrap().visible);
         assert_eq!(window.creates, 1);
+    }
+    #[test]
+    fn native_epochs_change_only_with_visibility_or_recreation_not_redundant_notifications() {
+        let mut state = Coordinator::default();
+        let mut w = Fake::default();
+        let hidden = state.apply(Action::Query, &mut w).unwrap();
+        let open = state.apply(Action::Show, &mut w).unwrap();
+        assert!(open.epoch > hidden.epoch);
+        assert_eq!(
+            state.apply(Action::Query, &mut w).unwrap().epoch,
+            open.epoch
+        );
+        assert_eq!(state.apply(Action::Show, &mut w).unwrap().epoch, open.epoch);
+        let closed = state.apply(Action::Hide, &mut w).unwrap();
+        assert!(closed.epoch > open.epoch);
+        let reopen = state.apply(Action::Toggle, &mut w).unwrap();
+        assert!(reopen.epoch > closed.epoch);
+        w.visible.set(false); // External hide then immediate Show must still fence the prior opening.
+        let external = state.apply(Action::Show, &mut w).unwrap();
+        assert!(external.epoch > reopen.epoch);
+        w.exists = false;
+        state.apply(Action::Query, &mut w).unwrap();
+        let recreated = state.apply(Action::Show, &mut w).unwrap();
+        assert!(recreated.epoch > external.epoch);
     }
 }

@@ -17,7 +17,7 @@ capturedAtUnixMs: number, device: Device, capabilities: Capabilities, batteryPer
  * Sanitized, non-identifying diagnostics for partial read failures.
  */
 issues: Array<string>, cpuTemperatureCelsius: Celsius | null, gpuTemperatureCelsius: Celsius | null, fanRpm: Rpm | null, };
-export type Status = { visible: boolean, shortcutAvailable: boolean, shortcutHint: string, notice: string | null, };
+export type Status = { visible: boolean, epoch: number, shortcutAvailable: boolean, shortcutHint: string, notice: string | null, };
 export type DiagnosticsMode = "native" | "simulated";
 export type InputSource = "windows" | "simulated" | "unsupported";
 export type DiscoveryPhase = "not_scanned" | "scanning" | "candidates" | "not_found" | "unsupported" | "error";
@@ -63,5 +63,11 @@ export type ArmStage = "request_received" | "ownership_check" | "candidate_valid
 export type ArmOutcome = "pending" | "active" | "rejected" | "terminated";
 export type ArmReason = "monitor_active" | "probe_active" | "shortcut_already_active" | "stale_generation" | "candidate_not_found" | "candidate_ineligible" | "unsupported_source" | "consent_required" | "access_denied" | "device_busy" | "disconnected" | "hid_open_failed" | "worker_spawn_failed" | "read_failed" | "unsupported_format" | "no_compatible_reports" | "session_expired" | "user_disarmed" | "shutdown" | "unexpected_termination" | "queue_full" | "dispatch_failed" | "internal_error";
 export type ArmAttempt = { id: number, stage: ArmStage, outcome: ArmOutcome, reason: ArmReason | null, candidateSelected: boolean, candidateEligible: boolean | null, hidHandleOpened: boolean, compatibleReportsObserved: boolean, };
-export type ShortcutStatus = { generation: number, revision: number, phase: ShortcutPhase, remainingMs: number, opened: boolean, source: InputSource, readerOwner: ReaderOwner, interface: ProbeInterface | null, issue: ShortcutIssue | null, lastAttempt: ArmAttempt | null, terminationReason: ArmReason | null, workerRunning: boolean, monitorPhase: MonitorPhase, manualRescanRequired: boolean, };
-export type ShortcutArmRequest = { candidateId: string, expectedGeneration: number, consent: boolean, reviewedConfiguration: boolean, };
+export type ShortcutStatus = { generation: number, revision: number, phase: ShortcutPhase, remainingMs: number, opened: boolean, source: InputSource, readerOwner: ReaderOwner, interface: ProbeInterface | null, issue: ShortcutIssue | null, lastAttempt: ArmAttempt | null, terminationReason: ArmReason | null, workerRunning: boolean, monitorPhase: MonitorPhase, manualRescanRequired: boolean, navigation: NavigationDiagnostics, };
+export type ShortcutArmRequest = { candidateId: string, expectedGeneration: number, consent: boolean, reviewedConfiguration: boolean, navigation: boolean, };
+export type NavigationAction = "previous" | "next" | "left" | "right" | "activate" | "back";
+export type NavigationRequest = { generation: number, epoch: number, sequence: number, };
+export type NavigationEvent = { request: NavigationRequest, action: NavigationAction, };
+export type NavigationClaim = { event: NavigationEvent, validForMs: number, };
+export type NavigationIssue = "overflow" | "delivery_failed" | "delivery_timeout";
+export type NavigationDiagnostics = { configured: boolean, pending: number, delivering: boolean, issue: NavigationIssue | null, };

@@ -1,3 +1,66 @@
+# Step 5C.2 — Read-only desktop QAM controller navigation
+
+Branch `feat/qam-controller-navigation`, based on merged main `f638bdd23981aceaf523beaa4e805f387abeb223` (PR #7). Source/instructions and Step 5C.1 proposal were inspected before edits. No merge is authorized. Package version remains 0.5.0-alpha.2; artifact SHA identifies this new navigation build. Historical handoffs below retain the evidence/status at the time they were written.
+
+## Evidence / compatibility
+
+User-provided LCD/Windows 11 results in manually reported Steam Deck Tools **X360**, Steam running/Input unknown: eight D-pad positives/two per direction, 40/40 cycles, sixteen idle/opposite/A/B negatives with zero nominated false edges, no incompatible/malformed frames/gaps/unexpected known/unknown changes in clean positives. Scoped reviewed bits are Up8/Down11/Left10/Right9/A7/B5/⋯50, on native 28DE:1205/interface2/FFFF:0001/descriptor+actual65/deck_v1_zero_prefixed65. No model/firmware/mode detection or universal compatibility claim. This evidence supports implementation; **new navigation hardware acceptance is pending**.
+
+## Implemented architecture / changed files
+
+- New `neptune/navigation.rs`: pure per-control released edge machine, typed six-action/event/request/claim/diagnostic DTOs, bounded queue/one in-flight claim, pending-age deadline, safe issues, logical completion barrier and instance-scoped destruction cleanup. Tests exercise mappings/holds/gaps/combinations, epochs/generation/expiry, overflow/timeouts, partial failures, disarm barrier and recreation.
+- `shortcut.rs`/`neptune/mod.rs`: same existing native observer/read handle parses navigation alongside unchanged ⋯ logic. Request `navigation` defaults false for old callers. Existing dispatch tags private tickets for navigation versus Toggle; no general controller stream. The diagnostic worker stays separate/mutually exclusive with five-minute/probe thirty-second limits. Shortcut stays thirty minutes. Cleanup reports Disarming while an already-granted delivery is outstanding, after dropping/draining the reader; it does not claim success early. Synthetic integration proves one backend open handles both action routes and read error ends both.
+- `quick_access.rs`: authoritative actual visibility/existence epoch, private window-instance destruction callback, bounded navigation drainer and native claim/completion/Hide coordination. All keyboard/dashboard/physical/blur/Close/Escape lifecycle paths retain existing focus/geometry behavior. Redundant visibility does not create an epoch. Old renderer callbacks cannot release a new renderer's claim.
+- `lib.rs`, `build.rs`, QAM capability, two generated permission files: QAM-only local `qam_navigation_claim` and `qam_navigation_complete`; main/other/remote denied, QAM still denied HID management. No CSP/navigation/shell/filesystem or Windows manifest broadening. Generated bindings extended explicitly, not handwritten.
+- `QuickAccess.tsx`/`lib/quick-access.ts`: typed subscription, native status/claim validation and bounded client ordering, direct local focus/button behavior and completion even after stale response/unmount. No synthesized OS keys. Close/Back during navigation defer native Hide until completion so the action cannot wait on its own lease. Redundant visible/provider events no longer reset focus; disabled Refresh has deterministic fallback. Tests cover the actual React handlers, duplicates/late delivery, queued response order, hidden/reopen, cleanup and paused response.
+- `PhysicalQuickAccess.tsx`/`lib/physical-shortcut.ts`: **reviewed session mode** selector, default Desktop (existing ⋯ only) or explicitly X360 (desktop navigation). Changing mode resets both existing acknowledgments. No tool configuration/detection or persisted opt-in. Safe copied diagnostics add only configured/pending/delivering/fixed issue, never actions/history. Existing test DTOs updated and X360 opt-in tested.
+- AGENTS/README/current architecture/safety/research/Windows checklist and CI feature-branch trigger updated. No dependency added, no HID/telemetry implementation changed.
+
+## Actual semantics / lifecycle safety
+
+Up/Down wrap Close → enabled Refresh → Performance → Controller → Display → Settings. A activates only the actual focused enabled button; invalid focus is focused safely before activation rather than clicked blindly. B collapses a section/restores its button focus, otherwise native Hide. Left/Right are no-ops. Initial holds, reopening while held, >1.5s gaps, diagonals and multiple navigation controls require released baselines; no repeat. X/Y/Steam/⋯ held suppress navigation conservatively. Original ⋯ baseline/cooldown/behavior with other buttons held is unchanged. Normal diagnostic native states/history and verification flags are unchanged.
+
+Wire offer: `qam-navigation` only to quick-access, `{ request: {generation, epoch, sequence}, action }`. Native claim checks actual visibility/current epoch/outstanding request/session fence/opt-in/deadline before authorizing one action. Four pending plus one delivery; 500ms from enqueue including queue time. Frontend checks native-derived current epoch, document visibility/focus, exact tokens and elapsed client monotonic request time before applying local handlers. One bounded pending client offer handles completion-reply ordering without an event backlog. Complete acknowledges even discarded or unmounted work. Native performs requested Hide only when the same session/epoch/deadline remains valid; window-inspection failure releases completion without Hide.
+
+Disarm/error/expiry invalidates new/unclaimed work immediately. Native hide/show/toggle and successful reader cleanup wait for already-granted delivery acknowledgment outside coordinator/reader/status locks. QAM completion does not take reader operations mutex, preventing a join/ack cycle. Old epoch/generation/sequence/delivery failures are ignored, and destruction cleanup is scoped to the actual window instance. No pending input is replayed in a fresh opening or later session.
+
+**Deviation/tradeoff from the proposal:** grant lifetime is not force-revoked at 500ms. A paused frontend might otherwise act after successful cleanup. An unresponsive but still-live renderer or failed completion transport can therefore delay Hide/disarm/shutdown; main status stays Disarming/delivering until completion/destruction. No false Disarmed result, forced thread kill, early I/O free, renderer watchdog or hard cleanup deadline. Existing broken-driver cancellation delay remains. This is an explicit native failure-mode review/hardware acceptance limitation. Healthy source/renderer shutdown is covered synthetically; actual OS focus/transport/HID behavior is not proven by tests.
+
+Delivery overflow/failure/timeout disables only navigation for the current generation until explicit Disarm/rearm. No reconnect/retry storm or interface/source fallback. Keyboard/touch/dashboard and valid ⋯ Toggle remain available during ordinary navigation failures; an outstanding granted claim can defer window operations until completion, as described above. A/B/Steam/X/Y general shortcuts, controller emulation/remapping/input injection, exclusive access, configuration/writes, drivers/admin/services and game/anti-cheat hooks remain absent. Navigation observes shared input; it does not isolate a game. Test with **no active game**.
+
+## Validation / remaining hardware work
+
+Local validation passed on macOS arm64 (Node 24.14.1, pnpm 12.21.0, Rust 1.100.0):
+
+| Command                                   | Actual result                                                   |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| `git fetch origin`                        | Passed; branch from requested merged main                       |
+| `pnpm bindings`                           | Passed; explicit generated DTO update                           |
+| `pnpm format` / `pnpm format:check`       | Passed; Prettier/Rustfmt                                        |
+| `pnpm typecheck` / `pnpm lint`            | Passed; zero ESLint warnings                                    |
+| `pnpm test`                               | 74 passed in 6 files, including 13 QAM and 19 shortcut UI cases |
+| `pnpm bindings:check`                     | Passed; no-write drift check                                    |
+| `pnpm rust:check`                         | Passed                                                          |
+| `pnpm rust:test`                          | 74 passed, one intentionally ignored explicit generator         |
+| `pnpm rust:lint`                          | Passed; all-target Clippy with -D warnings                      |
+| `pnpm build:web`                          | Passed; production Vite bundle                                  |
+| `pnpm build --bundles app`                | Passed; native macOS executable and app bundle                  |
+| `pnpm licenses:rust` / `pnpm licenses:js` | Passed; dependency graph unchanged                              |
+| `git diff --check`                        | Passed                                                          |
+
+Native tests add edge/baseline/combination semantics, bounded age/queue/partial-failure/instance/disarm barriers, actual single-reader integration, native epoch coordination and QAM-only IPC ACL checks. Frontend tests exercise actual internal focus/activation/Back/Close, disabled Refresh, Left/Right no-op, native status ordering, stale/paused/duplicate offers, completion-reply ordering, cleanup, provider/theme and X360 consent. All previous regression suites remain enabled. Initial DTO fixture/import and React ref-lint errors were corrected, not suppressed. No check or capability was disabled to make tests pass.
+
+Implementation commit `8d3cb7450c260d94e2b1e3acecde7bcae7a53823`: [Desktop CI run 45048797614](https://github.com/weiliang79/nepteer/actions/runs/45048797614) passed on both platforms.
+
+- [macOS job](https://github.com/weiliang79/nepteer/actions/runs/45048797614/job/137289141425): validation, binding drift and actual macOS app bundle passed.
+- [Windows job](https://github.com/weiliang79/nepteer/actions/runs/45048797614/job/137289141242): validation, binding drift, MSVC x86_64/NSIS, output/manifest verification and uploads passed.
+- Both logs confirm 74 frontend and 74 Rust tests passed, one ignored explicit generator and `bindings_are_current` passed. All existing checks remained enabled.
+- [Matching executable/installer artifact](https://github.com/weiliang79/nepteer/actions/runs/45048797614/artifacts/14765066110): `nepteer.exe` (10,251,264 bytes) and `bundle/nsis/Nepteer_0.5.0-alpha.2_x64-setup.exe` (2,238,676 bytes). Extracted executable manifest verification printed `Verified executable manifest: asInvoker, uiAccess=false`; current-user installation/WebView2 requirements are unchanged.
+
+The following handoff-only commit changes no implementation. No merge has been performed. CI is not hardware acceptance. Windows installer execution, physical input/navigation and actual native focus/coexistence/failure-mode checks were not run locally. The 24-step Step 5C.2 checklist at the top of WINDOWS_TESTING.md covers opt-in, all actions/focus/wrapping, holds/diagonals/reopening, keyboard/touch/theme/provider, visibility/disarm/reader conflicts, stress, expiry and clean exit. No gameplay test is required. New physical navigation tests, standard-user installer execution and native GUI/focus/coexistence/failure-mode validation remain pending until the user reports them. No automatic evidence promotion or input-isolation claim.
+
+---
+
 # Step 5C.1 — D-pad physical correlation and QAM navigation readiness
 
 Branch `feat/neptune-dpad-correlation`, based on latest merged main `245480a1bbac357b4661805fb6cfa7f8b5b1fbd0` (Step 5B, PR #6). Fetched upstream, confirmed a clean checkout and that the main tree matches the reviewed Step 5B implementation before branching. The user reports Step 5B physically tested on Deck LCD/Windows 11/Steam Deck Tools Desktop mode. **No physical D-pad evidence has been provided. No navigation or input isolation is implemented.** Production version remains 0.5.0-alpha.2; this readiness milestone does not need a runtime/version/dependency migration. No merge is performed.

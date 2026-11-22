@@ -21,3 +21,20 @@ export const onQuickAccessChange = (
   listen<Status>("quick-access-changed", (event) => callback(event.payload));
 export const onProviderChange = (callback: () => void): Promise<UnlistenFn> =>
   listen("provider-changed", callback);
+
+export const onQamNavigation = (
+  callback: (event: import("./bindings").NavigationEvent) => void,
+) =>
+  listen<import("./bindings").NavigationEvent>("qam-navigation", (event) =>
+    callback(event.payload),
+  );
+export const claimQamNavigation = (
+  request: import("./bindings").NavigationRequest,
+) =>
+  invoke<import("./bindings").NavigationClaim | null>("qam_navigation_claim", {
+    request,
+  });
+export const completeQamNavigation = (
+  request: import("./bindings").NavigationRequest,
+  hide: boolean,
+) => invoke<void>("qam_navigation_complete", { request, hide });

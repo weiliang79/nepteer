@@ -1,3 +1,38 @@
+# Step 5C.2 · Desktop-only physical QAM navigation acceptance
+
+**New navigation hardware results are pending.** The user supplied Step 5C.1 evidence: eight positive D-pad sessions/two per direction, 40/40 cycles, sixteen idle/opposite/A/B negatives with zero false nominated edges, no incompatible/malformed reports/gaps/unexpected bit changes in clean positives. The manually reported mode was **X360**, Steam running/Input unknown, on LCD/Windows 11, native 28DE:1205 interface2 FFFF/0001 length65, deck_v1_zero_prefixed65. Earlier Desktop-mode evidence was for ⋯, not automatic certification of navigation in Desktop mode.
+
+Run this checklist on the **Windows desktop without an active game**. Keep keyboard/touch available. Leave Steam Deck Tools/Steam/Input/driver/firmware configuration unchanged; if not already in the reviewed configuration, report it instead of having Nepteer change it. No anti-cheat/game testing or input isolation is required/claimed.
+
+1. Exit the previous Nepteer process, install this branch's matching current-user NSIS artifact without elevation, then launch with existing WebView2. Confirm the shortcut starts Disarmed, QAM hidden, no automatic reader and no remembered enabled state.
+2. Rescan native interfaces, select exact vendor collection interface2/FFFF:0001/descriptor65, and ensure no diagnostic monitor/probe owns the reader. Other profiles/models are outside scope.
+3. In Physical Quick Access Shortcut choose **X360 — ⋯ toggle and desktop-only QAM navigation** only if that is your manually confirmed current environment. Confirm both configuration and passive-observation acknowledgments. Mode selection itself must not change another tool. Desktop remains the legacy ⋯-only option.
+4. Arm. Observe existing attempt/open/report/released-baseline stages and Armed, with the thirty-minute limit. Missing/incompatible/access errors remain honest terminal states, never simulation or exclusive takeover.
+5. Press ⋯ once: QAM opens with Close focused. Release ⋯ before navigating. Hold a direction across opening: no action until released and pressed again. Likewise initially held A/B must not act.
+6. Tap Down repeatedly, releasing between taps: Close → enabled Refresh battery → Performance → Controller → Display → Settings → Close. Disabled Refresh must be skipped. No informational paragraph/reading is a focus target.
+7. Tap Up and confirm reverse order; test wrap in both directions.
+8. Press A on each enabled control. Close hides; reopen with ⋯. Refresh reads the existing provider; section buttons toggle their informational paragraphs only. No adjustable hardware/settings control appears.
+9. Expand Performance with A, then B: paragraph collapses and focus returns to Performance. B again closes QAM through existing native Hide/focus restoration. Reopen with ⋯.
+10. Hold Down for several seconds: exactly one step. Release, then press again: one more step. No auto-repeat or navigation cooldown derived from the 350ms ⋯ debounce.
+11. Left/Right are no-ops throughout the current UI. They do not adjust volume/brightness/display/power or change sections/focus.
+12. Hold A or B: no repeated activation, repeated refresh or repeated close. Navigation while multiple D-pad/A/B controls are held (including diagonals/opposites) is suppressed; release the controls before trying again.
+13. Steam or X/Y held with D-pad/A/B should suppress navigation conservatively, requiring release of the navigation control. Verify this does not alter the existing ⋯ toggle behavior when Steam/A/B/X/Y are held.
+14. Use keyboard Escape, Ctrl+Alt+Q, Tab and Shift+Tab. Keep the previous wrap, hide, native focus restoration/outside-click behavior and dashboard Open button.
+15. Click/touch a section or Tab to it, then use Up/Down: start from actual focus. Telemetry/provider refresh and redundant native status events must not reset focus to Close. A focused Refresh becoming disabled moves to Performance, then does not steal focus back when enabled.
+16. Change saved theme/provider in main and reopen/refresh QAM. Verify existing theme, source/availability/telemetry behavior. No polling sensor loop or extra permissions should appear.
+17. Close QAM with B, Escape, Close, outside click and ⋯ in separate runs. Navigation while hidden must not activate controls, refresh data or affect main. Each genuine reopening starts fresh focus/baselines.
+18. Disarm from the main app while QAM is visible or while tapping directions. Navigation and physical toggle stop after successful cleanup. Copied shortcut diagnostics show no active reader/delivery. No queued action executes after Disarmed returns.
+19. Re-arm explicitly in the same reviewed mode and repeat a short navigation smoke test. No duplicate reader, overlay window, stale action or automatic renewal.
+20. While armed, Controller Start Monitoring/Rescan must reject with explicit Disarm recovery; while diagnostics/probe owns the reader, Arm must reject with Stop/Abort recovery. Explicitly switch modes, never automatic takeover.
+21. Check normal thirty-minute expiry/manual rearm (may be a separate extended test), and naturally observable read/disconnect/access failures only. Do not force internal hardware disconnects. After termination no navigation or old action replay; keyboard/touch fallback stays available.
+22. Close main while armed and relaunch. Healthy cleanup must complete without orphan helpers/services; new launch starts Disarmed and no automatic scan/open. Uninstall leaves no controller configuration, service or startup task.
+23. Optional stress: rapid ⋯/keyboard/dashboard show/hide interleaved with directions/A/B. A command from the previous opening must not execute in the next. Hold a direction through repeated reopening and confirm release is required. Record safe pass/fail/context, not per-button history.
+24. If navigation reports overflow/delivery failure/timeout, use keyboard/touch/⋯, copy **Shortcut Diagnostic Summary**, then Disarm/rearm manually. No retry storm, hardware writes or mode changes. A frozen renderer/failed completion transport may leave Disarming/delivering pending; **do not call that successful cleanup**. Record the safe state without raw streams or process details. Synthetic tests cover that barrier; native failure behavior still needs review.
+
+Controller navigation observes physical buttons without suppressing them. Games or other controller utilities may still receive the same input. If gameplay is separately observed later, record pass-through as a limitation, not input isolation; Step 5C.2 acceptance does not require gameplay. Do not hook games, modify tools/drivers or disable security to obtain different routing. Native CI proves builds/logic only, not these GUI/HID/focus/coexistence results.
+
+---
+
 # Step 5C.1 · D-pad physical evidence matrix
 
 **D-pad physical results: pending. Controller QAM navigation: not implemented.** The user reports merged Step 5B physically tested, but those results do not validate D-pad controls. Use the new branch artifact/SHA and collect fresh, independently reviewable sessions. Leave Steam Deck Tools and Steam configured as they are; all tests in this section run on the **Windows desktop without an active game**. Keep keyboard/touch available.
