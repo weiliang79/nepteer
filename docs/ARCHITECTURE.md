@@ -1,5 +1,9 @@
 # Architecture
 
+## Step 5D input-routing decision
+
+The [Step 5D decision record](decisions/step-5d-controller-input-routing.md) audits the merged observer and separates its private QAM route from external SDT/Windows/Steam/game consumers. It includes an input-flow diagram, API-version-specific focus analysis, seven-option matrices and fifteen failure/recovery cases. Recommendation: retain desktop-only navigation and non-invasive UX. There is no approved public cross-application routing integration established by this research. Shared HID access and local visibility epochs cannot control another producer's virtual output. No production architecture, dependency or permission changes are made; only this research branch is added to existing CI triggers.
+
 Nepteer v0.5.0-alpha.2 retains one pnpm desktop package: Tauri 2 + Rust, React/TypeScript/Vite, Tailwind and the local shadcn/ui Button. Small Rust modules keep the shared DTO/provider contract beside the shell. No service or extra crate is introduced.
 
 ```text

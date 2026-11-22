@@ -1,11 +1,19 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 5C.2 desktop-only QAM controller navigation, not hardware control or input isolation.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 5D controller input-routing research; no production input isolation or behavior changes.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 5C.2 — Read-only QAM controller navigation
+## Current milestone: Step 5D — Controller input-routing feasibility
+
+Work on `research/controller-input-routing` from main `6f879e542feeee37c95a85615d926e6d5a48d64f` (PR #8). The user reports completed Step 5C.2 Windows acceptance. Preserve historical evidence and scope below; prior pending statements describe their original handoffs. This milestone is documentation/research only: audit the existing observer, compare documented Windows/provider input semantics and record an explicit recommendation in `docs/decisions/step-5d-controller-input-routing.md`. Commit/push reviewed research and verify existing native CI; do not merge.
+
+Do not change production HID reading, QAM navigation/lifecycle, arming, capabilities, bindings, manifest, installer, dependency graph or runtime version. No interception, hooks, output/feature reports, exclusive ownership, virtual devices, injection, device hiding/configuration, tool/Steam settings, drivers, services, elevation, raw recordings or automatic recovery. Published Steam Deck Tools user documentation may be researched; its source must not be inspected/copied/translated. No game input experiment is authorized. A documentation-only PR is preferred; enabling its branch in unchanged CI is appropriate. Local native packaging may be skipped for documentation-only changes; retain full native CI, formatting/typecheck/frontend/Rust/Clippy/binding/whitespace checks and exact reporting.
+
+Separate repository facts, documented API capabilities, inference and unknown physical behavior. Focus and native QAM visibility fence local actions; neither proves universal game input isolation. Research must account for API/runtime versions, SDT/Steam Input duplicate paths, unknown consumer APIs and process-independent crash recovery. Existing user-selected X360 context is not automatic detection. No new hardware verification is implied by CI or a conceptual policy model. Preserve all existing safety rules and previous decisions. Any future privileged filtering or virtual-output architecture requires a separately approved security/architecture milestone.
+
+## Completed milestone: Step 5C.2 — Read-only QAM controller navigation
 
 Work on `feat/qam-controller-navigation` from merged main `f638bdd23981aceaf523beaa4e805f387abeb223` (PR #7). Commit/push verified changes and native CI/artifacts; do not merge before hardware acceptance. User-provided LCD/Windows 11 evidence in manually reported Steam Deck Tools **X360 mode**, Steam running/Input unknown: eight positive sessions (two per direction), 40/40 cycles and sixteen idle/opposite/A/B negatives without false nominated edges; clean positives had no framing errors, gaps or unexpected known/unknown changes. Reviewed navigation mappings: Up 8, Down 11, Left 10, Right 9, A 7, B 5. This authorizes only desktop validation on exact 28DE:1205 interface 2, FFFF/0001, descriptor/actual65, deck_v1_zero_prefixed65. No alternative models/modes/formats are implied.
 

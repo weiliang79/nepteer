@@ -1,3 +1,30 @@
+# Step 5D — Controller input-routing feasibility
+
+Branch `research/controller-input-routing`, based on main `6f879e542feeee37c95a85615d926e6d5a48d64f` (PR #8). Runtime version stays 0.5.0-alpha.2. The user reports Step 5C.2 hardware acceptance; earlier handoffs retain their historical pending status. No merge is authorized.
+
+The [technical decision record](decisions/step-5d-controller-input-routing.md) contains the audited input pipeline, confidence-labeled diagram, Windows focus/version findings, all seven alternatives across the requested feasibility dimensions, fifteen failure/recovery cases, source register, evidence gaps and next-milestone proposal. Recommendation **2: retain desktop-only navigation and improve non-invasive UX**. No universal isolation contract was established; controlling the game-visible output or filtering devices would need a separately approved architecture. No production behavior, permissions, bindings, manifest, installer, dependency or version changes. No raw input, game/process inspection, new hardware experiment, routing simulation or third-party source reuse.
+
+Changed files: AGENTS.md (research boundaries); README.md (current research link); architecture/safety/Neptune research (decision cross-links and scope); this handoff; new decision record; `.github/workflows/ci.yml` (research push trigger only, validation/packaging unchanged).
+
+## Validation
+
+Local macOS checks passed (Node v24.14.1, pnpm 12.21.0, rustc 1.100.0):
+
+- `pnpm format:check` — Prettier and `cargo fmt --all -- --check` passed.
+- `pnpm typecheck`, `pnpm lint` — passed, zero ESLint warnings.
+- `pnpm test` — 74 passed across six files.
+- `pnpm rust:check` — passed.
+- `pnpm rust:test` — 74 passed, zero failures, one intentionally ignored explicit binding generator; main/doc targets zero tests.
+- `pnpm rust:lint` — Clippy all targets with warnings denied passed.
+- `pnpm bindings:check` — one binding-drift test passed; generated files unchanged.
+- `pnpm build:web` — TypeScript/Vite production build passed (48 modules).
+- Inline Python documentation consistency check — seven documents' relative links, 21 source references, A–H decision sections, fifteen failure rows and docs/CI-only scope passed; workflow diff adds exactly one branch trigger.
+- `git diff --check` — passed.
+
+No new automated tests were needed for a documentation-only change. Existing synthetic tests do not prove input isolation. Native CI results will be recorded after push. Local native packaging is intentionally skipped for documentation-only changes, as authorized for Step 5D. Existing Windows/macOS CI packaging remains enabled. Research/source inspection is not a test of game isolation. No new physical test is required for this docs-only change; unresolved consumer/provider paths and future approval gates are in the decision record.
+
+---
+
 # Step 5C.2 — Read-only desktop QAM controller navigation
 
 Branch `feat/qam-controller-navigation`, based on merged main `f638bdd23981aceaf523beaa4e805f387abeb223` (PR #7). Source/instructions and Step 5C.1 proposal were inspected before edits. No merge is authorized. Package version remains 0.5.0-alpha.2; artifact SHA identifies this new navigation build. Historical handoffs below retain the evidence/status at the time they were written.
