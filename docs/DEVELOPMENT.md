@@ -104,6 +104,8 @@ Use **Copy Shortcut Diagnostic Summary** immediately on failure before another a
 
 ## Temporary Step 5E QAM slow-refresh test build
 
+QAM Slow Refresh diagnostics are intentionally retained as a test-only development tool until the controller feature development phase is complete. The user has completed the Step 5E physical acceptance checks on Deck LCD / Windows 11. Retention supersedes the earlier remove-before-merge instruction; this is not a supported production feature.
+
 Default builds (including `pnpm dev`) have no diagnostic control. Only the exact string `VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS=true` enables it. Vite statically replaces this [build-time environment value](https://vite.dev/guide/env-and-mode); localStorage, URL parameters and runtime settings cannot enable a compiled normal build. No dependency is added. Do not persist this flag in an env file or publish the resulting build as a standard release.
 
 macOS authoring / frontend verification:
@@ -127,13 +129,13 @@ try {
 }
 ```
 
-These commands keep the existing version and application identity. Exit Nepteer before replacing/installing; do not run normal and test instances concurrently. The test-only workflow `qam-focus-diagnostics.yml` runs solely for this feature branch, builds Windows separately, verifies the final frontend contains the test label/button and delay chunk, and extracts/verifies `asInvoker`, `uiAccess=false`. It uploads `TEST-ONLY-qam-focus-diagnostics-windows-x86_64-<SHA>` with explicitly renamed executable/installer and a warning README. It does not create a release. The QAM itself labels **TEST BUILD ONLY**. Ordinary Desktop CI forces the flag false and verifies exclusion after native packaging on both platforms.
+These commands keep the existing version and application identity. Exit Nepteer before replacing/installing; do not run normal and test instances concurrently. The test-only workflow `qam-focus-diagnostics.yml` runs only on explicit manual dispatch, guarded to `refs/heads/main` or `refs/heads/feat/qam-navigation-ux`, and builds Windows separately, verifies the final frontend contains the test label/button and delay chunk, and extracts/verifies `asInvoker`, `uiAccess=false`. It uploads `TEST-ONLY-qam-focus-diagnostics-windows-x86_64-<SHA>` with explicitly renamed executable/installer and a warning README. It does not create a release. The QAM itself labels **TEST BUILD ONLY**. Ordinary Desktop CI forces the flag false and verifies exclusion after native packaging on both platforms.
 
 The test-build order is Close → Refresh battery → Test Slow Refresh (5s) → Performance → Controller → Display → Settings. While loading, both refresh buttons retain keyboard focusability (`aria-disabled`/`aria-busy`) but are skipped as D-pad destinations; A on either is ignored. From focused busy Test Slow Refresh, Up reaches Close and Down reaches Performance. Tab/Shift+Tab can still visit both busy buttons. No hold-repeat or new controller capability is added.
 
 The same refresh function starts the native telemetry read immediately, then coordinates a cancelable non-blocking JS timer with its outcome. Early read errors wait for the timer too; reads slower than five seconds remain pending until they settle. Hide, provider replacement, genuine reopen and unmount invalidate/cancel the old timer. Existing sequence/alive checks fence late telemetry. No native read is canceled/replaced by a fake reading, and no diagnostic timer becomes a native navigation lease: activation returns immediately and completes the existing claim normally.
 
-Normal production verification (repeat after testing/removal):
+Normal production verification (repeat after diagnostic builds to restore normal output):
 
 ```sh
 VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS=false pnpm build:web
@@ -142,4 +144,24 @@ node scripts/verify-qam-focus-build.mjs disabled
 
 On PowerShell set the env variable to `"false"` for that build, then remove it. The checker requires the button text, TEST BUILD ONLY label and dynamic delay chunk all absent, or all present for `enabled`. CI applies the same checks to the frontend input used by native packaging; this is compiled-artifact evidence, not a Windows GUI test. Normal Refresh stays immediate in either build.
 
-Before Step 5E merge, remove temporary diagnostic UI/flag/helper/types, diagnostic tests and workflow/checker hooks unless explicitly approved for retention. Keep the original production focus/duplicate-read fix. Re-run regression checks and generate a normal Windows artifact for final acceptance. See WINDOWS_TESTING.md for desktop-only physical checks.
+The diagnostic UI/flag/helper/types, automated tests and build verification are retained by explicit user decision. Reassess their removal after controller feature development is complete, rather than removing them immediately before Step 5E merge. Keep normal build exclusion and the production focus/duplicate-read fix. See WINDOWS_TESTING.md for the user-reported acceptance and repeatable desktop-only checks.
+
+### Explicit manual packaging in GitHub Actions
+
+1. Open [TEST ONLY - QAM Focus Diagnostics](https://github.com/weiliang79/nepteer/actions/workflows/qam-focus-diagnostics.yml) in the repository's Actions tab.
+2. Choose **Run workflow**, then select `feat/qam-navigation-ux` for development or `main` once Step 5E has merged. Only those exact branch refs pass the job guard; other branches and tags are skipped without an artifact.
+3. Click **Run workflow** explicitly. Pushes, PRs, normal CI, releases and tags do not trigger this workflow. No reusable-workflow or completion-event trigger is configured.
+4. Open the successful run and download **Artifacts → TEST-ONLY-qam-focus-diagnostics-windows-x86_64-<SHA>**. It contains the explicitly named test executable/NSIS installer and warning README. Check the commit and TEST BUILD ONLY label in QAM before testing.
+5. Exit the normal Nepteer instance before installing/running the diagnostic build. The same application identity/version is used; never run both concurrently. Return to the normal artifact for ordinary use.
+
+[GitHub's manual-run requirements](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow) include write access and the workflow file being present on the default branch. Before merge, the Run workflow button/API may therefore be unavailable even though this branch is allowed by the job guard. Report a failed/unavailable dispatch honestly; never add a temporary push trigger or modify main to bypass the prerequisite. Once the workflow is on main, either allowed branch can be selected manually.
+
+CLI equivalent (authenticated GitHub CLI with repository access):
+
+```sh
+gh workflow run qam-focus-diagnostics.yml --repo weiliang79/nepteer --ref feat/qam-navigation-ux
+# After merge, choose main instead when desired:
+gh workflow run qam-focus-diagnostics.yml --repo weiliang79/nepteer --ref main
+```
+
+Neither command is automatic. Standard Desktop CI keeps `VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS: "false"` and its unchanged `node scripts/verify-qam-focus-build.mjs disabled` post-packaging check. Manual diagnostic packaging keeps the exact true flag, enabled-output verification, x86_64/NSIS build, asInvoker/uiAccess=false manifest check, read-only workflow token and test-only upload; it never publishes a GitHub Release.

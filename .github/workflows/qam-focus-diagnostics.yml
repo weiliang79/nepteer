@@ -1,7 +1,5 @@
 name: TEST ONLY - QAM Focus Diagnostics
 on:
-  push:
-    branches: [feat/qam-navigation-ux]
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +8,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   diagnostic-windows:
-    if: github.ref == 'refs/heads/feat/qam-navigation-ux'
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/qam-navigation-ux')
     runs-on: windows-latest
     env:
       VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS: "true"
@@ -58,7 +58,7 @@ jobs:
           Do not run normal and diagnostic instances concurrently.
           Open QAM and look for TEST BUILD ONLY / Test Slow Refresh (5s).
           Use the Windows desktop without an active game; arming stays explicit.
-          After testing, use a normal artifact. Remove this temporary feature before merge.
+          After testing, use a normal artifact. Retained test-only tool until controller development is complete.
           "@ | Set-Content "test-only-artifacts/READ-ME-TEST-BUILD-ONLY.txt"
       - name: Upload TEST ONLY installer and executable (never a release)
         uses: actions/upload-artifact@v4
