@@ -1,5 +1,13 @@
 # Read-only safety boundary
 
+## Step 5E user-facing boundaries
+
+The session choices describe **Physical shortcut only** (reviewed SDT Desktop, default `navigation: false`) or **Controller navigation (desktop only)** (reviewed SDT X360, `navigation: true`). Both require the same two acknowledgments, manually confirmed existing configuration and explicit Arm. Mode changes reset consent; owned sessions require Disarm first. No detection, tool configuration, automatic arming or persisted opt-in is introduced.
+
+Navigation setup prominently warns before Arm that **controller navigation does not block game input**. Use it on the Windows desktop without an active game. Keyboard/touch/dashboard alternatives are provided without promising a paused game. QAM copy is static and conditional; it does not assert current navigation readiness. Main readiness uses native lifecycle/ownership/error fields. Disarming never means cleanup complete, disconnected status is last-known only, and continued physical ⋯ is described only when confirmed by an active connected native session. Safe diagnostics remain available in Technical session diagnostics.
+
+Rust/HID, deadlines/cooldowns, one-reader ownership, QAM claim/completion/visibility/cleanup, permissions, bindings, manifest/installer, dependencies and version remain unchanged. No routing, isolation, injection, hardware writes, game/tool interception or security bypass is implemented. The Step 5D decision below still governs future architecture. New UI Windows hardware acceptance is pending.
+
 ## Step 5D research boundary
 
 The [routing feasibility decision](decisions/step-5d-controller-input-routing.md) does not authorize input isolation. No new hardware experiment, device/provider configuration or production behavior is added. Do not equate window focus, QAM visibility, local navigation claims or reported X360 mode with exclusive gameplay routing. Windows input focus behavior depends on the consumer API/version/policy; other consumers may continue receiving input. No anti-cheat compatibility guarantee is made.

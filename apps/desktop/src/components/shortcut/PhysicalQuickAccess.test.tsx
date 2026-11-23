@@ -42,6 +42,7 @@ const armed: ShortcutStatus = {
   opened: true,
   remainingMs: 1800000,
   readerOwner: "shortcut",
+  workerRunning: true,
 };
 const candidate: Candidate = {
   id: "scan1-candidate3",
@@ -75,7 +76,7 @@ beforeEach(() => {
 });
 async function prepare() {
   const user = userEvent.setup();
-  await screen.findByText("Disabled");
+  await screen.findByText("Shortcut disarmed");
   await user.click(
     screen.getByRole("button", { name: "Rescan native shortcut interfaces" }),
   );
@@ -112,7 +113,9 @@ test("disabled startup opens no HID; explicit profile, consent and Arm are requi
     navigation: false,
   });
   expect(
-    await screen.findByText(/Armed · 30 min remaining/),
+    await screen.findByText(
+      /Shortcut armed — navigation disabled · 30 min remaining/,
+    ),
   ).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Disarm Shortcut" })).toBeEnabled();
 });
@@ -136,7 +139,7 @@ test("wrong collection and diagnostic ownership cannot silently switch modes", a
 });
 test("native events show waiting baseline, remaining time and error without issuing window commands", async () => {
   render(<PhysicalQuickAccess expanded onManage={() => {}} />);
-  await screen.findByText("Disabled");
+  await screen.findByText("Shortcut disarmed");
   act(() =>
     emit({
       ...armed,
@@ -167,12 +170,12 @@ test("disarm uses generation and stale event cannot revive the session", async (
   vi.mocked(api.shortcutStatus).mockResolvedValue(armed);
   const user = userEvent.setup();
   render(<PhysicalQuickAccess expanded={false} onManage={() => {}} />);
-  await screen.findByText(/Armed · 30 min/);
+  await screen.findByText(/Shortcut armed — navigation disabled · 30 min/);
   await user.click(screen.getByRole("button", { name: "Disarm Shortcut" }));
   expect(api.disarmShortcut).toHaveBeenCalledWith(1);
-  expect(await screen.findByText("Disabled")).toBeInTheDocument();
+  expect(await screen.findByText("Shortcut disarmed")).toBeInTheDocument();
   act(() => emit(armed));
-  expect(screen.getByText("Disabled")).toBeInTheDocument();
+  expect(screen.getByText("Shortcut disarmed")).toBeInTheDocument();
 });
 test("native expiry updates via polling and requires manual rearm", async () => {
   vi.useFakeTimers();
@@ -187,7 +190,9 @@ test("native expiry updates via polling and requires manual rearm", async () => 
       });
     const view = render(<PhysicalQuickAccess expanded onManage={() => {}} />);
     await act(async () => {});
-    expect(screen.getByText(/Armed · 30 min/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Shortcut armed — navigation disabled · 30 min/),
+    ).toBeInTheDocument();
     await act(async () => {
       vi.advanceTimersByTime(1000);
     });
@@ -201,7 +206,7 @@ test("native expiry updates via polling and requires manual rearm", async () => 
 test("leaving controls or hiding the main window does not disarm an app-owned session", async () => {
   vi.mocked(api.shortcutStatus).mockResolvedValue(armed);
   const view = render(<PhysicalQuickAccess expanded onManage={() => {}} />);
-  await screen.findByText(/Armed · 30 min/);
+  await screen.findByText(/Shortcut armed — navigation disabled · 30 min/);
   view.rerender(<PhysicalQuickAccess expanded={false} onManage={() => {}} />);
   document.dispatchEvent(new Event("visibilitychange"));
   expect(screen.getByRole("button", { name: "Disarm Shortcut" })).toBeEnabled();
@@ -210,7 +215,7 @@ test("leaving controls or hiding the main window does not disarm an app-owned se
   expect(api.disarmShortcut).not.toHaveBeenCalled();
   vi.mocked(api.shortcutStatus).mockResolvedValue(disabled);
   render(<PhysicalQuickAccess expanded onManage={() => {}} />);
-  expect(await screen.findByText("Disabled")).toBeInTheDocument();
+  expect(await screen.findByText("Shortcut disarmed")).toBeInTheDocument();
 });
 test("arming conflict/error remains visible and does not substitute simulation", async () => {
   vi.mocked(api.armShortcut).mockRejectedValueOnce(
@@ -373,7 +378,7 @@ test("rejection leaves Disarmed with concrete last attempt and remains after nat
   expect(
     await screen.findByText(/Last Arm Attempt #1: rejected/),
   ).toBeInTheDocument();
-  expect(screen.getByText("Disabled")).toBeInTheDocument();
+  expect(screen.getByText("Shortcut disarmed")).toBeInTheDocument();
   expect(
     screen.getByText(/Native diagnostic monitoring currently owns/),
   ).toHaveTextContent("Stop Monitoring");
@@ -461,8 +466,10 @@ test.each([
     });
     render(<PhysicalQuickAccess expanded onManage={() => {}} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Action:");
-    expect(screen.getByText("Disabled")).toBeInTheDocument();
-    expect(screen.queryByText(/Armed ·/)).not.toBeInTheDocument();
+    expect(screen.getByText("Shortcut disarmed")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Shortcut armed — navigation disabled ·/),
+    ).not.toBeInTheDocument();
   },
 );
 test("Copy Shortcut Diagnostic Summary whitelists enums and safe metadata only", async () => {
@@ -487,7 +494,8 @@ test("Copy Shortcut Diagnostic Summary whitelists enums and safe metadata only",
     username: "PRIVATE",
   } as ShortcutStatus);
   render(<PhysicalQuickAccess expanded onManage={() => {}} />);
-  await screen.findByText("Disabled");
+  await screen.findByText("Shortcut disarmed");
+  await user.click(screen.getByText("Technical session diagnostics"));
   await user.click(
     screen.getByRole("button", { name: "Copy Shortcut Diagnostic Summary" }),
   );
@@ -531,7 +539,9 @@ test("Disarm fences a late Arm rejection and permits an explicit new attempt", a
     screen.getByRole("button", { name: "Arm Physical ⋯ Shortcut" }),
   );
   await act(async () => reject(new Error("late old rejection")));
-  expect(screen.getByText(/Armed · 30 min/)).toBeInTheDocument();
+  expect(
+    screen.getByText(/Shortcut armed — navigation disabled · 30 min/),
+  ).toBeInTheDocument();
   expect(screen.queryByText(/Arm request failed/)).not.toBeInTheDocument();
 });
 
@@ -543,16 +553,17 @@ test("event subscription failure is visible while status polling remains availab
   expect(
     await screen.findByText(/Live status subscription unavailable/),
   ).toBeInTheDocument();
-  expect(screen.getByText("Disabled")).toBeInTheDocument();
+  expect(screen.getByText("Shortcut disarmed")).toBeInTheDocument();
   expect(screen.queryByText(/private transport text/)).not.toBeInTheDocument();
 });
 
 test("X360 desktop navigation requires explicit reviewed-mode selection and renewed acknowledgments", async () => {
   render(<PhysicalQuickAccess expanded onManage={() => {}} />);
   const user = await ready();
-  await user.selectOptions(
-    screen.getByLabelText("Reviewed session mode (manually confirmed)"),
-    "x360",
+  await user.click(
+    screen.getByRole("radio", {
+      name: /Controller navigation \(desktop only\)/,
+    }),
   );
   expect(
     screen.getByRole("button", { name: "Arm Physical ⋯ Shortcut" }),
@@ -576,4 +587,271 @@ test("X360 desktop navigation requires explicit reviewed-mode selection and rene
       reviewedConfiguration: true,
     }),
   );
+});
+
+test("native radio cards default to shortcut only; keyboard mode change resets both consents without arming", async () => {
+  render(
+    <PhysicalQuickAccess
+      expanded
+      onManage={() => {}}
+      shortcutHint="Control + Option + Q"
+    />,
+  );
+  const user = await ready();
+  const group = screen.getByRole("group", { name: "Controller session mode" });
+  const shortcut = screen.getByRole("radio", {
+    name: "Physical shortcut only",
+  });
+  const nav = screen.getByRole("radio", {
+    name: "Controller navigation (desktop only)",
+  });
+  expect(shortcut).toBeChecked();
+  expect(group).toHaveAccessibleDescription(
+    /does not detect or change Steam Deck Tools or Steam Input/,
+  );
+  expect(
+    screen.getByRole("region", { name: "Physical controller controls" }),
+  ).not.toHaveTextContent("D-pad Up");
+  shortcut.focus();
+  await user.keyboard("{ArrowDown}");
+  expect(nav).toBeChecked();
+  expect(nav).toHaveFocus();
+  for (const checkbox of screen.getAllByRole("checkbox"))
+    expect(checkbox).not.toBeChecked();
+  const arm = screen.getByRole("button", { name: "Arm Physical ⋯ Shortcut" });
+  expect(arm).toBeDisabled();
+  const warning = screen.getByText(
+    "Controller navigation does not block game input.",
+  );
+  expect(warning).toBeVisible();
+  expect(
+    warning.compareDocumentPosition(arm) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(nav).toHaveAccessibleDescription(/without an active game/);
+  const help = screen.getByRole("region", {
+    name: "Physical controller controls",
+  });
+  for (const text of [
+    "D-pad Up",
+    "D-pad Down",
+    "Previous item",
+    "Next item",
+    "Activate focused item",
+    "Collapse section or close",
+    "D-pad Left/Right",
+    "No action in current QAM",
+  ])
+    expect(help).toHaveTextContent(text);
+  const alternatives = screen.getByRole("region", {
+    name: "Other ways to use Quick Access",
+  });
+  expect(alternatives).toHaveTextContent("Control + Option + Q");
+  expect(alternatives).toHaveTextContent("Tab / Shift+Tab");
+  expect(alternatives).toHaveTextContent("Enter / Space");
+  expect(alternatives).toHaveTextContent("Touch/mouse");
+  expect(alternatives).toHaveTextContent(
+    "do not pause games or isolate their input",
+  );
+  for (const checkbox of screen.getAllByRole("checkbox"))
+    await user.click(checkbox);
+  expect(arm).toBeEnabled();
+  await user.click(shortcut);
+  for (const checkbox of screen.getAllByRole("checkbox"))
+    expect(checkbox).not.toBeChecked();
+  expect(arm).toBeDisabled();
+  expect(
+    screen.queryByText("Controller navigation does not block game input."),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("region", { name: "Physical controller controls" }),
+  ).not.toHaveTextContent("D-pad Up");
+  expect(api.armShortcut).not.toHaveBeenCalled();
+});
+
+test("native status owns readiness across remount; active sessions lock both cards until disarm", async () => {
+  vi.mocked(api.shortcutStatus).mockResolvedValue({
+    ...armed,
+    navigation: { ...armed.navigation, configured: true },
+  });
+  const user = userEvent.setup();
+  const view = render(<PhysicalQuickAccess expanded onManage={() => {}} />);
+  expect(
+    await screen.findByText(
+      /Shortcut armed — navigation enabled \(desktop only\)/,
+    ),
+  ).toBeInTheDocument();
+  // Local selection defaults false on remount, but never overrides native configured status.
+  const shortcut = screen.getByRole("radio", {
+    name: "Physical shortcut only",
+  });
+  const nav = screen.getByRole("radio", {
+    name: "Controller navigation (desktop only)",
+  });
+  expect(shortcut).toBeChecked();
+  expect(shortcut).toBeDisabled();
+  expect(nav).toBeDisabled();
+  await user.click(nav);
+  expect(shortcut).toBeChecked();
+  expect(api.armShortcut).not.toHaveBeenCalled();
+  view.unmount();
+  render(<PhysicalQuickAccess expanded={false} onManage={() => {}} />);
+  expect(
+    await screen.findByText(/Shortcut armed — navigation enabled/),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Disarm Shortcut" })).toBeEnabled();
+  await user.click(screen.getByRole("button", { name: "Disarm Shortcut" }));
+  expect(await screen.findByText("Shortcut disarmed")).toBeInTheDocument();
+});
+
+test.each([
+  ["disarmed", "Shortcut disarmed"],
+  ["waiting_reports", "Waiting for compatible reports"],
+  ["waiting_baseline", "Waiting for released baseline"],
+  ["disarming", "Disarming"],
+  ["expired", "Expired"],
+  ["disconnected", "Disconnected"],
+  ["error", "Error"],
+] as const)(
+  "%s never advertises navigation readiness even if configured remains true",
+  async (phase, text) => {
+    vi.mocked(api.shortcutStatus).mockResolvedValue({
+      ...disabled,
+      phase,
+      navigation: { ...disabled.navigation, configured: true },
+    });
+    render(<PhysicalQuickAccess expanded onManage={() => {}} />);
+    await screen.findByText(new RegExp(text));
+    expect(
+      screen.queryByText(/Shortcut armed — navigation enabled/),
+    ).not.toBeInTheDocument();
+  },
+);
+
+test("navigation failure preserves truthful fallback and never promises a terminated physical shortcut", async () => {
+  vi.mocked(api.shortcutStatus).mockResolvedValue({
+    ...armed,
+    navigation: {
+      ...armed.navigation,
+      configured: true,
+      issue: "delivery_timeout",
+    },
+  });
+  render(<PhysicalQuickAccess expanded={false} onManage={() => {}} />);
+  await screen.findByText(/Shortcut armed — navigation error/);
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Physical ⋯ remains available in this session",
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Use keyboard, mouse/touch or Open Quick Access",
+  );
+  act(() =>
+    emit({
+      ...disabled,
+      generation: 1,
+      revision: 8,
+      phase: "error",
+      navigation: { ...disabled.navigation, issue: "delivery_failed" },
+    }),
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Physical ⋯ availability is not confirmed",
+  );
+  expect(screen.getByRole("alert")).not.toHaveTextContent(
+    "Physical ⋯ remains available",
+  );
+});
+
+test("status connection failure labels last-known readiness and equal revision reconnects without changing state", async () => {
+  vi.useFakeTimers();
+  try {
+    vi.mocked(api.shortcutStatus)
+      .mockResolvedValueOnce(armed)
+      .mockRejectedValueOnce(new Error("private transport failure"))
+      .mockResolvedValue(armed);
+    const view = render(
+      <PhysicalQuickAccess expanded={false} onManage={() => {}} />,
+    );
+    await act(async () => {});
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(
+      screen.getByText(/Last known: Shortcut armed — navigation disabled/),
+    ).toHaveTextContent("Connection unavailable; last known state");
+    expect(
+      screen.queryByText(/private transport failure/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Disarm Shortcut" }),
+    ).toBeEnabled();
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.queryByText(/Last known:/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Shortcut armed — navigation disabled/),
+    ).toBeInTheDocument();
+    view.unmount();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("pending Disarm remains cleanup in progress until authoritative terminal status", async () => {
+  let finish!: (value: ShortcutStatus) => void;
+  vi.mocked(api.shortcutStatus).mockResolvedValue(armed);
+  vi.mocked(api.disarmShortcut).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const user = userEvent.setup();
+  render(<PhysicalQuickAccess expanded onManage={() => {}} />);
+  await screen.findByText(/Shortcut armed — navigation disabled/);
+  await user.click(screen.getByRole("button", { name: "Disarm Shortcut" }));
+  expect(
+    screen.getByText(/Disarming — reader cleanup in progress/),
+  ).toBeInTheDocument();
+  expect(screen.queryByText("Shortcut disarmed")).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("radio", { name: "Physical shortcut only" }),
+  ).toBeDisabled();
+  await act(async () => finish({ ...armed, revision: 5, phase: "disarming" }));
+  expect(screen.getByText(/Disarming ·/)).toBeInTheDocument();
+  expect(screen.queryByText("Shortcut disarmed")).not.toBeInTheDocument();
+  act(() => emit({ ...disabled, generation: 1, revision: 6 }));
+  expect(screen.getByText("Shortcut disarmed")).toBeInTheDocument();
+});
+
+test("relaunch resets navigation selection and acknowledgments; diagnostic ownership still blocks fully consented Arm", async () => {
+  const view = render(<PhysicalQuickAccess expanded onManage={() => {}} />);
+  const user = await ready();
+  await user.click(
+    screen.getByRole("radio", { name: "Controller navigation (desktop only)" }),
+  );
+  view.unmount();
+  render(<PhysicalQuickAccess expanded onManage={() => {}} />);
+  await screen.findByText("Shortcut disarmed");
+  expect(
+    screen.getByRole("radio", { name: "Physical shortcut only" }),
+  ).toBeChecked();
+  for (const checkbox of screen.getAllByRole("checkbox"))
+    expect(checkbox).not.toBeChecked();
+  await ready();
+  act(() =>
+    emit({
+      ...disabled,
+      revision: 2,
+      readerOwner: "diagnostics",
+      monitorPhase: "raw_input_only",
+    }),
+  );
+  expect(
+    screen.getByRole("button", { name: "Arm Physical ⋯ Shortcut" }),
+  ).toBeDisabled();
+  expect(
+    screen.getByText(/Arm unavailable: Stop Monitoring/),
+  ).toBeInTheDocument();
+  expect(api.armShortcut).not.toHaveBeenCalled();
 });

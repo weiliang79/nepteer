@@ -1,0 +1,68 @@
+name: TEST ONLY - QAM Focus Diagnostics
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: qam-focus-diagnostics-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  diagnostic-windows:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/qam-navigation-ux')
+    runs-on: windows-latest
+    env:
+      VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - name: Build TEST ONLY Windows x86_64 installer
+        run: pnpm build --target x86_64-pc-windows-msvc --bundles nsis
+      - name: Verify embedded frontend input includes gated diagnostic UI and delay chunk
+        run: node scripts/verify-qam-focus-build.mjs enabled
+      - name: Verify manifest and stage clearly labeled test artifacts
+        shell: pwsh
+        run: |
+          $release = "target/x86_64-pc-windows-msvc/release"
+          $exe = (Resolve-Path "$release/nepteer.exe").Path
+          $installers = @(Get-ChildItem "$release/bundle/nsis/*-setup.exe" -ErrorAction Stop)
+          if ($installers.Count -ne 1) { throw "Expected exactly one diagnostic NSIS installer" }
+          $manifestTool = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/mt.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $manifestTool) { throw "Windows SDK manifest tool not found" }
+          $manifestPath = "$env:RUNNER_TEMP/nepteer-focus-test.manifest"
+          & $manifestTool.FullName "-inputresource:$exe;#1" "-out:$manifestPath"
+          if ($LASTEXITCODE -ne 0) { throw "Failed to extract executable manifest" }
+          [xml]$manifest = Get-Content $manifestPath -Raw
+          $execution = $manifest.SelectSingleNode("//*[local-name()='requestedExecutionLevel']")
+          if ($execution.level -ne "asInvoker" -or $execution.uiAccess -ne "false") {
+            throw "Diagnostic executable must remain asInvoker with uiAccess=false"
+          }
+          Write-Host "Verified diagnostic executable manifest: asInvoker, uiAccess=false"
+          New-Item -ItemType Directory -Path "test-only-artifacts" -Force | Out-Null
+          Copy-Item $exe "test-only-artifacts/nepteer-TEST-ONLY-qam-focus-diagnostics.exe"
+          Copy-Item $installers[0].FullName "test-only-artifacts/nepteer-TEST-ONLY-qam-focus-diagnostics-setup.exe"
+          @"
+          TEST BUILD ONLY - Nepteer temporary QAM focus diagnostics
+          Commit: $env:GITHUB_SHA
+          Not a standard release. No version, native input or installer privilege changes.
+          The same application identity is used: exit Nepteer before installing/replacing it.
+          Do not run normal and diagnostic instances concurrently.
+          Open QAM and look for TEST BUILD ONLY / Test Slow Refresh (5s).
+          Use the Windows desktop without an active game; arming stays explicit.
+          After testing, use a normal artifact. Retained test-only tool until controller development is complete.
+          "@ | Set-Content "test-only-artifacts/READ-ME-TEST-BUILD-ONLY.txt"
+      - name: Upload TEST ONLY installer and executable (never a release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TEST-ONLY-qam-focus-diagnostics-windows-x86_64-${{ github.sha }}
+          if-no-files-found: error
+          path: test-only-artifacts/*

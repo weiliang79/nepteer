@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getTelemetry } from "@/lib/telemetry";
 import type { Snapshot, Status, NavigationAction } from "@/lib/bindings";
@@ -24,6 +24,9 @@ const items = {
     "Theme, units and telemetry provider are configured in the main dashboard. This panel follows that session’s provider and saved theme.",
 };
 export default function QuickAccess() {
+  const focusDiagnostics =
+    import.meta.env.VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS === "true";
+  const cancelDiagnosticDelay = useRef<(() => void) | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +46,7 @@ export default function QuickAccess() {
   >(null);
   const activeNavigation = useRef<{ hide: boolean } | null>(null);
   const sectionRef = useRef<keyof typeof items | null>(null);
-  const refreshButton = useRef<HTMLButtonElement>(null);
+  const refreshInFlight = useRef(false);
   function changeSection(value: keyof typeof items | null) {
     sectionRef.current = value;
     setSection(value);
@@ -60,12 +63,20 @@ export default function QuickAccess() {
     );
     const index = focused < 0 ? 0 : focused;
     if (action === "previous" || action === "next") {
-      buttons[
-        (index + (action === "next" ? 1 : -1) + buttons.length) % buttons.length
-      ].focus();
+      const step = action === "next" ? 1 : -1;
+      // Keep the focused busy control as the origin, but skip it as a destination.
+      for (let offset = 1; offset <= buttons.length; offset++) {
+        const target =
+          buttons[(index + offset * step + buttons.length) % buttons.length];
+        if (target.getAttribute("aria-disabled") !== "true") {
+          target.focus();
+          break;
+        }
+      }
     } else if (action === "activate") {
       if (focused < 0) buttons[0].focus();
-      else buttons[index].click();
+      else if (buttons[index].getAttribute("aria-disabled") !== "true")
+        buttons[index].click();
     } else if (action === "back") {
       const current = sectionRef.current;
       if (current) {
@@ -83,28 +94,58 @@ export default function QuickAccess() {
   useEffect(() => {
     navigateRef.current = navigate;
   });
-  useEffect(() => {
-    if (loading && document.activeElement === refreshButton.current)
-      panel.current
-        ?.querySelector<HTMLButtonElement>("button[data-section]")
-        ?.focus();
-  }, [loading]);
   const alive = useRef(true);
-  async function refresh() {
-    const request = ++sequence.current;
-    setLoading(true);
-    setError(null);
-    setSnapshot(null);
-    try {
-      const value = await getTelemetry();
-      if (alive.current && request === sequence.current) setSnapshot(value);
-    } catch (reason) {
-      if (alive.current && request === sequence.current)
-        setError(String(reason));
-    } finally {
-      if (alive.current && request === sequence.current) setLoading(false);
-    }
-  }
+  const refresh = useCallback(
+    async (slowDiagnostic = false) => {
+      refreshInFlight.current = true;
+      const request = ++sequence.current;
+      if (focusDiagnostics) {
+        cancelDiagnosticDelay.current?.();
+        cancelDiagnosticDelay.current = null;
+      }
+      setLoading(true);
+      setError(null);
+      setSnapshot(null);
+      try {
+        let value: Snapshot;
+        if (
+          import.meta.env.VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS === "true" &&
+          slowDiagnostic
+        ) {
+          // Attach both handlers immediately: an early read error must wait for the delay,
+          // without becoming an unhandled rejection while the test-only module loads.
+          const reading = getTelemetry().then(
+            (value) => ({ ok: true as const, value }),
+            (reason: unknown) => ({ ok: false as const, reason }),
+          );
+          const { createDiagnosticDelay } =
+            await import("@/lib/qam-focus-diagnostics");
+          if (!alive.current || request !== sequence.current) return;
+          const delay = createDiagnosticDelay();
+          cancelDiagnosticDelay.current = delay.cancel;
+          const [result] = await Promise.all([reading, delay.promise]);
+          if (!result.ok) throw result.reason;
+          value = result.value;
+        } else {
+          value = await getTelemetry();
+        }
+        if (alive.current && request === sequence.current) setSnapshot(value);
+      } catch (reason) {
+        if (alive.current && request === sequence.current)
+          setError(String(reason));
+      } finally {
+        if (alive.current && request === sequence.current) {
+          if (focusDiagnostics) {
+            cancelDiagnosticDelay.current?.();
+            cancelDiagnosticDelay.current = null;
+          }
+          refreshInFlight.current = false;
+          setLoading(false);
+        }
+      }
+    },
+    [focusDiagnostics],
+  );
   async function hide() {
     if (activeNavigation.current) {
       activeNavigation.current.hide = true;
@@ -146,7 +187,13 @@ export default function QuickAccess() {
       setNotice(status.notice);
       if (status.visible && (!before?.visible || before.epoch !== status.epoch))
         opened();
-      if (!status.visible) sequence.current += 1;
+      if (!status.visible) {
+        sequence.current += 1;
+        if (focusDiagnostics) {
+          cancelDiagnosticDelay.current?.();
+          cancelDiagnosticDelay.current = null;
+        }
+      }
     };
     // All navigation is revalidated by native claim, not by a React visibility flag.
     const navigation = async (
@@ -295,12 +342,16 @@ export default function QuickAccess() {
     return () => {
       disposed = true;
       alive.current = false;
+      if (focusDiagnostics) {
+        cancelDiagnosticDelay.current?.();
+        cancelDiagnosticDelay.current = null;
+      }
       stops.forEach((stop) => stop());
       window.removeEventListener("storage", preferences);
       document.removeEventListener("keydown", keyboard);
     };
     // Native open events own refresh; there is no polling or frontend visibility flag.
-  }, []);
+  }, [focusDiagnostics, refresh]);
   const source =
     snapshot?.source === "windows"
       ? "LIVE WINDOWS"
@@ -334,6 +385,17 @@ export default function QuickAccess() {
           ✕
         </Button>
       </header>
+      <aside
+        className="qam-input-help"
+        aria-label="Quick Access input guidance"
+      >
+        <strong>Controller navigation: desktop only</strong>
+        <p>Games and other tools may still receive the same buttons.</p>
+        <p>
+          When enabled: ↑/↓ move · A select · B back/close. Left/Right: no
+          action. Tap or click any control.
+        </p>
+      </aside>
       <section className="qam-battery" aria-label="Battery status">
         <span className="source-pill">{source}</span>
         <p className="eyebrow">BATTERY</p>
@@ -367,13 +429,31 @@ export default function QuickAccess() {
         </p>
       ))}
       <Button
-        ref={refreshButton}
         variant="outline"
-        onClick={() => void refresh()}
-        disabled={loading}
+        onClick={() => {
+          // DOM clicks, keyboard activation and controller A share this synchronous gate.
+          if (!refreshInFlight.current) void refresh();
+        }}
+        aria-disabled={loading}
+        aria-busy={loading}
       >
         Refresh battery
       </Button>
+      {focusDiagnostics && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="eyebrow">TEST BUILD ONLY</span>
+          <Button
+            variant="outline"
+            aria-disabled={loading}
+            aria-busy={loading}
+            onClick={() => {
+              if (!refreshInFlight.current) void refresh(true);
+            }}
+          >
+            Test Slow Refresh (5s)
+          </Button>
+        </div>
+      )}
       <nav className="qam-navigation" aria-label="Quick Access sections">
         {Object.entries(items).map(([name, text]) => (
           <div key={name}>
@@ -400,12 +480,8 @@ export default function QuickAccess() {
         ))}
       </nav>
       <footer className="qam-footer">
-        <p>
-          Desktop testing only. Controller navigation observes physical buttons
-          without suppressing them. Games or other controller utilities may
-          still receive the same input.
-        </p>
-        <p>{hint}</p>
+        <p>Keyboard: {hint}</p>
+        <p>Tab / Shift+Tab move · Enter / Space select · Escape close</p>
         {notice && <p role="status">{notice}</p>}
         <span>v{version} · READ-ONLY PREVIEW</span>
       </footer>

@@ -155,6 +155,7 @@ export default function App() {
         </header>
         <div className="content">
           <PhysicalQuickAccess
+            shortcutHint={shortcutHint}
             expanded={section === "Dashboard" || section === "Settings"}
             onManage={() => setSection("Settings")}
           />

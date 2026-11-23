@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { listCandidates, rescanCandidates } from "@/lib/neptune";
 import {
@@ -22,7 +22,7 @@ const reviewed = (c: Candidate) =>
   c.usage === 1 &&
   c.inputReportLength === 65;
 const labels: Record<ShortcutStatus["phase"], string> = {
-  disarmed: "Disabled",
+  disarmed: "Shortcut disarmed",
   arming: "Arming",
   waiting_reports: "Waiting for compatible reports",
   waiting_baseline: "Waiting for released baseline",
@@ -39,10 +39,13 @@ const labels: Record<ShortcutStatus["phase"], string> = {
 export default function PhysicalQuickAccess({
   expanded,
   onManage,
+  shortcutHint = "Open Quick Access from the dashboard",
 }: {
   expanded: boolean;
   onManage: () => void;
+  shortcutHint?: string;
 }) {
+  const helpId = useId();
   const [status, setStatus] = useState<ShortcutStatus | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selected, setSelected] = useState("");
@@ -62,6 +65,14 @@ export default function PhysicalQuickAccess({
   const alive = useRef(false);
   const latest = useRef<ShortcutStatus | null>(null);
   const accept = useCallback((value: ShortcutStatus) => {
+    if (
+      alive.current &&
+      latest.current?.generation === value.generation &&
+      latest.current.revision === value.revision
+    ) {
+      setConnection(true);
+      return;
+    }
     if (
       !alive.current ||
       (latest.current &&
@@ -214,6 +225,25 @@ export default function PhysicalQuickAccess({
                 : null;
   const attempt = status?.lastAttempt;
   const reason = attempt?.reason ?? status?.terminationReason;
+  const active =
+    status?.phase === "armed" &&
+    status.source === "windows" &&
+    status.readerOwner === "shortcut" &&
+    status.opened &&
+    status.workerRunning;
+  const readiness = disarmPending
+    ? "Disarming — reader cleanup in progress"
+    : status?.phase === "armed"
+      ? !active
+        ? "Shortcut readiness not confirmed"
+        : status.navigation.issue
+          ? "Shortcut armed — navigation error"
+          : status.navigation.configured
+            ? "Shortcut armed — navigation enabled (desktop only)"
+            : "Shortcut armed — navigation disabled"
+      : status
+        ? labels[status.phase]
+        : "Status unavailable";
   return (
     <section
       className="physical-shortcut"
@@ -223,7 +253,8 @@ export default function PhysicalQuickAccess({
         <div>
           <strong>Physical Quick Access Shortcut</strong>
           <p className="muted" role="status">
-            {status ? labels[status.phase] : "Status unavailable"}
+            {!connection && status ? "Last known: " : ""}
+            {readiness}
             {owned && status
               ? ` · ${Math.ceil(status.remainingMs / 60000)} min remaining`
               : ""}
@@ -253,7 +284,11 @@ export default function PhysicalQuickAccess({
           response.
         </p>
       )}
-      {blocked && !armPending && <p className="qam-error">{blocked}</p>}
+      {blocked && !armPending && (
+        <p id={`${helpId}-blocked`} className="qam-error">
+          {blocked}
+        </p>
+      )}
       {eventsUnavailable && (
         <p className="muted">
           Live status subscription unavailable; native status polling remains
@@ -262,22 +297,6 @@ export default function PhysicalQuickAccess({
       )}
       {disarmPending && (
         <p role="status">Disarming — waiting for safe reader cleanup…</p>
-      )}
-      {attempt && (
-        <div aria-label="Last Arm Attempt" className="panel">
-          <strong>
-            Last Arm Attempt #{attempt.id}: {attempt.outcome}
-          </strong>
-          <p>
-            Stage: {attempt.stage.replaceAll("_", " ")} · Worker:{" "}
-            {status?.workerRunning ? "running" : "not running"} · HID handle:{" "}
-            {attempt.hidHandleOpened
-              ? "opened during attempt"
-              : "not opened during attempt"}{" "}
-            · Compatible reports:{" "}
-            {attempt.compatibleReportsObserved ? "observed" : "not observed"}
-          </p>
-        </div>
       )}
       {reason && (
         <p role="alert" className="qam-error">
@@ -290,43 +309,26 @@ export default function PhysicalQuickAccess({
           {shortcutReasons[status.terminationReason][0]}
         </p>
       )}
-      {status && (
-        <p className="muted">
-          Monitor phase: {status.monitorPhase.replaceAll("_", " ")}
+      {status?.navigation.issue && (
+        <p role="alert">
+          QAM navigation stopped: {status.navigation.issue.replaceAll("_", " ")}
+          . Use keyboard, mouse/touch or Open Quick Access.
+          {connection && active
+            ? " Physical ⋯ remains available in this session. Disarm and rearm manually to retry navigation."
+            : " Physical ⋯ availability is not confirmed. Wait for cleanup, then rescan and rearm manually."}
         </p>
       )}
-      <Button
-        variant="outline"
-        disabled={!status}
-        onClick={() => {
-          if (!status) return;
-          void (async () => {
-            try {
-              if (!navigator.clipboard?.writeText)
-                throw new Error("clipboard unavailable");
-              await navigator.clipboard.writeText(
-                JSON.stringify(
-                  shortcutDiagnosticSummary(
-                    status,
-                    version,
-                    armPending ? "pending" : error ? "ipc_failed" : "idle",
-                  ),
-                  null,
-                  2,
-                ),
-              );
-              setCopyNotice("Safe shortcut summary copied.");
-            } catch {
-              setCopyNotice(
-                "Clipboard unavailable. Retry copying from the native app.",
-              );
-            }
-          })();
-        }}
-      >
-        Copy Shortcut Diagnostic Summary
-      </Button>
-      {copyNotice && <p role="status">{copyNotice}</p>}
+      {status?.issue && (
+        <p className="qam-error">
+          Physical shortcut: {status.issue.replaceAll("_", " ")}. Use Disarm /
+          manual rearm or the keyboard/dashboard fallback.
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="qam-error">
+          {error}
+        </p>
+      )}
       {expanded && (
         <>
           <p>
@@ -334,20 +336,26 @@ export default function PhysicalQuickAccess({
             remapping or hardware configuration is performed.
           </p>
           <p className="muted">
-            Disabled by default, session-only, at most 30 minutes. Ctrl+Alt+Q
-            and Open Quick Access remain available. Other tools may also react
-            to ⋯; Nepteer never suppresses their actions. Disarm if overlays
-            conflict.
+            Disarmed on startup. Each explicitly armed session lasts at most 30
+            minutes and never renews automatically. Disarm before changing modes
+            or starting Controller monitoring.
           </p>
-          <p className="muted">
-            Read-only source:{" "}
-            {status?.source === "windows"
-              ? "WINDOWS HID"
-              : status?.source === "unsupported"
-                ? "UNSUPPORTED HOST"
-                : "Unavailable"}{" "}
-            · Reader owner: {status?.readerOwner ?? "Unknown"}
-          </p>
+          <section
+            aria-label="Other ways to use Quick Access"
+            className="shortcut-help"
+          >
+            <h3>Other ways to use Quick Access</h3>
+            <p>
+              <strong>Keyboard:</strong> {shortcutHint}. Tab / Shift+Tab moves
+              focus, Enter / Space activates a focused button, Escape closes
+              QAM.
+            </p>
+            <p>
+              <strong>Touch/mouse:</strong> Use Open Quick Access in the
+              dashboard, then tap or click existing controls. These alternatives
+              do not pause games or isolate their input.
+            </p>
+          </section>
           <fieldset disabled={owned || busy || armPending || disarmPending}>
             <legend>Explicit arming</legend>
             <div className="controller-actions">
@@ -383,31 +391,113 @@ export default function PhysicalQuickAccess({
                 ))}
               </select>
             </label>
-            <label className="controller-source">
-              Reviewed session mode (manually confirmed)
-              <select
-                value={navigation ? "x360" : "desktop"}
-                onChange={(e) => {
-                  setNavigation(e.target.value === "x360");
-                  setConsent(false);
-                  setConfiguration(false);
-                }}
-              >
-                <option value="desktop">
-                  Desktop — existing ⋯ toggle only
-                </option>
-                <option value="x360">
-                  X360 — ⋯ toggle and desktop-only QAM navigation
-                </option>
-              </select>
-            </label>
-            <p className="muted">
-              Controller navigation observes physical buttons without
-              suppressing them. Games or other controller utilities may still
-              receive the same input. Select X360 only if already running in
-              that reviewed configuration; Nepteer does not detect or change
-              tool modes. Initial navigation testing requires no active game.
-            </p>
+            <fieldset
+              className="shortcut-modes"
+              aria-describedby={`${helpId}-mode-note ${helpId}-mode-warning`}
+            >
+              <legend>Controller session mode</legend>
+              <div className="shortcut-mode-options">
+                {[false, true].map((enabled) => (
+                  <label className="shortcut-mode" key={String(enabled)}>
+                    <input
+                      type="radio"
+                      name={`${helpId}-mode`}
+                      checked={navigation === enabled}
+                      onChange={() => {
+                        setNavigation(enabled);
+                        setConsent(false);
+                        setConfiguration(false);
+                      }}
+                      aria-labelledby={`${helpId}-${enabled}-title`}
+                      aria-describedby={`${helpId}-${enabled}-description ${helpId}-mode-warning`}
+                    />
+                    <span>
+                      <strong id={`${helpId}-${enabled}-title`}>
+                        {enabled
+                          ? "Controller navigation (desktop only)"
+                          : "Physical shortcut only"}
+                      </strong>
+                      <span id={`${helpId}-${enabled}-description`}>
+                        {enabled
+                          ? "⋯ opens QAM, D-pad Up/Down moves, A selects and B goes back or closes. Reviewed Steam Deck Tools X360-mode configuration."
+                          : "⋯ opens or closes QAM. D-pad and A/B navigation are not enabled. Reviewed Steam Deck Tools Desktop-mode configuration."}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p id={`${helpId}-mode-note`} className="muted">
+                You confirm an existing configuration. Selecting a mode does not
+                detect or change Steam Deck Tools or Steam Input, arm the
+                reader, or save navigation opt-in across restarts. Cards choose
+                the next Arm request; the status above shows current native
+                availability. Disarm before reconfiguring.
+              </p>
+            </fieldset>
+            {navigation ? (
+              <aside id={`${helpId}-mode-warning`} className="shortcut-warning">
+                <strong>
+                  Controller navigation does not block game input.
+                </strong>
+                <p>
+                  Nepteer reads your controller buttons but does not prevent
+                  games or other controller utilities from receiving them. Use
+                  controller navigation on the Windows desktop without an active
+                  game.
+                </p>
+              </aside>
+            ) : (
+              <p id={`${helpId}-mode-warning`} className="muted">
+                Other tools may also react to ⋯. Nepteer does not suppress their
+                actions. Disarm if overlays conflict.
+              </p>
+            )}
+            <section
+              aria-label="Physical controller controls"
+              className="shortcut-help"
+            >
+              <h3>
+                {navigation
+                  ? "Controller controls — when armed"
+                  : "Shortcut — when armed"}
+              </h3>
+              <dl>
+                <div>
+                  <dt>⋯</dt>
+                  <dd>Open/close Quick Access</dd>
+                </div>
+                {navigation && (
+                  <>
+                    <div>
+                      <dt>D-pad Up</dt>
+                      <dd>Previous item</dd>
+                    </div>
+                    <div>
+                      <dt>D-pad Down</dt>
+                      <dd>Next item</dd>
+                    </div>
+                    <div>
+                      <dt>A</dt>
+                      <dd>Activate focused item</dd>
+                    </div>
+                    <div>
+                      <dt>B</dt>
+                      <dd>Collapse section or close</dd>
+                    </div>
+                    <div>
+                      <dt>D-pad Left/Right</dt>
+                      <dd>No action in current QAM</dd>
+                    </div>
+                  </>
+                )}
+              </dl>
+              {navigation && (
+                <p className="muted">
+                  Release before pressing again. Held buttons do not repeat; no
+                  analog stick navigation.
+                </p>
+              )}
+            </section>
             <label className="probe-consent">
               <input
                 type="checkbox"
@@ -431,6 +521,7 @@ export default function PhysicalQuickAccess({
               never renews automatically.
             </label>
             <Button
+              aria-describedby={blocked ? `${helpId}-blocked` : undefined}
               disabled={
                 !connection ||
                 status?.source !== "windows" ||
@@ -445,40 +536,88 @@ export default function PhysicalQuickAccess({
               Arm Physical ⋯ Shortcut
             </Button>
           </fieldset>
-          {status?.interface && (
-            <p className="muted">
-              Session interface: {status.interface.interfaceNumber} · VID 0x28DE
-              / PID 0x1205 · usage FFFF/0001 · descriptor{" "}
-              {status.interface.inputReportLength}
-            </p>
-          )}
-          <p className="muted">
-            After arming, release ⋯ for at least three reports over 200ms.
-            Holding at startup does nothing. Only released→pressed toggles;
-            held/release reports do not. Presses less than 350ms after an
-            accepted press are discarded, never delayed. A report gap over 1.5s
-            requires a fresh released baseline. Incompatible framing or read
-            failure closes the session; rearm manually.
-          </p>
         </>
       )}
-      {status?.navigation.issue && (
-        <p role="alert">
-          QAM navigation stopped: {status.navigation.issue.replaceAll("_", " ")}
-          . Keyboard/touch and ⋯ remain available; Disarm and rearm manually.
+      <details className="shortcut-diagnostics">
+        <summary>Technical session diagnostics</summary>
+        <p className="muted">
+          Read-only source:{" "}
+          {status?.source === "windows"
+            ? "WINDOWS HID"
+            : status?.source === "unsupported"
+              ? "UNSUPPORTED HOST"
+              : "Unavailable"}{" "}
+          · Reader owner: {status?.readerOwner ?? "Unknown"}
         </p>
-      )}
-      {status?.issue && (
-        <p className="qam-error">
-          Physical shortcut: {status.issue.replaceAll("_", " ")}. Use Disarm /
-          manual rearm or the keyboard/dashboard fallback.
+        {attempt && (
+          <div aria-label="Last Arm Attempt" className="panel">
+            <strong>
+              Last Arm Attempt #{attempt.id}: {attempt.outcome}
+            </strong>
+            <p>
+              Stage: {attempt.stage.replaceAll("_", " ")} · Worker:{" "}
+              {status?.workerRunning ? "running" : "not running"} · HID handle:{" "}
+              {attempt.hidHandleOpened
+                ? "opened during attempt"
+                : "not opened during attempt"}{" "}
+              · Compatible reports:{" "}
+              {attempt.compatibleReportsObserved ? "observed" : "not observed"}
+            </p>
+          </div>
+        )}
+        {status && (
+          <p className="muted">
+            Monitor phase: {status.monitorPhase.replaceAll("_", " ")}
+          </p>
+        )}
+        <Button
+          variant="outline"
+          disabled={!status}
+          onClick={() => {
+            if (!status) return;
+            void (async () => {
+              try {
+                if (!navigator.clipboard?.writeText)
+                  throw new Error("clipboard unavailable");
+                await navigator.clipboard.writeText(
+                  JSON.stringify(
+                    shortcutDiagnosticSummary(
+                      status,
+                      version,
+                      armPending ? "pending" : error ? "ipc_failed" : "idle",
+                    ),
+                    null,
+                    2,
+                  ),
+                );
+                setCopyNotice("Safe shortcut summary copied.");
+              } catch {
+                setCopyNotice(
+                  "Clipboard unavailable. Retry copying from the native app.",
+                );
+              }
+            })();
+          }}
+        >
+          Copy Shortcut Diagnostic Summary
+        </Button>
+        {copyNotice && <p role="status">{copyNotice}</p>}
+        {status?.interface && (
+          <p className="muted">
+            Session interface: {status.interface.interfaceNumber} · VID 0x28DE /
+            PID 0x1205 · usage FFFF/0001 · descriptor{" "}
+            {status.interface.inputReportLength}
+          </p>
+        )}
+        <p className="muted">
+          After arming, release ⋯ for at least three reports over 200ms. Holding
+          at startup does nothing. Only released→pressed toggles; held/release
+          reports do not. Presses less than 350ms after an accepted press are
+          discarded, never delayed. A report gap over 1.5s requires a fresh
+          released baseline. Incompatible framing or read failure closes the
+          session; rearm manually.
         </p>
-      )}
-      {error && (
-        <p role="alert" className="qam-error">
-          {error}
-        </p>
-      )}
+      </details>
     </section>
   );
 }

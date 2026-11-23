@@ -1,3 +1,87 @@
+# Step 5E · QAM UX acceptance
+
+**Step 5E physical acceptance: user-reported complete on Steam Deck LCD / Windows 11.** The reported slow-refresh observations cover responsive D-pad/Tab/Shift+Tab/mouse/touch during loading, no completion focus theft, duplicate prevention, immediate close, no obsolete delay after reopen and safe explicit Disarm. This is scoped user evidence, not a universal compatibility or input-isolation claim; unreported fault-injection/screen-reader/DPI cases are not newly claimed. Step 5C.2 previously passed user-reported hardware acceptance; earlier checklist status is historical. Use this branch's matching artifact/SHA on Steam Deck LCD / Windows 11 with existing WebView2, standard-user install and the reviewed native collection (28DE:1205, interface 2, FFFF/0001, descriptor/actual65, deck_v1_zero_prefixed65). Keep keyboard/touch available. All navigation testing is desktop-only, without an active game. Do not run game input-suppression experiments or alter drivers/tool settings. Run a scenario only when the corresponding SDT profile is already manually confirmed; otherwise record Not run. Steam must be manually confirmed running for the reviewed profile; Steam Input status may be unknown.
+
+## Retained test-only slow-refresh diagnostic artifact
+
+The user reports normal Refresh now completes successfully, retains focus and supports D-pad navigation after completion on Deck LCD/Windows 11. **Pending-interval physical validation has now passed according to the user**, covering the interaction/close/reopen/disarm observations above. The procedures below remain for regression testing during controller development. Install only the matching `TEST-ONLY-qam-focus-diagnostics-windows-x86_64-<SHA>` artifact, not the normal artifact, and confirm **TEST BUILD ONLY** / **Test Slow Refresh (5s)** in QAM. Same version/app identity: exit Nepteer before installing/replacing it; never run two instances. Do not change tools, drivers, privileges or input configuration. Controller tests require the already reviewed X360 profile, explicit navigation arming and the Windows desktop without an active game. Keyboard/touch tests need no armed HID reader.
+
+### A. D-pad focus during a five-second read
+
+1. Open QAM, focus Test Slow Refresh (between Refresh and Performance), activate with A. Check the normal loading indicator stays for at least approximately five seconds, with focus still on that button.
+2. During loading, Up must reach Close (busy normal Refresh is skipped). Down from Close must reach Performance (both refresh controls are busy). Confirm reverse movement as well.
+3. Let completion occur while focused elsewhere: no automatic focus reset. If left on the test button, focus remains there. After completion, the seven-control test order is restored; normal production has only six.
+
+### B. Keyboard
+
+1. Start Test Slow Refresh. During loading Tab reaches Performance and Shift+Tab returns to the still-focusable test button. Tab can also reach busy normal Refresh.
+2. Try Enter/Space repeatedly while a refresh control is focused: no duplicate read/reset of the five-second interval. Completion does not steal focus. Escape closes normally.
+
+### C. Mouse/touch
+
+1. Start Test Slow Refresh, tap/click Performance during loading: the section responds immediately and retains focus after completion.
+2. Start a fresh slow refresh and click Close during loading: QAM hides promptly. Reopen before the old delay would finish: only the new opening's normal telemetry request may update the view; no late busy/reset/old data.
+3. With QAM open, normal Refresh remains immediate. If a read fails naturally, test-build error display waits for the five-second minimum; do not alter hardware/services to force errors. Slow/error/overlap cases have deterministic synthetic coverage if not observable manually.
+
+### D. Controller navigation and cleanup
+
+1. Arm reviewed navigation mode explicitly, open QAM with ⋯, focus the test button with D-pad and activate once with A. While pending, additional A presses must not add reads or reset the timer.
+2. Navigate to Performance, activate if useful, then B collapses it; B again closes. Also test Escape/Close and ⋯. The JS delay must not hold native claim/completion or delay hiding/Disarm.
+3. Repeat a test; Disarm and confirm normal cleanup. Provider changes during a delay may supersede the test request, never replay it. Record safe observations only.
+
+Record build/SHA, mode and Pass/Fail/Not observed for A–D; no raw reports or histories. This is a temporary diagnostic artifact, not a release or input-isolation experiment. By explicit user decision, retain the gated button/flag/module/tests/checker as test-only development infrastructure until controller feature development is complete. The workflow is manual-only and allows main or feat/qam-navigation-ux; normal builds/CI exclude diagnostics. See DEVELOPMENT.md for Actions dispatch/ref selection, the verified feature-branch CLI path and GitHub default-branch discovery caveat. Immediate removal before Step 5E merge is superseded. Preserve the production focus fix.
+
+## Step 5E Refresh focus regression check
+
+The user confirms the production focus fix and subsequent slow-refresh physical checks passed; these instructions remain as regression coverage. Test on the desktop in each already reviewed session mode; controller navigation assertions apply only when navigation is explicitly enabled. The user reported the original jump to Performance in both modes.
+
+1. Open QAM and focus Refresh using keyboard, pointer/touch or D-pad. Activate it: focus must stay on Refresh while reading and after completion. Check the busy/unavailable announcement with a screen reader where available.
+2. During an observable pending read, repeat click/tap, Enter/Space or controller A. No additional manual read or focus jump should occur. Fast-read timing, delayed/failing reads and exact request counts also have deterministic synthetic coverage; do not alter devices/services to force failure.
+3. While Refresh is busy, Up from it goes to Close and Down to Performance. Down from Close/Up from Performance skip busy Refresh. There is still exactly the original six-control order after the read.
+4. Tab/Shift+Tab remains functional, including visiting busy Refresh. Voluntarily tap/click or Tab to Performance during loading; completion must leave focus there. Repeat after a naturally observed read failure, if available; otherwise mark that hardware case Not observed.
+5. Escape/Close still hide during loading. In navigation mode B collapses a section or closes as before. Keyboard and touch work in shortcut-only mode; no new controller navigation is enabled there.
+6. Hide/reopen and provider changes retain normal telemetry refresh behavior and genuine-open initial focus. No old request completion may unlock a newer pending request or replace its data.
+
+## A. Physical shortcut only
+
+1. Launch/relaunch: confirm Shortcut disarmed, shortcut-only radio selected, both acknowledgments clear, QAM hidden and no automatic reader.
+2. Confirm the existing reviewed SDT Desktop configuration; stop diagnostics, rescan and select the eligible vendor collection. Choose **Physical shortcut only**. Check only ⋯ is advertised in controller help and other tools may also react.
+3. Complete both acknowledgments and explicitly Arm. Confirm startup/report/released-baseline stages before **Shortcut armed — navigation disabled**, with remaining time. Selection alone must never arm.
+4. Press/release ⋯: QAM toggles. D-pad/A/B must not navigate QAM. Use the displayed keyboard shortcut, Tab/Shift+Tab, Enter/Space, Escape and mouse/touch instead.
+5. Disarm. Wait for native confirmation before treating cleanup as complete or changing modes.
+
+## B. Controller navigation (desktop only)
+
+1. Confirm the existing reviewed SDT X360 configuration, Steam running/Input unknown if applicable. Stop/disarm the active reader. Choose **Controller navigation (desktop only)**; both acknowledgments must reset.
+2. Before Arm, read the prominent warning: controller navigation does not block game input; desktop without an active game. Verify it is associated with the radio group and not conveyed by color alone. Selection must not change external tools or arm.
+3. Check help: ⋯ toggle; Up previous; Down next; A focused-item activation; B collapse/close; Left/Right no action. No stick navigation or held repeat is promised.
+4. Complete both acknowledgments, explicitly Arm and wait for **Shortcut armed — navigation enabled (desktop only)**, not just configured/waiting baseline.
+5. Open with ⋯. Down/Up wrap Close → enabled Refresh → Performance → Controller → Display → Settings. Busy Refresh is skipped by controller navigation but remains keyboard-focusable; help text is never a focus target.
+6. A activates enabled controls, B collapses an expanded section then closes, Left/Right do nothing. Hold/release/repress behavior is unchanged. Test Escape, ⋯, Ctrl+Alt+Q and touch/click as well.
+7. Disarm and confirm physical navigation stops. Re-arm explicitly for a short repeat smoke test; no duplicate reader or automatic renewal.
+
+## C. Status and recovery
+
+1. Check startup, expiry, disconnect/read error and Disarm messages when naturally observable. Waiting baseline/terminal status must never show navigation enabled. Do not forcibly disconnect internal hardware or reproduce driver failures.
+2. Attempt mode changes after completing both acknowledgments while disarmed: both clear, Arm disables. During an active session, cards/setup are locked; Disarm remains available in the persistent bar on other pages.
+3. Failed Arm must retain a safe reason/recovery action and must not show armed. Monitoring/probe ownership must block Arm; an armed shortcut must still block diagnostics until explicit Disarm.
+4. If a navigation-only error occurs, check keyboard/touch/dashboard fallback and physical ⋯ availability against native status. Do not assume ⋯ works after worker termination. Expand **Technical session diagnostics** to copy the sanitized summary if needed.
+5. Navigate pages/remount: current availability comes from native status, not the next-session card. Relaunch must reset opted-in mode/consent. A temporary status connection failure must say **Last known**; this transport case is synthetic-test covered and may be Not observed on hardware.
+6. Disarming/pending completion must not claim cleanup completed. Respect the existing frozen-renderer/transport limitation; do not kill or reconfigure another tool as recovery.
+7. Confirm ordinary QAM operation after successful disarm/rearm; no new device configuration or reader ownership changes.
+
+## D. Display and accessibility
+
+1. At 1280×800 and the actual Windows DPI setting, check readable radio cards, warning/help and acknowledgments without excessive scrolling. Repeat dark/light themes; technical detail may be expanded separately.
+2. Keyboard-only: Tab into the native radio group, use arrows/Space, verify selected state/focus outline, fieldset/legend and accessible names/descriptions with a screen reader where available. Confirm checks remain explicit.
+3. Check warning text/contrast and status announcements without continual repetition. Check touch targets and pointer selection.
+4. QAM: compact limitation/help, native platform shortcut and keyboard alternatives remain readable. All six controls remain reachable; no help becomes a Tab/controller stop. Verify true opening focuses Close, redundant visible/provider updates preserve actual focus, refresh behavior and settings/theme regression.
+5. Enable reduced-motion preference and confirm restrained opening animation is suppressed. Check keyboard, mouse and touch; browser automation is not a substitute for Windows screen-reader/touch validation.
+
+Record build/SHA, screen/DPI/theme, manually supplied environment, each scenario's Pass/Fail/Not run, and safe diagnostic summaries only. No raw reports, serials, device paths or controller history. No gameplay-isolation claim follows from these tests. Normal shutdown/uninstall must still leave no process, driver or service added by Nepteer.
+
+---
+
 # Step 5C.2 · Desktop-only physical QAM navigation acceptance
 
 **New navigation hardware results are pending.** The user supplied Step 5C.1 evidence: eight positive D-pad sessions/two per direction, 40/40 cycles, sixteen idle/opposite/A/B negatives with zero false nominated edges, no incompatible/malformed reports/gaps/unexpected bit changes in clean positives. The manually reported mode was **X360**, Steam running/Input unknown, on LCD/Windows 11, native 28DE:1205 interface2 FFFF/0001 length65, deck_v1_zero_prefixed65. Earlier Desktop-mode evidence was for ⋯, not automatic certification of navigation in Desktop mode.
