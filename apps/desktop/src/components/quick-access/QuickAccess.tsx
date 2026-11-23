@@ -43,7 +43,7 @@ export default function QuickAccess() {
   >(null);
   const activeNavigation = useRef<{ hide: boolean } | null>(null);
   const sectionRef = useRef<keyof typeof items | null>(null);
-  const refreshButton = useRef<HTMLButtonElement>(null);
+  const refreshInFlight = useRef(false);
   function changeSection(value: keyof typeof items | null) {
     sectionRef.current = value;
     setSection(value);
@@ -60,12 +60,20 @@ export default function QuickAccess() {
     );
     const index = focused < 0 ? 0 : focused;
     if (action === "previous" || action === "next") {
-      buttons[
-        (index + (action === "next" ? 1 : -1) + buttons.length) % buttons.length
-      ].focus();
+      const step = action === "next" ? 1 : -1;
+      // Keep the focused busy control as the origin, but skip it as a destination.
+      for (let offset = 1; offset <= buttons.length; offset++) {
+        const target =
+          buttons[(index + offset * step + buttons.length) % buttons.length];
+        if (target.getAttribute("aria-disabled") !== "true") {
+          target.focus();
+          break;
+        }
+      }
     } else if (action === "activate") {
       if (focused < 0) buttons[0].focus();
-      else buttons[index].click();
+      else if (buttons[index].getAttribute("aria-disabled") !== "true")
+        buttons[index].click();
     } else if (action === "back") {
       const current = sectionRef.current;
       if (current) {
@@ -83,14 +91,9 @@ export default function QuickAccess() {
   useEffect(() => {
     navigateRef.current = navigate;
   });
-  useEffect(() => {
-    if (loading && document.activeElement === refreshButton.current)
-      panel.current
-        ?.querySelector<HTMLButtonElement>("button[data-section]")
-        ?.focus();
-  }, [loading]);
   const alive = useRef(true);
   async function refresh() {
+    refreshInFlight.current = true;
     const request = ++sequence.current;
     setLoading(true);
     setError(null);
@@ -102,7 +105,10 @@ export default function QuickAccess() {
       if (alive.current && request === sequence.current)
         setError(String(reason));
     } finally {
-      if (alive.current && request === sequence.current) setLoading(false);
+      if (alive.current && request === sequence.current) {
+        refreshInFlight.current = false;
+        setLoading(false);
+      }
     }
   }
   async function hide() {
@@ -378,10 +384,13 @@ export default function QuickAccess() {
         </p>
       ))}
       <Button
-        ref={refreshButton}
         variant="outline"
-        onClick={() => void refresh()}
-        disabled={loading}
+        onClick={() => {
+          // DOM clicks, keyboard activation and controller A share this synchronous gate.
+          if (!refreshInFlight.current) void refresh();
+        }}
+        aria-disabled={loading}
+        aria-busy={loading}
       >
         Refresh battery
       </Button>

@@ -2,6 +2,17 @@
 
 **New UI hardware acceptance: pending.** Step 5C.2 previously passed user-reported hardware acceptance; earlier checklist status is historical. Use this branch's matching artifact/SHA on Steam Deck LCD / Windows 11 with existing WebView2, standard-user install and the reviewed native collection (28DE:1205, interface 2, FFFF/0001, descriptor/actual65, deck_v1_zero_prefixed65). Keep keyboard/touch available. All navigation testing is desktop-only, without an active game. Do not run game input-suppression experiments or alter drivers/tool settings. Run a scenario only when the corresponding SDT profile is already manually confirmed; otherwise record Not run. Steam must be manually confirmed running for the reviewed profile; Steam Input status may be unknown.
 
+## Step 5E Refresh focus regression check
+
+Fix hardware confirmation is pending. Test on the desktop in each already reviewed session mode; controller navigation assertions apply only when navigation is explicitly enabled. The user reported the original jump to Performance in both modes.
+
+1. Open QAM and focus Refresh using keyboard, pointer/touch or D-pad. Activate it: focus must stay on Refresh while reading and after completion. Check the busy/unavailable announcement with a screen reader where available.
+2. During an observable pending read, repeat click/tap, Enter/Space or controller A. No additional manual read or focus jump should occur. Fast-read timing, delayed/failing reads and exact request counts also have deterministic synthetic coverage; do not alter devices/services to force failure.
+3. While Refresh is busy, Up from it goes to Close and Down to Performance. Down from Close/Up from Performance skip busy Refresh. There is still exactly the original six-control order after the read.
+4. Tab/Shift+Tab remains functional, including visiting busy Refresh. Voluntarily tap/click or Tab to Performance during loading; completion must leave focus there. Repeat after a naturally observed read failure, if available; otherwise mark that hardware case Not observed.
+5. Escape/Close still hide during loading. In navigation mode B collapses a section or closes as before. Keyboard and touch work in shortcut-only mode; no new controller navigation is enabled there.
+6. Hide/reopen and provider changes retain normal telemetry refresh behavior and genuine-open initial focus. No old request completion may unlock a newer pending request or replace its data.
+
 ## A. Physical shortcut only
 
 1. Launch/relaunch: confirm Shortcut disarmed, shortcut-only radio selected, both acknowledgments clear, QAM hidden and no automatic reader.
@@ -16,7 +27,7 @@
 2. Before Arm, read the prominent warning: controller navigation does not block game input; desktop without an active game. Verify it is associated with the radio group and not conveyed by color alone. Selection must not change external tools or arm.
 3. Check help: ⋯ toggle; Up previous; Down next; A focused-item activation; B collapse/close; Left/Right no action. No stick navigation or held repeat is promised.
 4. Complete both acknowledgments, explicitly Arm and wait for **Shortcut armed — navigation enabled (desktop only)**, not just configured/waiting baseline.
-5. Open with ⋯. Down/Up wrap Close → enabled Refresh → Performance → Controller → Display → Settings. Disabled Refresh is skipped; help text is never a focus target.
+5. Open with ⋯. Down/Up wrap Close → enabled Refresh → Performance → Controller → Display → Settings. Busy Refresh is skipped by controller navigation but remains keyboard-focusable; help text is never a focus target.
 6. A activates enabled controls, B collapses an expanded section then closes, Left/Right do nothing. Hold/release/repress behavior is unchanged. Test Escape, ⋯, Ctrl+Alt+Q and touch/click as well.
 7. Disarm and confirm physical navigation stops. Re-arm explicitly for a short repeat smoke test; no duplicate reader or automatic renewal.
 
