@@ -2,6 +2,35 @@
 
 **New UI hardware acceptance: pending.** Step 5C.2 previously passed user-reported hardware acceptance; earlier checklist status is historical. Use this branch's matching artifact/SHA on Steam Deck LCD / Windows 11 with existing WebView2, standard-user install and the reviewed native collection (28DE:1205, interface 2, FFFF/0001, descriptor/actual65, deck_v1_zero_prefixed65). Keep keyboard/touch available. All navigation testing is desktop-only, without an active game. Do not run game input-suppression experiments or alter drivers/tool settings. Run a scenario only when the corresponding SDT profile is already manually confirmed; otherwise record Not run. Steam must be manually confirmed running for the reviewed profile; Steam Input status may be unknown.
 
+## Temporary slow-refresh diagnostic artifact (Step 5E only)
+
+The user reports normal Refresh now completes successfully, retains focus and supports D-pad navigation after completion on Deck LCD/Windows 11. **Pending-interval physical validation remains pending.** Install only the matching `TEST-ONLY-qam-focus-diagnostics-windows-x86_64-<SHA>` artifact, not the normal artifact, and confirm **TEST BUILD ONLY** / **Test Slow Refresh (5s)** in QAM. Same version/app identity: exit Nepteer before installing/replacing it; never run two instances. Do not change tools, drivers, privileges or input configuration. Controller tests require the already reviewed X360 profile, explicit navigation arming and the Windows desktop without an active game. Keyboard/touch tests need no armed HID reader.
+
+### A. D-pad focus during a five-second read
+
+1. Open QAM, focus Test Slow Refresh (between Refresh and Performance), activate with A. Check the normal loading indicator stays for at least approximately five seconds, with focus still on that button.
+2. During loading, Up must reach Close (busy normal Refresh is skipped). Down from Close must reach Performance (both refresh controls are busy). Confirm reverse movement as well.
+3. Let completion occur while focused elsewhere: no automatic focus reset. If left on the test button, focus remains there. After completion, the seven-control test order is restored; normal production has only six.
+
+### B. Keyboard
+
+1. Start Test Slow Refresh. During loading Tab reaches Performance and Shift+Tab returns to the still-focusable test button. Tab can also reach busy normal Refresh.
+2. Try Enter/Space repeatedly while a refresh control is focused: no duplicate read/reset of the five-second interval. Completion does not steal focus. Escape closes normally.
+
+### C. Mouse/touch
+
+1. Start Test Slow Refresh, tap/click Performance during loading: the section responds immediately and retains focus after completion.
+2. Start a fresh slow refresh and click Close during loading: QAM hides promptly. Reopen before the old delay would finish: only the new opening's normal telemetry request may update the view; no late busy/reset/old data.
+3. With QAM open, normal Refresh remains immediate. If a read fails naturally, test-build error display waits for the five-second minimum; do not alter hardware/services to force errors. Slow/error/overlap cases have deterministic synthetic coverage if not observable manually.
+
+### D. Controller navigation and cleanup
+
+1. Arm reviewed navigation mode explicitly, open QAM with ⋯, focus the test button with D-pad and activate once with A. While pending, additional A presses must not add reads or reset the timer.
+2. Navigate to Performance, activate if useful, then B collapses it; B again closes. Also test Escape/Close and ⋯. The JS delay must not hold native claim/completion or delay hiding/Disarm.
+3. Repeat a test; Disarm and confirm normal cleanup. Provider changes during a delay may supersede the test request, never replay it. Record safe observations only.
+
+Record build/SHA, mode and Pass/Fail/Not observed for A–D; no raw reports or histories. This is a temporary diagnostic artifact, not a release or input-isolation experiment. After physical validation, remove the button/flag/test-only module/workflow/checker hooks before Step 5E merge unless retention is explicitly approved, preserve the production focus fix, re-run validation and produce a normal Windows acceptance artifact.
+
 ## Step 5E Refresh focus regression check
 
 Fix hardware confirmation is pending. Test on the desktop in each already reviewed session mode; controller navigation assertions apply only when navigation is explicitly enabled. The user reported the original jump to Performance in both modes.

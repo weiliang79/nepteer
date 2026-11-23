@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   act,
   fireEvent,
@@ -8,6 +8,8 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import QuickAccess from "./QuickAccess";
+import { createDiagnosticDelay } from "@/lib/qam-focus-diagnostics";
+import * as focusDiagnostic from "@/lib/qam-focus-diagnostics";
 import { getTelemetry } from "@/lib/telemetry";
 import {
   hideQuickAccess,
@@ -65,11 +67,12 @@ let changed: (status: QuickAccessStatus) => void;
 let providerChanged: () => void;
 let navigation: (event: import("@/lib/bindings").NavigationEvent) => void;
 beforeEach(() => {
+  vi.stubEnv("VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS", undefined);
   localStorage.clear();
   vi.clearAllMocks();
-  vi.mocked(quickAccessStatus).mockResolvedValue(status);
+  vi.mocked(quickAccessStatus).mockReset().mockResolvedValue(status);
   vi.mocked(hideQuickAccess).mockResolvedValue({ ...status, visible: false });
-  vi.mocked(getTelemetry).mockResolvedValue(fixture);
+  vi.mocked(getTelemetry).mockReset().mockResolvedValue(fixture);
   vi.mocked(onQuickAccessChange).mockImplementation(async (callback) => {
     changed = callback;
     return vi.fn();
@@ -84,6 +87,11 @@ beforeEach(() => {
     providerChanged = callback;
     return vi.fn();
   });
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
 });
 test("live panel is accessible, focuses Close and reads the shared command without selecting a provider", async () => {
   const user = userEvent.setup();
@@ -188,12 +196,17 @@ async function send(
     validForMs: 500,
   });
   await act(async () => navigation(event));
-  await waitFor(() =>
+  const completed = () =>
     expect(completeQamNavigation).toHaveBeenCalledWith(
       event.request,
       expect.any(Boolean),
-    ),
-  );
+    );
+  if (vi.isFakeTimers()) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    completed();
+  } else await waitFor(completed);
   return event;
 }
 test("native Next/Previous wrap actual enabled focus; Activate and Back reuse section/close behavior", async () => {
@@ -689,4 +702,285 @@ test("genuine reopen supersedes a pending refresh without an old completion unlo
     screen.getByRole("button", { name: "Close Quick Access" }),
   ).toHaveFocus();
   expect(refresh).toHaveAttribute("aria-disabled", "false");
+});
+
+test.each([undefined, "false", "TRUE", "1", "true "])(
+  "diagnostic button is absent for flag %s even in development or runtime overrides",
+  async (flag) => {
+    vi.stubEnv("VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS", flag);
+    vi.stubEnv("DEV", true);
+    localStorage.setItem("VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS", "true");
+    window.history.replaceState(
+      {},
+      "",
+      "?qam&VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS=true",
+    );
+    try {
+      render(<QuickAccess />);
+      await screen.findByText("78 %");
+      expect(
+        screen.queryByRole("button", { name: "Test Slow Refresh (5s)" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("TEST BUILD ONLY")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button")).toHaveLength(6);
+    } finally {
+      window.history.replaceState({}, "", "/");
+    }
+  },
+);
+
+async function diagnosticPanel(fakeClock = true) {
+  vi.stubEnv("VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS", "true");
+  const view = render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const button = screen.getByRole("button", { name: "Test Slow Refresh (5s)" });
+  expect(screen.getByText("TEST BUILD ONLY")).toBeVisible();
+  expect(
+    screen.getAllByRole("button").map((b) => b.textContent?.trim()),
+  ).toEqual([
+    "✕",
+    "Refresh battery",
+    "Test Slow Refresh (5s)",
+    "PerformancePlanned↗",
+    "ControllerPlanned↗",
+    "DisplayPlanned↗",
+    "SettingsDashboard↗",
+  ]);
+  vi.mocked(getTelemetry).mockClear();
+  if (fakeClock) vi.useFakeTimers();
+  return { view, button, user: userEvent.setup() };
+}
+async function beginSlow(button: HTMLElement) {
+  button.focus();
+  await act(async () => {
+    fireEvent.click(button);
+  });
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Reading battery information",
+  );
+  expect(button).toHaveFocus();
+  if (vi.isFakeTimers()) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(vi.getTimerCount()).toBe(1);
+  }
+}
+function controlledDiagnosticDelay() {
+  let finish!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const cancel = vi.fn(() => finish());
+  vi.spyOn(focusDiagnostic, "createDiagnosticDelay").mockReturnValue({
+    promise,
+    cancel,
+  });
+  return finish;
+}
+
+test.each(["success", "error"] as const)(
+  "explicit diagnostic build delays %s for five seconds without moving focus",
+  async (outcome) => {
+    const { button } = await diagnosticPanel();
+    if (outcome === "success")
+      vi.mocked(getTelemetry).mockResolvedValueOnce({
+        ...fixture,
+        batteryPercent: 80,
+      });
+    else
+      vi.mocked(getTelemetry).mockRejectedValueOnce(
+        new Error("Diagnostic read failed"),
+      );
+    await beginSlow(button);
+    expect(getTelemetry).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Refresh battery" }),
+    ).not.toBeDisabled();
+    await act(async () => {
+      vi.advanceTimersByTime(4999);
+    });
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("80 %")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(button).toHaveAttribute("aria-busy", "false");
+    expect(button).toHaveFocus();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    if (outcome === "success")
+      expect(screen.getByText("80 %")).toBeInTheDocument();
+    else
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Diagnostic read failed",
+      );
+    expect(vi.getTimerCount()).toBe(0);
+  },
+);
+
+test("diagnostic controller activation completes its native lease immediately; busy refresh controls deduplicate and D-pad remains responsive", async () => {
+  const { button, user } = await diagnosticPanel(false);
+  const finish = controlledDiagnosticDelay();
+  button.focus();
+  const activation = await send("activate");
+  expect(completeQamNavigation).toHaveBeenCalledWith(activation.request, false);
+  expect(button).toHaveAttribute("aria-busy", "true");
+  await send("activate");
+  await user.click(button);
+  await user.keyboard("{Enter} ");
+  fireEvent.click(screen.getByRole("button", { name: "Refresh battery" }));
+  expect(getTelemetry).toHaveBeenCalledTimes(1);
+  expect(button).toHaveFocus();
+  await send("previous");
+  const close = screen.getByRole("button", { name: "Close Quick Access" });
+  expect(close).toHaveFocus();
+  await send("next");
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  expect(performance).toHaveFocus();
+  await send("previous");
+  expect(close).toHaveFocus();
+  button.focus();
+  await send("next");
+  expect(performance).toHaveFocus();
+  await act(async () => finish());
+  expect(performance).toHaveFocus();
+});
+
+test("diagnostic pending read permits Tab, Shift+Tab, touch/mouse sections, Back, Escape and Close", async () => {
+  const { button, user } = await diagnosticPanel(false);
+  controlledDiagnosticDelay();
+  await beginSlow(button);
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  await user.tab();
+  expect(performance).toHaveFocus();
+  await user.tab({ shift: true });
+  expect(button).toHaveFocus();
+  await user.pointer([
+    { keys: "[TouchA>]", target: performance },
+    { keys: "[/TouchA]" },
+  ]);
+  expect(performance).toHaveAttribute("aria-expanded", "true");
+  await send("back");
+  expect(performance).toHaveAttribute("aria-expanded", "false");
+  const back = await send("back");
+  expect(completeQamNavigation).toHaveBeenCalledWith(back.request, true);
+  await user.keyboard("{Escape}");
+  await user.click(screen.getByRole("button", { name: "Close Quick Access" }));
+  expect(hideQuickAccess).toHaveBeenCalledTimes(2);
+  expect(getTelemetry).toHaveBeenCalledTimes(1);
+});
+
+test.each(["provider change", "hide/reopen"] as const)(
+  "%s cancels old diagnostic timer and protects newer telemetry and focus",
+  async (change) => {
+    const { button } = await diagnosticPanel();
+    let old!: (s: Snapshot) => void;
+    let current!: (s: Snapshot) => void;
+    vi.mocked(getTelemetry)
+      .mockImplementationOnce(
+        () =>
+          new Promise((r) => {
+            old = r;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((r) => {
+            current = r;
+          }),
+      );
+    await beginSlow(button);
+    const performance = screen.getByRole("button", { name: /Performance/ });
+    performance.focus();
+    fireEvent.click(performance);
+    if (change === "provider change") await act(async () => providerChanged());
+    else
+      await act(async () => {
+        changed({ ...status, visible: false, epoch: 2 });
+        changed({ ...status, epoch: 3 });
+      });
+    expect(getTelemetry).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(vi.getTimerCount()).toBe(0);
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+      old({ ...fixture, batteryPercent: 12 });
+    });
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("12 %")).not.toBeInTheDocument();
+    fireEvent.click(button);
+    expect(getTelemetry).toHaveBeenCalledTimes(2);
+    await act(async () => current({ ...fixture, batteryPercent: 80 }));
+    expect(screen.getByText("80 %")).toBeInTheDocument();
+    expect(button).toHaveAttribute("aria-busy", "false");
+    expect(
+      change === "provider change"
+        ? performance
+        : screen.getByRole("button", { name: "Close Quick Access" }),
+    ).toHaveFocus();
+  },
+);
+
+test("diagnostic timers are released on hide and unmount without delaying native cleanup", async () => {
+  const { view, button } = await diagnosticPanel();
+  await beginSlow(button);
+  await act(async () => changed({ ...status, visible: false, epoch: 2 }));
+  expect(vi.getTimerCount()).toBe(0);
+  await act(async () => changed({ ...status, visible: true, epoch: 3 }));
+  await beginSlow(button);
+  view.unmount();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("cancelable diagnostic delay is asynchronous and cleanup resolves it without waiting", async () => {
+  vi.useFakeTimers();
+  const delay = createDiagnosticDelay();
+  let settled = false;
+  void delay.promise.then(() => {
+    settled = true;
+  });
+  await vi.advanceTimersByTimeAsync(4999);
+  expect(settled).toBe(false);
+  delay.cancel();
+  await delay.promise;
+  expect(settled).toBe(true);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("diagnostic request waits for telemetry too when the read takes longer than five seconds", async () => {
+  const { button } = await diagnosticPanel();
+  let finish!: (value: Snapshot) => void;
+  vi.mocked(getTelemetry).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await beginSlow(button);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5000);
+  });
+  expect(button).toHaveAttribute("aria-busy", "true");
+  expect(getTelemetry).toHaveBeenCalledTimes(1);
+  await act(async () => finish(fixture));
+  expect(button).toHaveAttribute("aria-busy", "false");
+  expect(button).toHaveFocus();
+});
+
+test("normal Refresh in a diagnostic build remains immediate and never schedules a diagnostic delay", async () => {
+  await diagnosticPanel();
+  const refresh = screen.getByRole("button", { name: "Refresh battery" });
+  refresh.focus();
+  await act(async () => fireEvent.click(refresh));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(refresh).toHaveAttribute("aria-busy", "false");
+  expect(refresh).toHaveFocus();
+  expect(screen.getByText("78 %")).toBeInTheDocument();
+  expect(vi.getTimerCount()).toBe(0);
+  expect(getTelemetry).toHaveBeenCalledTimes(1);
 });

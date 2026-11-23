@@ -10,6 +10,10 @@ macOS uses the preserved **MOCK DATA** provider. On any host, Settings → Telem
 
 Step 5C.2 passed user-reported Windows Steam Deck acceptance. The [controller input-routing decision record](docs/decisions/step-5d-controller-input-routing.md) recommends retaining **desktop-only controller navigation** and non-invasive touch/keyboard alternatives. QAM navigation observes buttons without suppressing input to games or other tools. Research does not identify a universal supported isolation API under the current safety boundaries; controlling game-visible virtual output or device filtering would require separate architectural/security approval. Step 5E improves setup, guidance and readiness messages without changing native input behavior or the runtime version. New UI hardware acceptance is pending.
 
+### Temporary focus diagnostic test build
+
+Only explicit `VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS=true` builds show **TEST BUILD ONLY / Test Slow Refresh (5s)** in QAM. Normal artifacts exclude the button and delay module. The separately named test Windows artifact uses the same application identity: exit Nepteer before replacing it and never run both instances. See [build instructions](docs/DEVELOPMENT.md#temporary-step-5e-qam-slow-refresh-test-build) and [manual checks](docs/WINDOWS_TESTING.md). This temporary capability must be removed before merging Step 5E after hardware validation, unless retention is explicitly approved; no native input/telemetry behavior changes.
+
 ## Quick Access Menu
 
 Use **Open Quick Access** in the dashboard or **Ctrl + Alt + Q** on Windows (**Control + Option + Q** on macOS). The separate panel starts hidden and shows battery/source information from the same session provider. Escape or Close hides it; clicking outside hides it after activation. Closing the dashboard exits the app and panel. No tray/startup persistence is added.
