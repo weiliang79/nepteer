@@ -1,3 +1,31 @@
+# Step 5F — QAM interaction refinements
+
+Branch `feat/qam-interaction-refinements`, based on latest main/PR #10 `c246bd268d12bb393f362200e63d44b6cf69c8ba`. Merged Step 5E tree matched the prior reviewed branch. No merge authorized; runtime version remains v0.5.0-alpha.2. Step 5E user hardware acceptance is retained; new Step 5F Windows visual/recovery acceptance remains pending. Step 5D decision is unchanged.
+
+## Audited before edits
+
+Rust owns private input edge/baseline handling, exact profile/framing, sole reader/session/cleanup, actual window visibility epochs and bounded generation/sequence-fenced claim/completion. React owns actual DOM focus, local click/section behavior, async rendering and defensive native-claim checks. Existing held reports do not repeat. Async focus/duplicate protection and stale-delivery handling were already implemented and reused.
+
+Before: shared focus-visible styling could miss pointer-mode programmatic focus; controller navigation queried any enabled button; missing DOM focus made Previous/Next step away from implicit Close while Activate focused Close. Baseline synthetic tests (foreground QAM with missing DOM focus) reproduced the directional inconsistency and incidental-button targeting: three failed, Activate baseline passed. This is DOM-level evidence, not a newly claimed Windows hardware defect.
+
+After: QAM-only actual-focus outline/keyline/background in theme colors, rounded section rows, distinct +/−/linked paragraph expansion cue. Explicit control markers retain normal six/test-only seven DOM order; hidden/inert/aria-hidden/CSS-hidden and disabled/busy controls cannot become controller destinations or activations. Busy Refresh remains focusable as an origin and in Tab order. Explicit Previous/Next/Activate with missing/hidden focus focuses the first available approved control, normally Close, without activating. Back retains collapse/close behavior, with safe fallback if the section owner is unavailable. No polling, input-mode selection state, pointer focus forcing or OS focus changes. Native claim/completion code and all async refresh/diagnostic logic remain unchanged.
+
+## Visual and regression evidence
+
+Synthetic browser verification used isolated headless Chrome 158.0.8127.37 and temporary local IPC fixtures, not Tauri/HID access. At 400×760, a pointer click then controller-style Next focused Controller with focus-visible=false, yet a 3px solid theme outline remained visible in dark/light screenshots. Performance remained expanded with − while Controller owned the ring. Browser touch moved DOM focus to Display; Next moved to Settings. Reduced-motion genuine reopen focused Close with transition 0s and zero opening animations. Missing DOM focus recovery also focused Close. Screenshots/fixture scripts remain under /tmp, not in Git. Chrome behavior is not Windows WebView2/DPI/touch acceptance; manual checklist is pending.
+
+Local validation passed: `pnpm format:check`, `pnpm typecheck`, `pnpm lint`, `pnpm test` (128 passed in six files, including 54 QAM tests), `pnpm bindings:check` (one passed), `pnpm rust:check`, `pnpm rust:test` (74 passed, one intentionally ignored explicit generator), `pnpm rust:lint` (warnings denied) and `pnpm build:web`. The final type check first caught a test fixture assigning disabled to a generic HTMLElement; using the native disabled attribute corrected that test without changing runtime code. Sixteen additional frontend cases cover explicit order/wrapping in both builds, missing/hidden/unrelated targets, keyboard/touch interleaving, expansion/Back ownership and OS-focus rejection alongside existing busy, failure, stale provider/open, claim/unmount and reduced-motion coverage. No native test expectations change.
+
+`VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS=true pnpm build:web` and `node scripts/verify-qam-focus-build.mjs enabled` passed (button, test label and delay chunk present). Ordinary `pnpm build:web` and checker `disabled` then passed (all three absent); final output remains production-only. `pnpm licenses:js` and `pnpm licenses:rust` inventories parsed successfully (ten JS license groups, 459 Rust packages); no dependency additions. Ruby Psych AST validated both workflow YAML files and sole diagnostic dispatch trigger; inline Python checked documentation relative links. `git diff --check` passed. Native/IPC/binding/dependency/diagnostic helper/checker and Step 5D decision sources compare unchanged against the base. Local native packaging was deferred to native Windows/macOS CI. Matching post-push CI/artifacts are identified by the delivery report and [Step 5F branch runs](https://github.com/weiliang79/nepteer/actions?query=branch%3Afeat%2Fqam-interaction-refinements); no build is evidence of physical acceptance.
+
+## Held-repeat conclusion / scope
+
+[Step 5F feasibility note](decisions/step-5f-dpad-held-repeat.md): repeat is plausible only with separately reviewed monotonic scheduling, fresh delivery/released baselines and atomic delivery credit, not HID frequency or catch-up queues. Candidate 600ms initial/180ms interval and 250ms freshness are unvalidated proposal values requiring hardware evidence. Benefits for six items are limited. Production stays press-edge-only; no repeat code, flag or setting. Step 5F.1 needs explicit approval.
+
+Changed files/components: QuickAccess.tsx and its tests (targeting/recovery/semantic expansion), styles.css (QAM-only focus), AGENTS/README/architecture/safety/Windows checklist/this handoff plus the repeat proposal. DEVELOPMENT and the manual diagnostic workflow allow the new exact feature ref; normal CI adds the feature push trigger only. No shared Button, Rust/HID/parser/mappings/eligibility, arming/deadline/ownership/queue/claim/epoch/foreground/cleanup, DTO/bindings/capabilities, manifest/installer, dependency or runtime-version changes. Test diagnostics remain exact-true gated, manual-only, separately labeled and same-identity; do not run normal/test processes together. No game input suppression or new controls.
+
+---
+
 # Step 5E — Non-invasive QAM UX
 
 Branch `feat/qam-navigation-ux`, based on merged main `335f1e2a6cc1b9871cb04429ad9d2f1bbdb7888e` (PR #9). No merge authorized. Runtime remains v0.5.0-alpha.2. Step 5D decision unchanged; Step 5E physical hardware acceptance is now user-reported complete. No automatic merge.

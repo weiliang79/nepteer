@@ -450,10 +450,10 @@ test("static help adds no focus targets; platform hint, Tab, Space and touch/cli
   expect(buttons.map((b) => b.textContent?.trim())).toEqual([
     "✕",
     "Refresh battery",
-    "PerformancePlanned↗",
-    "ControllerPlanned↗",
-    "DisplayPlanned↗",
-    "SettingsDashboard↗",
+    "PerformancePlanned+",
+    "ControllerPlanned+",
+    "DisplayPlanned+",
+    "SettingsDashboard+",
   ]);
   for (let i = 1; i <= buttons.length; i++) {
     await user.tab();
@@ -741,10 +741,10 @@ async function diagnosticPanel(fakeClock = true) {
     "✕",
     "Refresh battery",
     "Test Slow Refresh (5s)",
-    "PerformancePlanned↗",
-    "ControllerPlanned↗",
-    "DisplayPlanned↗",
-    "SettingsDashboard↗",
+    "PerformancePlanned+",
+    "ControllerPlanned+",
+    "DisplayPlanned+",
+    "SettingsDashboard+",
   ]);
   vi.mocked(getTelemetry).mockClear();
   if (fakeClock) vi.useFakeTimers();
@@ -983,4 +983,218 @@ test("normal Refresh in a diagnostic build remains immediate and never schedules
   expect(screen.getByText("78 %")).toBeInTheDocument();
   expect(vi.getTimerCount()).toBe(0);
   expect(getTelemetry).toHaveBeenCalledTimes(1);
+});
+
+test.each(["previous", "next", "activate"] as const)(
+  "explicit %s recovers missing DOM focus to Close without activation",
+  async (action) => {
+    render(<QuickAccess />);
+    await screen.findByText("78 %");
+    const close = screen.getByRole("button", { name: "Close Quick Access" });
+    close.blur();
+    // DOM focus can be missing while the native QAM still owns OS focus.
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    await send(action);
+    expect(close).toHaveFocus();
+    expect(hideQuickAccess).not.toHaveBeenCalled();
+    expect(completeQamNavigation).toHaveBeenLastCalledWith(
+      expect.anything(),
+      false,
+    );
+  },
+);
+
+test("controller targets exclude unrelated buttons and hidden existing controls", async () => {
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const settings = screen.getByRole("button", { name: /Settings/ });
+  const unrelated = document.createElement("button");
+  unrelated.textContent = "Informational extra";
+  const activate = vi.fn();
+  unrelated.addEventListener("click", activate);
+  screen.getByRole("dialog").append(unrelated);
+  settings.focus();
+  await send("next");
+  expect(
+    screen.getByRole("button", { name: "Close Quick Access" }),
+  ).toHaveFocus();
+  unrelated.focus();
+  await send("activate");
+  expect(activate).not.toHaveBeenCalled();
+  const refresh = screen.getByRole("button", { name: "Refresh battery" });
+  refresh.hidden = true;
+  screen.getByRole("button", { name: "Close Quick Access" }).focus();
+  await send("next");
+  expect(screen.getByRole("button", { name: /Performance/ })).toHaveFocus();
+});
+
+test.each([false, true])(
+  "explicit control markers preserve the complete order and wrapping (diagnostic=%s)",
+  async (diagnostic) => {
+    vi.stubEnv(
+      "VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS",
+      diagnostic ? "true" : undefined,
+    );
+    render(<QuickAccess />);
+    await screen.findByText("78 %");
+    const buttons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("button[data-qam-control]"),
+    );
+    expect(buttons.map((b) => b.dataset.qamControl)).toEqual([
+      "close",
+      "refresh",
+      ...(diagnostic ? ["slow-refresh"] : []),
+      "performance",
+      "controller",
+      "display",
+      "settings",
+    ]);
+    expect(buttons[0]).toHaveFocus();
+    for (let i = 1; i <= buttons.length; i++) {
+      await send("next");
+      expect(buttons[i % buttons.length]).toHaveFocus();
+    }
+    await send("previous");
+    expect(buttons.at(-1)).toHaveFocus();
+    expect(getTelemetry).toHaveBeenCalledTimes(1);
+  },
+);
+
+test("expanded section is distinct from focus and Back restores its owner after focus moved", async () => {
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  performance.focus();
+  await send("activate");
+  const region = document.getElementById(
+    performance.getAttribute("aria-controls")!,
+  );
+  expect(region).toHaveTextContent("No TDP, clocks or fan settings");
+  expect(region).not.toHaveAttribute("tabindex");
+  expect(performance).toHaveFocus();
+  expect(performance.querySelector(".qam-section-indicator")).toHaveTextContent(
+    "−",
+  );
+  await send("next");
+  expect(screen.getByRole("button", { name: /Controller/ })).toHaveFocus();
+  expect(performance).toHaveAttribute("aria-expanded", "true");
+  expect(region).toBeVisible();
+  await send("left");
+  await send("right");
+  expect(performance).toHaveAttribute("aria-expanded", "true");
+  await send("back");
+  expect(performance).toHaveFocus();
+  expect(performance).toHaveAttribute("aria-expanded", "false");
+  expect(performance).not.toHaveAttribute("aria-controls");
+  expect(region).not.toBeInTheDocument();
+  expect(performance.querySelector(".qam-section-indicator")).toHaveTextContent(
+    "+",
+  );
+});
+
+test("keyboard, pointer and controller navigation share actual DOM focus without remembering an old selection", async () => {
+  const user = userEvent.setup();
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const display = screen.getByRole("button", { name: /Display/ });
+  const settings = screen.getByRole("button", { name: /Settings/ });
+  await user.click(display);
+  expect(display).toHaveFocus();
+  await user.tab();
+  expect(settings).toHaveFocus();
+  await send("next");
+  expect(
+    screen.getByRole("button", { name: "Close Quick Access" }),
+  ).toHaveFocus();
+  await user.tab({ shift: true });
+  expect(settings).toHaveFocus();
+  await send("previous");
+  expect(display).toHaveFocus();
+  const controller = screen.getByRole("button", { name: /Controller/ });
+  await user.pointer([
+    { keys: "[TouchA>]", target: controller },
+    { keys: "[/TouchA]" },
+  ]);
+  const before = document.activeElement;
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>("button[data-qam-control]"),
+  );
+  const index = buttons.findIndex((b) => b === before);
+  await send("next");
+  expect(
+    index < 0 ? buttons[0] : buttons[(index + 1) % buttons.length],
+  ).toHaveFocus();
+  const focused = document.activeElement;
+  await act(async () => providerChanged());
+  await act(async () => changed(status));
+  expect(focused).toHaveFocus();
+});
+
+test.each([
+  "hidden",
+  "aria-hidden",
+  "inert",
+  "display",
+  "visibility",
+  "disabled",
+] as const)(
+  "controller skips %s controls and cannot activate them",
+  async (kind) => {
+    render(<QuickAccess />);
+    await screen.findByText("78 %");
+    const refresh = screen.getByRole("button", { name: "Refresh battery" });
+    const close = screen.getByRole("button", { name: "Close Quick Access" });
+    if (kind === "hidden") refresh.hidden = true;
+    else if (kind === "aria-hidden")
+      refresh.setAttribute("aria-hidden", "true");
+    else if (kind === "inert") refresh.setAttribute("inert", "");
+    else if (kind === "display") refresh.style.display = "none";
+    else if (kind === "visibility") refresh.style.visibility = "hidden";
+    else refresh.setAttribute("disabled", "");
+    close.focus();
+    await send("next");
+    const performance = screen.getByRole("button", { name: /Performance/ });
+    expect(performance).toHaveFocus();
+    await send("previous");
+    expect(close).toHaveFocus();
+    // Synthetic unavailable-but-focused state must not cause a read, even if a UA retains focus.
+    refresh.focus();
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    await send("activate");
+    expect(getTelemetry).toHaveBeenCalledTimes(1);
+  },
+);
+
+test("hidden section owner is never focused by Back; explicit recovery uses Close", async () => {
+  const user = userEvent.setup();
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  await user.click(performance);
+  performance.parentElement!.style.display = "none";
+  screen.getByRole("button", { name: /Controller/ }).focus();
+  await send("back");
+  expect(performance).toHaveAttribute("aria-expanded", "false");
+  expect(
+    screen.getByRole("button", { name: "Close Quick Access" }),
+  ).toHaveFocus();
+});
+
+test("OS focus loss rejects actions without window activation or focus restoration", async () => {
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const performance = screen.getByRole("button", { name: /Performance/ });
+  performance.focus();
+  const focused = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+  await send("activate");
+  await send("next");
+  await send("back");
+  expect(performance).toHaveFocus();
+  expect(performance).toHaveAttribute("aria-expanded", "false");
+  expect(hideQuickAccess).not.toHaveBeenCalled();
+  await act(async () => changed(status));
+  expect(performance).toHaveFocus();
+  focused.mockReturnValue(true);
+  await send("next");
+  expect(screen.getByRole("button", { name: /Controller/ })).toHaveFocus();
 });

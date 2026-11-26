@@ -10,7 +10,8 @@ jobs:
   diagnostic-windows:
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/qam-navigation-ux')
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/qam-navigation-ux' ||
+      github.ref == 'refs/heads/feat/qam-interaction-refinements')
     runs-on: windows-latest
     env:
       VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS: "true"

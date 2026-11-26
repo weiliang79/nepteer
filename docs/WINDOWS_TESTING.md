@@ -1,3 +1,38 @@
+# Step 5F · Controller-friendly interaction acceptance
+
+**Step 5F hardware acceptance: pending.** Base Step 5E (PR #10) passed user-reported LCD/Windows 11 desktop acceptance for ⋯, D-pad/A/B, refresh/slow-refresh focus, mixed inputs, immediate close/reopen and Disarm. Those results do not validate the new outline/recovery. Test on Steam Deck LCD / Windows 11 in the reviewed X360 desktop-navigation configuration, Steam running/Input status as manually known, using the reviewed native interface. No active game or input-isolation experiment. Keep keyboard/touch available; no tool/driver configuration changes.
+
+Record matching SHA/artifact, Windows DPI/theme, manually supplied environment and Pass/Fail/Not tested per item. No raw reports, device paths, serials or histories. Normal builds have six controls; manual TEST-ONLY builds insert Slow Refresh after Refresh. The diagnostics workflow permits main, the retained Step 5E branch and feat/qam-interaction-refinements by explicit dispatch only; see DEVELOPMENT.md. Exit other Nepteer instances before installing/running the same-identity diagnostic artifact.
+
+## A. Focus feedback
+
+1. Explicitly Arm navigation, open QAM with ⋯ and confirm Close has a clear outline. Check after an ordinary pointer interaction as well: controller programmatic focus must remain visible even if WebView2 does not apply :focus-visible.
+2. Traverse every normal control with Down: Close → Refresh → Performance → Controller → Display → Settings → Close. Reverse/wrap with Up. All focused controls should show the same outline/keyline/shape; hover alone must not look focused.
+3. Repeat dark/light themes at the actual LCD resolution/DPI. Ring must not be clipped when a focused item scrolls into view; maintain touch targets. Check reduced-motion preference: no focus movement animation or delayed outline.
+
+## B. Interaction and explicit recovery
+
+1. Focus Performance and activate A: it expands, shows −/aria-expanded and stays focused. Move Down to Controller: Performance stays expanded without the focus ring. Press B: collapse Performance and return focus to its button. B again closes. Left/Right do nothing.
+2. Click/tap an existing control, then use D-pad. It must start from the actual focused element; record WebView2 touch behavior rather than assuming it matches another browser. Tab/Shift+Tab and Enter/Space must interleave normally.
+3. If DOM focus is naturally lost inside the still-foreground QAM, the next Up/Down/A recovers Close (or first available approved control) without activating it. Do not force OS focus or modify the app to manufacture this case; synthetic tests cover it if Not observed.
+4. Redundant visible notifications, refresh completion and provider updates must not restore old focus. If QAM loses OS focus, it must not navigate or force itself forward. Existing blur-hide and native focus return behavior is unchanged.
+
+## C. Async focus
+
+1. Use normal Refresh: no focus jump on start, success or natural failure. Busy Refresh remains keyboard-focusable but D-pad skips it as a destination; A/repeated clicks/Enter/Space must not add reads.
+2. In the manually requested diagnostic build, start Slow Refresh with A. From that busy button, Up reaches Close and Down reaches Performance (both refresh controls skipped). Tab/Shift+Tab can still visit busy controls.
+3. During the five-second window move focus with D-pad, Tab and touch; completion must not restore stale focus. Activate a section, collapse with B, or hide using B/Escape/Close/⋯ immediately. Reopen before the old delay ends: no obsolete read/loading state may return. Disarm explicitly and wait for actual cleanup confirmation.
+
+## D. Lifecycle / repeat remains disabled
+
+1. Open/close QAM twenty times via existing controls. Each genuine opening initially focuses Close once; no stale or duplicate activation from old epochs. Navigating elsewhere within the same opening must not reset focus.
+2. Hold Up/Down: one action per press, no repeat. Release and press again for another action. A/B/Left/Right/⋯ behavior and independent ⋯ cooldown remain unchanged. No held-repeat setting exists in this milestone.
+3. Disarm: no controller navigation, normal keyboard/touch remain. Confirm one-reader exclusion with diagnostics and normal cleanup; relaunch stays Disarmed without automatic reader/startup service.
+
+Do not claim this checklist passed from unit tests or Chrome screenshots. Report any native fault separately; Step 5F does not authorize native lifecycle changes. The existing frozen-renderer/claimed-completion barrier limitation remains. Older milestone checklists below preserve their historical scope/status.
+
+---
+
 # Step 5E · QAM UX acceptance
 
 **Step 5E physical acceptance: user-reported complete on Steam Deck LCD / Windows 11.** The reported slow-refresh observations cover responsive D-pad/Tab/Shift+Tab/mouse/touch during loading, no completion focus theft, duplicate prevention, immediate close, no obsolete delay after reopen and safe explicit Disarm. This is scoped user evidence, not a universal compatibility or input-isolation claim; unreported fault-injection/screen-reader/DPI cases are not newly claimed. Step 5C.2 previously passed user-reported hardware acceptance; earlier checklist status is historical. Use this branch's matching artifact/SHA on Steam Deck LCD / Windows 11 with existing WebView2, standard-user install and the reviewed native collection (28DE:1205, interface 2, FFFF/0001, descriptor/actual65, deck_v1_zero_prefixed65). Keep keyboard/touch available. All navigation testing is desktop-only, without an active game. Do not run game input-suppression experiments or alter drivers/tool settings. Run a scenario only when the corresponding SDT profile is already manually confirmed; otherwise record Not run. Steam must be manually confirmed running for the reviewed profile; Steam Input status may be unknown.

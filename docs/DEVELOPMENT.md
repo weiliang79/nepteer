@@ -129,7 +129,7 @@ try {
 }
 ```
 
-These commands keep the existing version and application identity. Exit Nepteer before replacing/installing; do not run normal and test instances concurrently. The test-only workflow `qam-focus-diagnostics.yml` runs only on explicit manual dispatch, guarded to `refs/heads/main` or `refs/heads/feat/qam-navigation-ux`, and builds Windows separately, verifies the final frontend contains the test label/button and delay chunk, and extracts/verifies `asInvoker`, `uiAccess=false`. It uploads `TEST-ONLY-qam-focus-diagnostics-windows-x86_64-<SHA>` with explicitly renamed executable/installer and a warning README. It does not create a release. The QAM itself labels **TEST BUILD ONLY**. Ordinary Desktop CI forces the flag false and verifies exclusion after native packaging on both platforms.
+These commands keep the existing version and application identity. Exit Nepteer before replacing/installing; do not run normal and test instances concurrently. The test-only workflow `qam-focus-diagnostics.yml` runs only on explicit manual dispatch, guarded to exact `refs/heads/main`, `refs/heads/feat/qam-navigation-ux` or `refs/heads/feat/qam-interaction-refinements`, and builds Windows separately, verifies the final frontend contains the test label/button and delay chunk, and extracts/verifies `asInvoker`, `uiAccess=false`. It uploads `TEST-ONLY-qam-focus-diagnostics-windows-x86_64-<SHA>` with explicitly renamed executable/installer and a warning README. It does not create a release. The QAM itself labels **TEST BUILD ONLY**. Ordinary Desktop CI forces the flag false and verifies exclusion after native packaging on both platforms.
 
 The test-build order is Close → Refresh battery → Test Slow Refresh (5s) → Performance → Controller → Display → Settings. While loading, both refresh buttons retain keyboard focusability (`aria-disabled`/`aria-busy`) but are skipped as D-pad destinations; A on either is ignored. From focused busy Test Slow Refresh, Up reaches Close and Down reaches Performance. Tab/Shift+Tab can still visit both busy buttons. No hold-repeat or new controller capability is added.
 
@@ -149,7 +149,7 @@ The diagnostic UI/flag/helper/types, automated tests and build verification are 
 ### Explicit manual packaging in GitHub Actions
 
 1. Open [TEST ONLY - QAM Focus Diagnostics](https://github.com/weiliang79/nepteer/actions/workflows/qam-focus-diagnostics.yml) in the repository's Actions tab.
-2. Choose **Run workflow**, then select `feat/qam-navigation-ux` for development or `main` once Step 5E has merged. Only those exact branch refs pass the job guard; other branches and tags are skipped without an artifact.
+2. Choose **Run workflow**, then select `feat/qam-interaction-refinements` for Step 5F, the retained `feat/qam-navigation-ux` branch or `main`. Only those exact branch refs pass the job guard; other branches and tags are skipped without an artifact.
 3. Click **Run workflow** explicitly. Pushes, PRs, normal CI, releases and tags do not trigger this workflow. No reusable-workflow or completion-event trigger is configured.
 4. Open the successful run and download **Artifacts → TEST-ONLY-qam-focus-diagnostics-windows-x86_64-<SHA>**. It contains the explicitly named test executable/NSIS installer and warning README. Check the commit and TEST BUILD ONLY label in QAM before testing.
 5. Exit the normal Nepteer instance before installing/running the diagnostic build. The same application identity/version is used; never run both concurrently. Return to the normal artifact for ordinary use.
@@ -159,7 +159,7 @@ The diagnostic UI/flag/helper/types, automated tests and build verification are 
 CLI equivalent (authenticated GitHub CLI with repository access):
 
 ```sh
-gh workflow run qam-focus-diagnostics.yml --repo weiliang79/nepteer --ref feat/qam-navigation-ux
+gh workflow run qam-focus-diagnostics.yml --repo weiliang79/nepteer --ref feat/qam-interaction-refinements
 # After merge, choose main instead when desired:
 gh workflow run qam-focus-diagnostics.yml --repo weiliang79/nepteer --ref main
 ```

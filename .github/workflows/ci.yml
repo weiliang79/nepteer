@@ -15,6 +15,7 @@ on:
         feat/qam-controller-navigation,
         research/controller-input-routing,
         feat/qam-navigation-ux,
+        feat/qam-interaction-refinements,
       ]
   pull_request:
   workflow_dispatch:

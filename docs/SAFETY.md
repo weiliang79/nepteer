@@ -1,5 +1,13 @@
 # Read-only safety boundary
 
+## Step 5F interaction boundaries
+
+Step 5E physical acceptance remains scoped user evidence; Step 5F visual/recovery acceptance is pending. New treatment is frontend-only: actual DOM focus styling, explicitly marked existing controls and recovery only on an approved explicit action when DOM focus is missing/unavailable. No selected-index model, focus polling, periodic restoration, window activation or synthetic OS input. Pointer/touch focus is not forcibly changed. Native visibility/epoch/session and frontend document-focus checks remain prerequisites; hidden/stale actions still complete/discard through the existing protocol.
+
+Rust/HID/parser/mappings, single-reader access/eligibility, press-edge semantics, ⋯ cooldown, queue capacity, 30-minute deadline, claim/complete/visibility/foreground/cleanup, permissions, bindings, manifest, installer privileges and dependencies remain unchanged. Held-repeat is a proposal only and remains disabled; separate Step 5F.1 approval and evidence are required. No controller output, input routing/isolation, game hooks, provider changes, drivers/services or elevation. Controller tests remain desktop-only without an active game.
+
+Slow Refresh stays exact-true build gated, production-excluded and test-only. Manual diagnostic packaging adds only this feature branch to the existing exact ref allowlist; its event guard remains workflow_dispatch-only and cannot be triggered by push/PR/release/normal CI. Normal builds retain six controls, diagnostic builds seven; both keep the proven refresh focus/duplicate/stale-delay behavior. Same identity/exit-other-instance warnings remain.
+
 ## Step 5E user-facing boundaries
 
 The session choices describe **Physical shortcut only** (reviewed SDT Desktop, default `navigation: false`) or **Controller navigation (desktop only)** (reviewed SDT X360, `navigation: true`). Both require the same two acknowledgments, manually confirmed existing configuration and explicit Arm. Mode changes reset consent; owned sessions require Disarm first. No detection, tool configuration, automatic arming or persisted opt-in is introduced.
