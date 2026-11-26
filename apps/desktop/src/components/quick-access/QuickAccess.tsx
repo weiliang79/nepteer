@@ -51,44 +51,80 @@ export default function QuickAccess() {
     sectionRef.current = value;
     setSection(value);
   }
-  function navigate(action: NavigationAction) {
-    const buttons = Array.from(
+  function controls() {
+    return Array.from(
       panel.current?.querySelectorAll<HTMLButtonElement>(
-        "button:not(:disabled)",
+        "button[data-qam-control]",
       ) ?? [],
+    ).filter((button) => {
+      if (!button.isConnected) return false;
+      // Inspect only on explicit navigation, never poll or restore focus on updates.
+      for (
+        let node: HTMLElement | null = button;
+        node;
+        node = node.parentElement
+      ) {
+        if (
+          node.hidden ||
+          node.hasAttribute("inert") ||
+          node.getAttribute("aria-hidden") === "true"
+        )
+          return false;
+        const style = getComputedStyle(node);
+        if (
+          style.display === "none" ||
+          style.visibility === "hidden" ||
+          style.visibility === "collapse"
+        )
+          return false;
+        if (node === panel.current) break;
+      }
+      return true;
+    });
+  }
+  function available(button: HTMLButtonElement) {
+    return (
+      !button.matches(":disabled") &&
+      button.getAttribute("aria-disabled") !== "true"
     );
-    if (!buttons.length) return;
-    const focused = buttons.findIndex(
+  }
+  function navigate(action: NavigationAction) {
+    if (action === "left" || action === "right") return;
+    const buttons = controls();
+    const fallback = buttons.find(available);
+    if (action === "back") {
+      const current = sectionRef.current;
+      if (current) {
+        changeSection(null);
+        const owner = buttons.find(
+          (button) => button.dataset.section === current && available(button),
+        );
+        (owner ?? fallback)?.focus();
+      } else void hide();
+      return;
+    }
+    const index = buttons.findIndex(
       (button) => button === document.activeElement,
     );
-    const index = focused < 0 ? 0 : focused;
+    // Recover only on explicit navigation in a natively validated visible/focused QAM.
+    // Missing or hidden focus must never turn A into an activation of an unknown target.
+    if (index < 0) {
+      fallback?.focus();
+      return;
+    }
     if (action === "previous" || action === "next") {
       const step = action === "next" ? 1 : -1;
-      // Keep the focused busy control as the origin, but skip it as a destination.
       for (let offset = 1; offset <= buttons.length; offset++) {
         const target =
           buttons[(index + offset * step + buttons.length) % buttons.length];
-        if (target.getAttribute("aria-disabled") !== "true") {
+        if (available(target)) {
           target.focus();
           break;
         }
       }
-    } else if (action === "activate") {
-      if (focused < 0) buttons[0].focus();
-      else if (buttons[index].getAttribute("aria-disabled") !== "true")
-        buttons[index].click();
-    } else if (action === "back") {
-      const current = sectionRef.current;
-      if (current) {
-        changeSection(null);
-        panel.current
-          ?.querySelector<HTMLButtonElement>(
-            `button[data-section="${current}"]`,
-          )
-          ?.focus();
-      } else void hide();
+    } else if (action === "activate" && available(buttons[index])) {
+      buttons[index].click();
     }
-    // Left/Right have no adjustable control in this interface.
   }
   const navigateRef = useRef(navigate);
   useEffect(() => {
@@ -323,8 +359,9 @@ export default function QuickAccess() {
         void hide();
       }
       if (event.key === "Tab") {
-        const buttons = panel.current?.querySelectorAll<HTMLButtonElement>(
-          "button:not(:disabled)",
+        // Busy aria-disabled Refresh stays in the keyboard order.
+        const buttons = controls().filter(
+          (button) => !button.matches(":disabled"),
         );
         if (!buttons?.length) return;
         const first = buttons[0],
@@ -378,6 +415,7 @@ export default function QuickAccess() {
         </div>
         <Button
           ref={close}
+          data-qam-control="close"
           variant="ghost"
           onClick={() => void hide()}
           aria-label="Close Quick Access"
@@ -429,6 +467,7 @@ export default function QuickAccess() {
         </p>
       ))}
       <Button
+        data-qam-control="refresh"
         variant="outline"
         onClick={() => {
           // DOM clicks, keyboard activation and controller A share this synchronous gate.
@@ -443,6 +482,7 @@ export default function QuickAccess() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="eyebrow">TEST BUILD ONLY</span>
           <Button
+            data-qam-control="slow-refresh"
             variant="outline"
             aria-disabled={loading}
             aria-busy={loading}
@@ -460,6 +500,12 @@ export default function QuickAccess() {
             <Button
               variant="ghost"
               data-section={name}
+              data-qam-control={name.toLowerCase()}
+              aria-controls={
+                section === name
+                  ? `qam-section-${name.toLowerCase()}`
+                  : undefined
+              }
               aria-expanded={section === name}
               onClick={() =>
                 changeSection(
@@ -473,9 +519,18 @@ export default function QuickAccess() {
               <span className="planned-tag">
                 {name === "Settings" ? "Dashboard" : "Planned"}
               </span>
-              <span aria-hidden="true">↗</span>
+              <span className="qam-section-indicator" aria-hidden="true">
+                {section === name ? "−" : "+"}
+              </span>
             </Button>
-            {section === name && <p className="muted">{text}</p>}
+            {section === name && (
+              <p
+                id={`qam-section-${name.toLowerCase()}`}
+                className="qam-section-content muted"
+              >
+                {text}
+              </p>
+            )}
           </div>
         ))}
       </nav>
