@@ -251,7 +251,8 @@ export const preferenceStore = createPreferenceStore({
     window.addEventListener("storage", callback);
     return () => window.removeEventListener("storage", callback);
   },
-  id: crypto.randomUUID(),
+  // getRandomValues also works on custom-scheme webviews without a secure-context UUID API.
+  id: crypto.getRandomValues(new Uint32Array(4)).join("-"),
 });
 export function usePreferences() {
   const state = useSyncExternalStore(
