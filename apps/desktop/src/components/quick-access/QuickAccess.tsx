@@ -11,7 +11,7 @@ import {
   claimQamNavigation,
   completeQamNavigation,
 } from "@/lib/quick-access";
-import { loadPreferences } from "@/lib/preferences";
+import { preferenceStore, usePreferences } from "@/lib/preferences";
 import { version } from "@/lib/app-info";
 const items = {
   Performance:
@@ -21,9 +21,11 @@ const items = {
   Display:
     "Display controls are planned. This preview does not change resolution, refresh rate or fullscreen modes.",
   Settings:
-    "Theme, units and telemetry provider are configured in the main dashboard. This panel follows that session’s provider and saved theme.",
+    "Choose the shared theme and temperature units. The telemetry provider is managed in the main dashboard.",
 };
 export default function QuickAccess() {
+  const { preferences, updatePreference, storageError, syncError } =
+    usePreferences();
   const focusDiagnostics =
     import.meta.env.VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS === "true";
   const cancelDiagnosticDelay = useRef<(() => void) | null>(null);
@@ -48,6 +50,17 @@ export default function QuickAccess() {
   const sectionRef = useRef<keyof typeof items | null>(null);
   const refreshInFlight = useRef(false);
   function changeSection(value: keyof typeof items | null) {
+    const active = document.activeElement;
+    if (
+      sectionRef.current === "Settings" &&
+      value !== "Settings" &&
+      active instanceof HTMLElement &&
+      active.closest("#qam-section-settings")
+    ) {
+      panel.current
+        ?.querySelector<HTMLButtonElement>('[data-qam-control="settings"]')
+        ?.focus();
+    }
     sectionRef.current = value;
     setSection(value);
   }
@@ -198,11 +211,9 @@ export default function QuickAccess() {
     sequence.current += 1;
     let disposed = false;
     const stops: Array<() => void> = [];
-    const preferences = () => {
-      document.documentElement.dataset.theme = loadPreferences().theme;
-    };
+    const reloadPreferences = () => preferenceStore.reload();
     const opened = () => {
-      preferences();
+      reloadPreferences();
       if (!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
         panel.current?.animate?.(
           [
@@ -325,7 +336,7 @@ export default function QuickAccess() {
                 if (!disposed) {
                   acceptStatus(status);
                   if (status.visible) {
-                    preferences();
+                    reloadPreferences();
                     void refresh();
                   }
                 }
@@ -351,8 +362,7 @@ export default function QuickAccess() {
     })().catch((reason) => {
       if (!disposed) setError(String(reason));
     });
-    preferences();
-    window.addEventListener("storage", preferences);
+    reloadPreferences();
     const keyboard = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -384,7 +394,6 @@ export default function QuickAccess() {
         cancelDiagnosticDelay.current = null;
       }
       stops.forEach((stop) => stop());
-      window.removeEventListener("storage", preferences);
       document.removeEventListener("keydown", keyboard);
     };
     // Native open events own refresh; there is no polling or frontend visibility flag.
@@ -517,23 +526,96 @@ export default function QuickAccess() {
             >
               {name}
               <span className="planned-tag">
-                {name === "Settings" ? "Dashboard" : "Planned"}
+                {name === "Settings" ? "Preferences" : "Planned"}
               </span>
               <span className="qam-section-indicator" aria-hidden="true">
                 {section === name ? "−" : "+"}
               </span>
             </Button>
-            {section === name && (
-              <p
-                id={`qam-section-${name.toLowerCase()}`}
-                className="qam-section-content muted"
+            {section === name && name === "Settings" ? (
+              <section
+                id="qam-section-settings"
+                className="qam-settings qam-section-content"
+                aria-label="Appearance & preferences"
               >
-                {text}
-              </p>
+                <p className="muted">Appearance & preferences</p>
+                {(
+                  [
+                    [
+                      "theme",
+                      "Theme",
+                      [
+                        ["dark", "Dark"],
+                        ["light", "Light"],
+                      ],
+                    ],
+                    [
+                      "unit",
+                      "Temperature units",
+                      [
+                        ["celsius", "Celsius (°C)"],
+                        ["fahrenheit", "Fahrenheit (°F)"],
+                      ],
+                    ],
+                  ] as const
+                ).map(([field, label, options]) => (
+                  <div role="group" aria-label={label} key={field}>
+                    <h2>{label}</h2>
+                    <div className="qam-preference-options">
+                      {options.map(([value, text]) => (
+                        <Button
+                          key={value}
+                          variant="outline"
+                          data-qam-control={value}
+                          aria-pressed={preferences[field] === value}
+                          onClick={() => {
+                            if (
+                              field === "theme" &&
+                              (value === "dark" || value === "light")
+                            )
+                              updatePreference("theme", value);
+                            if (
+                              field === "unit" &&
+                              (value === "celsius" || value === "fahrenheit")
+                            )
+                              updatePreference("unit", value);
+                          }}
+                        >
+                          <span aria-hidden="true">
+                            {preferences[field] === value ? "✓" : "○"}
+                          </span>{" "}
+                          {text}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            ) : (
+              section === name && (
+                <p
+                  id={`qam-section-${name.toLowerCase()}`}
+                  className="qam-section-content muted"
+                >
+                  {text}
+                </p>
+              )
             )}
           </div>
         ))}
       </nav>
+      {storageError && (
+        <p role="alert">
+          Preferences apply for this session. Local storage is unavailable;
+          changes may not survive restart. Select an option to retry saving.
+        </p>
+      )}
+      {syncError && (
+        <p role="alert">
+          Live preference synchronization unavailable. Verify both windows
+          before continuing.
+        </p>
+      )}
       <footer className="qam-footer">
         <p>Keyboard: {hint}</p>
         <p>Tab / Shift+Tab move · Enter / Space select · Escape close</p>

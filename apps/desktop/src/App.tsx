@@ -3,7 +3,7 @@ import ControllerDiagnostics from "@/components/controller/ControllerDiagnostics
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getTelemetry, temperature } from "@/lib/telemetry";
-import { loadPreferences, type Preferences } from "@/lib/preferences";
+import { usePreferences, type Preferences } from "@/lib/preferences";
 import { version } from "@/lib/app-info";
 import { showQuickAccess, quickAccessStatus } from "@/lib/quick-access";
 import type { ProviderMode, Snapshot } from "@/lib/bindings";
@@ -22,13 +22,13 @@ export default function App() {
     "Ctrl + Alt + Q (Control + Option + Q on macOS)",
   );
   const [section, setSection] = useState<Section>("Dashboard");
-  const [preferences, setPreferences] = useState(loadPreferences);
+  const { preferences, storageError, syncError, updatePreference } =
+    usePreferences();
   const [mode, setMode] = useState<ProviderMode>("auto");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [request, setRequest] = useState(0);
-  const [storageError, setStorageError] = useState(false);
   useEffect(() => {
     let active = true;
     void quickAccessStatus()
@@ -39,11 +39,8 @@ export default function App() {
         }
       })
       .catch(() => {});
-    const changed = () => setPreferences(loadPreferences());
-    window.addEventListener("storage", changed);
     return () => {
       active = false;
-      window.removeEventListener("storage", changed);
     };
   }, []);
   async function openQuickAccess() {
@@ -54,18 +51,6 @@ export default function App() {
       setQamMessage(status.notice);
     } catch (reason) {
       setQamMessage(`Quick Access could not open: ${String(reason)}`);
-    }
-  }
-  useEffect(() => {
-    document.documentElement.dataset.theme = preferences.theme;
-  }, [preferences.theme]);
-  function updatePreferences(next: Preferences) {
-    setPreferences(next);
-    try {
-      localStorage.setItem("nepteer.preferences", JSON.stringify(next));
-      setStorageError(false);
-    } catch {
-      setStorageError(true);
     }
   }
   useEffect(() => {
@@ -430,17 +415,18 @@ export default function App() {
             <section className="panel settings">
               <h2>Appearance & units</h2>
               <p className="muted">
-                Preferences are stored locally in this app’s webview.
+                Theme and units are shared with Quick Access and saved locally
+                when storage is available.
               </p>
               <label>
                 Theme
                 <select
                   value={preferences.theme}
                   onChange={(event) =>
-                    updatePreferences({
-                      ...preferences,
-                      theme: event.target.value as Preferences["theme"],
-                    })
+                    updatePreference(
+                      "theme",
+                      event.target.value as Preferences["theme"],
+                    )
                   }
                 >
                   <option value="dark">Dark</option>
@@ -452,16 +438,22 @@ export default function App() {
                 <select
                   value={preferences.unit}
                   onChange={(event) =>
-                    updatePreferences({
-                      ...preferences,
-                      unit: event.target.value as Preferences["unit"],
-                    })
+                    updatePreference(
+                      "unit",
+                      event.target.value as Preferences["unit"],
+                    )
                   }
                 >
                   <option value="celsius">Celsius (°C)</option>
                   <option value="fahrenheit">Fahrenheit (°F)</option>
                 </select>
               </label>
+              {syncError && (
+                <p role="alert">
+                  Live preference synchronization unavailable. Verify both
+                  windows before continuing.
+                </p>
+              )}
               {storageError && (
                 <p role="status">
                   Local storage is unavailable. Preferences apply for this

@@ -1,5 +1,13 @@
 # Read-only safety boundary
 
+## Step 6A frontend preferences
+
+Step 5F is merged as PR #11 at `a18c6ae47a892c403aff4473c3234fa273b1f1a5`. The PR records user-reported Steam Deck LCD / Windows 11 acceptance, 10/10 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45866445385) completed successfully on that exact commit. Historical pending statements below describe their original handoffs; they do not replace that later evidence. Step 6A hardware acceptance is pending.
+
+Theme and temperature units are presentation preferences, saved only under the existing browser key and mirrored through a same-origin BroadcastChannel. No settings alter hardware. Payloads are limited to validated enums and bounded revision metadata; no HID/session management is reachable through the channel. Both native capabilities remain unchanged. Local storage failure preserves the renderer's session values and displays a warning; live messaging failure also displays a warning. Shared profile/origin is required; native Windows delivery and persistence remain pending acceptance. Do not interpret build or synthetic browser results as WebView2/hardware verification.
+
+Expanded options are explicit DOM targets with semantic pressed state. No automatic focus restoration/polling, OS input or selected-index model is added. Back safely collapses children before removing focus; fresh native openings still initialize Close once. The test-only Slow Refresh helper/gate and native navigation contracts remain intact. No Rust, HID/parser/mappings, arming/deadlines, reader ownership, queue, claim/completion, visibility epochs, foreground/cleanup, bindings, permissions/CSP, manifest, installer identity/privileges, dependency graph or runtime-version changes. Step 5D desktop-only/pass-through and Step 5F press-edge-only decisions remain authoritative. No automatic arming, game-input interception/isolation, hardware writes, drivers, services or held-repeat.
+
 ## Step 5F interaction boundaries
 
 Step 5E physical acceptance remains scoped user evidence; Step 5F visual/recovery acceptance is pending. New treatment is frontend-only: actual DOM focus styling, explicitly marked existing controls and recovery only on an approved explicit action when DOM focus is missing/unavailable. No selected-index model, focus polling, periodic restoration, window activation or synthetic OS input. Pointer/touch focus is not forcibly changed. Native visibility/epoch/session and frontend document-focus checks remain prerequisites; hidden/stale actions still complete/discard through the existing protocol.
