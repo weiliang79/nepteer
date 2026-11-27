@@ -1,3 +1,60 @@
+# Step 6A — Functional Settings acceptance
+
+**Status: pending user testing on Steam Deck LCD / Windows 11.** Step 5F is merged as PR #11 at `a18c6ae47a892c403aff4473c3234fa273b1f1a5`. The PR records user-reported Steam Deck LCD / Windows 11 acceptance, 10/10 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45866445385) completed successfully on that exact commit. Historical pending statements below describe their original handoffs; they do not replace that later evidence. Step 6A hardware acceptance is pending.
+
+Use the Windows desktop with **no running game**, the already reviewed X360 navigation configuration, explicit consent and Arm. Record app commit, normal/TEST ONLY artifact, Windows/WebView2 versions, manually known Steam/Tools context and display scaling; no serials, paths, handles or raw input. Installers use the same app identity: exit other instances and never run normal and diagnostic apps together. Record **pass / fail / not tested** for every numbered item and any WebView2-specific behavior. Browser and CI evidence do not satisfy these checks.
+
+## A. Functional settings — not tested
+
+1. Launch Nepteer, explicitly Arm reviewed controller navigation and open QAM with physical ⋯.
+2. Navigate to Settings with D-pad and expand with A; parent retains focus.
+3. Select Light with Up/Down and A. Confirm QAM changes immediately and dashboard also reflects Light.
+4. Select Dark. Confirm both windows return to dark and the selected option retains its focus outline.
+
+## B. Temperature units and persistence — not tested
+
+1. In QAM Settings, select Fahrenheit. Confirm dashboard unit selection and supported formatting follow it.
+2. Select Celsius and verify both windows. Choose final non-default values, exit Nepteer fully, relaunch and verify both persist.
+3. If no real temperature metric is available, verify unit selection; optionally use explicitly labeled mock samples for formatting (54°C / 129°F). Never invent native sensor readings.
+
+## C. Controller navigation — not tested
+
+1. Verify collapsed order: Close → Refresh → Performance → Controller → Display → Settings; Up/Down wraps.
+2. Expand Settings. Verify Dark → Light → Celsius → Fahrenheit follows Settings; all visible options are reachable and scroll into view, then wrap to Close.
+3. A selects only the focused option. Re-select the active value; no duplicate action, close or focus jump.
+4. B from an option collapses Settings and focuses its parent. Repeat with focus on another top-level control. With no expanded section, B closes QAM.
+5. Holding Up/Down does not repeat. Left/Right remain no-op. Busy Refresh remains skipped by D-pad.
+6. Repeat in the TEST ONLY build: Slow Refresh appears after Refresh; normal output has no diagnostic control.
+
+## D. Mixed input and visual fit — not tested
+
+1. Select an option by touch, then continue with D-pad. Verify navigation starts at the browser's actual focus.
+2. Use Tab/Shift+Tab, Enter and Space through every option, including wrapping; then continue with D-pad.
+3. Select by mouse. Check theme changes never steal focus/close QAM, and selected marks, hover, outline and expansion are distinct in both themes.
+4. At 1280×800 and the chosen Windows scale, confirm readable text, >=48px option targets, section scrolling, reachable Close/Refresh, no horizontal clipping and reduced motion behavior. Escape still closes.
+
+## E. Actual cross-window synchronization — not tested
+
+1. With dashboard open, change theme in QAM and confirm dashboard updates immediately.
+2. With QAM open, change theme in dashboard and confirm QAM updates without moving option focus. Repeat both directions for units.
+3. Alternate rapidly between windows and edit different fields; confirm neither overwrites the other field and both converge. Simultaneous same-field edits use deterministic revision ordering; no atomic transaction is promised.
+4. Hide/reopen QAM, reload its renderer if using a development setup, and remount dashboard; verify current values and Close-first genuine opening. Restart fully and verify persistence.
+5. Record whether storage notifications and BroadcastChannel deliver in the actual shared WebView2 profile. A visible synchronization warning is a failed live-sync check, even if storage fallback works. If events are isolated, report the limitation; do not change permissions or profiles to force a pass.
+6. In an authoring/test environment only, simulate denied storage reads/quota writes: values apply for the session with an honest warning, repeated reads do not erase unsaved values or clear the failed-write warning, and selecting an option after storage recovery retries persistence. If both renderers and storage fail, session values cannot survive full exit. Mark not tested if fault simulation is unavailable.
+
+## F. Lifecycle and cleanup — not tested
+
+1. Open/close QAM 20 times; each genuine opening focuses Close once. No stale option activation after reopening.
+2. Expand/collapse Settings repeatedly. B restores Settings; removed children cannot retain focus or be targeted.
+3. Start battery refresh, navigate/select Settings, and wait for completion/error. Focus remains on the option.
+4. Repeat with TEST ONLY Slow Refresh. Confirm async delay, duplicate-read protection, immediate close and stale-delay rejection after reopen remain intact.
+5. Explicitly Disarm. Confirm native reader ownership, worker, handle and pending navigation cleanup; pending cleanup is not success.
+6. Restart Nepteer and verify no automatic arming. No tool/driver/Steam setting changes are part of this test.
+
+No Rust, HID/parser/mappings, arming/deadlines, reader ownership, queue, claim/completion, visibility epochs, foreground/cleanup, bindings, permissions/CSP, manifest, installer identity/privileges, dependency graph or runtime-version changes. Step 5D desktop-only/pass-through and Step 5F press-edge-only decisions remain authoritative. No automatic arming, game-input interception/isolation, hardware writes, drivers, services or held-repeat.
+
+---
+
 # Step 5F · Controller-friendly interaction acceptance
 
 **Step 5F hardware acceptance: pending.** Base Step 5E (PR #10) passed user-reported LCD/Windows 11 desktop acceptance for ⋯, D-pad/A/B, refresh/slow-refresh focus, mixed inputs, immediate close/reopen and Disarm. Those results do not validate the new outline/recovery. Test on Steam Deck LCD / Windows 11 in the reviewed X360 desktop-navigation configuration, Steam running/Input status as manually known, using the reviewed native interface. No active game or input-isolation experiment. Keep keyboard/touch available; no tool/driver configuration changes.

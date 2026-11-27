@@ -1,11 +1,23 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 5F controller-friendly QAM interaction refinements; no new native input capability, held-repeat or isolation.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6A functional QAM theme/temperature preferences; no new native input capability, held-repeat or isolation.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 5F — QAM interaction refinements
+## Current milestone: Step 6A — Functional QAM Settings
+
+Work on `feat/qam-functional-settings` from verified main `a18c6ae47a892c403aff4473c3234fa273b1f1a5` (PR #11). Commit/push validated changes; do not merge automatically. Step 5F is merged as PR #11 at `a18c6ae47a892c403aff4473c3234fa273b1f1a5`. The PR records user-reported Steam Deck LCD / Windows 11 acceptance, 10/10 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45866445385) completed successfully on that exact commit. Historical pending statements below describe their original handoffs; they do not replace that later evidence. Step 6A hardware acceptance is pending.
+
+Reuse `Preferences { theme, unit }` and `nepteer.preferences`, including legacy validation/defaults. Dashboard and QAM share the frontend store implementation. Storage notifications plus a same-origin BroadcastChannel exchange validated enum values and bounded per-field revisions; concurrent fields merge, received state is not rebroadcast, startup/reopen requests peer state. Preserve session values on storage failure and expose unsaved/synchronization errors honestly. Browser tests are not native WebView2 evidence. Any necessary native command or permission expansion requires separate approval.
+
+Production collapsed order stays Close, Refresh, Performance, Controller, Display, Settings. Expanded Settings appends Dark, Light, Celsius, Fahrenheit; diagnostics insert Slow Refresh after Refresh. Only actual visible/available marked DOM controls are navigation targets. A reuses each button handler; B collapses the expanded section and restores its owner, otherwise closes. Left/Right remain no-op. Expansion retains Settings focus, selection retains option focus, removal restores its parent safely, updates/refresh never restore old focus. Tab, Enter/Space, mouse and touch work without arming; never force pointer focus. Selected marks, expansion and actual-focus outlines are distinct. Scroll the section navigation within the existing work area.
+
+No Rust, HID/parser/mappings, arming/deadlines, reader ownership, queue, claim/completion, visibility epochs, foreground/cleanup, bindings, permissions/CSP, manifest, installer identity/privileges, dependency graph or runtime-version changes. Step 5D desktop-only/pass-through and Step 5F press-edge-only decisions remain authoritative. No automatic arming, game-input interception/isolation, hardware writes, drivers, services or held-repeat.
+
+Retain exact-true Slow Refresh gate/helper/types/checker/tests and manual-only packaging. Add only this exact feature branch to ordinary CI and diagnostic ref allowlists, preserving existing branches and triggers. Run all standard checks, inventories, documentation links, both output verifiers, native Windows/macOS CI/packaging/manifest verification; restore normal output. New Windows cross-window, visual, touch/controller and cleanup acceptance remains pending per `docs/WINDOWS_TESTING.md`.
+
+## Completed milestone: Step 5F — QAM interaction refinements
 
 Work on `feat/qam-interaction-refinements` from latest main including PR #10 `c246bd268d12bb393f362200e63d44b6cf69c8ba`. Step 5E is complete with user-reported Deck LCD/Windows 11 desktop acceptance for ⋯, D-pad/A/B, refresh focus/pending interaction, immediate hide/reopen and safe Disarm. That evidence does not validate new Step 5F styling or recovery. Commit/push verified changes; do not merge automatically. Step 5D's desktop-only/no-input-isolation decision remains authoritative.
 

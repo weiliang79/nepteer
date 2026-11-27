@@ -1,12 +1,22 @@
 # Nepteer · v0.5.0-alpha.2
 
+## Current milestone: Step 6A functional QAM Settings
+
+Step 5F is merged as PR #11 at `a18c6ae47a892c403aff4473c3234fa273b1f1a5`. The PR records user-reported Steam Deck LCD / Windows 11 acceptance, 10/10 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45866445385) completed successfully on that exact commit. Historical pending statements below describe their original handoffs; they do not replace that later evidence. Step 6A hardware acceptance is pending.
+
+QAM → Settings now offers **Dark / Light** and **Celsius / Fahrenheit**. Selection applies immediately and stays focused. Dashboard and QAM share the same preferences and local persistence key; field-wise revisions and same-origin browser messaging reconcile changes from either window. A storage failure keeps session choices and displays an unsaved warning; a missing messaging API displays a synchronization warning. Real WebView2 delivery and restart persistence must pass the [Windows checklist](docs/WINDOWS_TESTING.md); Chromium integration evidence alone does not validate the target platform.
+
+Collapsed controller order remains Close → Refresh → Performance → Controller → Display → Settings. Expanding Settings adds Dark → Light → Celsius → Fahrenheit. Up/Down wraps approved visible controls; A activates; B collapses and focuses Settings, then closes on the next B. Left/Right remain no-op and held buttons do not repeat. Tab/Shift+Tab, Enter/Space, Escape, mouse and touch work without arming. The scrollable section area retains large targets and actual-focus outlines in either theme. Battery refresh and external updates do not move focus.
+
+The TEST ONLY manual workflow additionally permits `feat/qam-functional-settings`; normal output still excludes Slow Refresh and its delay chunk. No Rust, HID/parser/mappings, arming/deadlines, reader ownership, queue, claim/completion, visibility epochs, foreground/cleanup, bindings, permissions/CSP, manifest, installer identity/privileges, dependency graph or runtime-version changes. Step 5D desktop-only/pass-through and Step 5F press-edge-only decisions remain authoritative. No automatic arming, game-input interception/isolation, hardware writes, drivers, services or held-repeat.
+
 An independently implemented, read-only handheld companion targeting **Windows 11 on Steam Deck LCD**, developable on macOS with Tauri 2, Rust, React and TypeScript.
 
 Windows defaults to **LIVE WINDOWS**: actual battery percentage/charging status from `GetSystemPowerStatus` and manufacturer/model from a local WMI query selecting only those fields. Missing, unknown and failed readings remain unavailable; zero remains a valid value. CPU/GPU temperatures and fan RPM are not implemented in the real provider. LCD/OLED identification remains unverified.
 
 macOS uses the preserved **MOCK DATA** provider. On any host, Settings → Telemetry provider → Mock samples deliberately selects fixed development samples. This selection resets to Automatic at restart; it is never a fallback for failed Windows reads. Theme/units persist separately. Telemetry refresh is manual, with an additional read on QAM open/provider change: no timer, subprocess, service, driver, unique-identifier collection or hardware write is added.
 
-## Current milestone: Step 5F interaction refinements
+## Historical Step 5F interaction refinements
 
 Step 5C.2 passed user-reported Windows Steam Deck acceptance. The [controller input-routing decision record](docs/decisions/step-5d-controller-input-routing.md) recommends retaining **desktop-only controller navigation** and non-invasive touch/keyboard alternatives. QAM navigation observes buttons without suppressing input to games or other tools. Research does not identify a universal supported isolation API under the current safety boundaries; controlling game-visible virtual output or device filtering would require separate architectural/security approval. Step 5E improves setup, guidance and readiness messages without changing native input behavior or the runtime version. The user reports Step 5E hardware acceptance complete on Steam Deck LCD / Windows 11, including pending-refresh interaction and safe cleanup; this does not establish input isolation.
 
@@ -39,7 +49,7 @@ The status bar reflects native phase, reader ownership and navigation status ind
 
 The navigation warning appears before Arm, with the essential controls alongside it. **Other ways to use Quick Access** explains the native platform shortcut, Tab/Shift+Tab, Enter/Space, Escape, dashboard Open Quick Access and mouse/touch. QAM repeats compact static guidance without assuming that navigation is currently enabled. These alternatives do not pause or isolate gameplay.
 
-Open with ⋯, move using Up/Down, activate the focused enabled button with A, and use B to collapse an informational section or close. Left/Right do nothing because there are no adjustable QAM controls. Release before pressing again; held buttons, diagonals or multiple controls do not repeat navigation. Keyboard, mouse and touch remain available. Disarm ends both routes; only one reader exists and the thirty-minute shortcut limit is unchanged.
+Open with ⋯, move using Up/Down, activate the focused enabled button with A, and use B to collapse an informational section or close. Left/Right remain no-op; use Up/Down and A to select preference options. Release before pressing again; held buttons, diagonals or multiple controls do not repeat navigation. Keyboard, mouse and touch remain available. Disarm ends both routes; only one reader exists and the thirty-minute shortcut limit is unchanged.
 
 **Desktop testing without an active game only. Controller navigation observes physical buttons without suppressing them. Games or other controller utilities may still receive the same input.** There is no input isolation, injection or Steam Input/Tools configuration. Native lifecycle tokens and claim/completion prevent stale offers from becoming actions; a completely unresponsive renderer/IPC after a granted claim can delay cleanup, which is never reported as successful early. See the current [hardware checklist](docs/WINDOWS_TESTING.md) and [handoff](docs/HANDOFF.md).
 

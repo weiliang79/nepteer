@@ -453,7 +453,7 @@ test("static help adds no focus targets; platform hint, Tab, Space and touch/cli
     "PerformancePlanned+",
     "ControllerPlanned+",
     "DisplayPlanned+",
-    "SettingsDashboard+",
+    "SettingsPreferences+",
   ]);
   for (let i = 1; i <= buttons.length; i++) {
     await user.tab();
@@ -744,7 +744,7 @@ async function diagnosticPanel(fakeClock = true) {
     "PerformancePlanned+",
     "ControllerPlanned+",
     "DisplayPlanned+",
-    "SettingsDashboard+",
+    "SettingsPreferences+",
   ]);
   vi.mocked(getTelemetry).mockClear();
   if (fakeClock) vi.useFakeTimers();
@@ -1197,4 +1197,231 @@ test("OS focus loss rejects actions without window activation or focus restorati
   focused.mockReturnValue(true);
   await send("next");
   expect(screen.getByRole("button", { name: /Controller/ })).toHaveFocus();
+});
+
+test.each([false, true])(
+  "expanded preferences use approved DOM order and controller wrapping (diagnostic=%s)",
+  async (diagnostic) => {
+    vi.stubEnv("VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS", String(diagnostic));
+    render(<QuickAccess />);
+    await screen.findByText("78 %");
+    const settings = screen.getByRole("button", { name: /Settings/ });
+    settings.focus();
+    await send("activate");
+    expect(settings).toHaveFocus();
+    expect(settings).toHaveAttribute("aria-expanded", "true");
+    const controls = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("button[data-qam-control]"),
+    );
+    expect(controls.map((button) => button.dataset.qamControl)).toEqual([
+      "close",
+      "refresh",
+      ...(diagnostic ? ["slow-refresh"] : []),
+      "performance",
+      "controller",
+      "display",
+      "settings",
+      "dark",
+      "light",
+      "celsius",
+      "fahrenheit",
+    ]);
+    for (const name of [
+      "Dark",
+      "Light",
+      "Celsius (°C)",
+      "Fahrenheit (°F)",
+      "Close Quick Access",
+    ]) {
+      await send("next");
+      expect(screen.getByRole("button", { name })).toHaveFocus();
+    }
+    await send("previous");
+    expect(
+      screen.getByRole("button", { name: "Fahrenheit (°F)" }),
+    ).toHaveFocus();
+    await send("back");
+    expect(settings).toHaveFocus();
+    expect(
+      screen.queryByRole("button", { name: "Dark" }),
+    ).not.toBeInTheDocument();
+    await send("next");
+    expect(controls[0]).toHaveFocus();
+    const back = await send("back");
+    expect(completeQamNavigation).toHaveBeenCalledWith(back.request, true);
+  },
+);
+
+test.each([false, true])(
+  "A selects all preference values without moving focus, duplicate activation, or native effects (diagnostic=%s)",
+  async (diagnostic) => {
+    vi.stubEnv("VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS", String(diagnostic));
+    render(<QuickAccess />);
+    await screen.findByText("78 %");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /Settings/ }));
+    for (const [label, theme] of [
+      ["Light", "light"],
+      ["Dark", "dark"],
+      ["Fahrenheit (°F)", "dark"],
+      ["Celsius (°C)", "dark"],
+    ]) {
+      const button = screen.getByRole("button", { name: label });
+      button.focus();
+      await send("activate");
+      expect(button).toHaveFocus();
+      expect(button).toHaveAttribute("aria-pressed", "true");
+      expect(document.documentElement.dataset.theme).toBe(theme);
+      const saved = localStorage.getItem("nepteer.preferences");
+      await send("activate");
+      expect(localStorage.getItem("nepteer.preferences")).toBe(saved);
+      await send("left");
+      await send("right");
+      expect(button).toHaveFocus();
+    }
+    expect(hideQuickAccess).not.toHaveBeenCalled();
+    expect(getTelemetry).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each([false, true])(
+  "expanded options support Tab wrapping, Enter/Space and touch followed by controller (diagnostic=%s)",
+  async (diagnostic) => {
+    vi.stubEnv("VITE_ENABLE_QAM_FOCUS_DIAGNOSTICS", String(diagnostic));
+    render(<QuickAccess />);
+    await screen.findByText("78 %");
+    const user = userEvent.setup();
+    const settings = screen.getByRole("button", { name: /Settings/ });
+    await user.click(settings);
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Dark" })).toHaveFocus();
+    await user.tab();
+    await user.keyboard("{Enter}");
+    const light = screen.getByRole("button", { name: "Light" });
+    expect(light).toHaveFocus();
+    expect(light).toHaveAttribute("aria-pressed", "true");
+    await user.tab();
+    await user.tab();
+    await user.keyboard(" ");
+    const fahrenheit = screen.getByRole("button", { name: "Fahrenheit (°F)" });
+    expect(fahrenheit).toHaveFocus();
+    expect(fahrenheit).toHaveAttribute("aria-pressed", "true");
+    await user.tab();
+    expect(
+      screen.getByRole("button", { name: "Close Quick Access" }),
+    ).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(fahrenheit).toHaveFocus();
+    await user.pointer([
+      { keys: "[TouchA>]", target: light },
+      { keys: "[/TouchA]" },
+    ]);
+    const actual = document.activeElement;
+    // Browsers own pointer focus; resolve navigation from the element they actually focus.
+    const buttons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("button[data-qam-control]"),
+    );
+    const index = buttons.indexOf(actual as HTMLButtonElement);
+    await send("next");
+    expect(buttons[(index + 1) % buttons.length]).toHaveFocus();
+    await send("back");
+    expect(settings).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(hideQuickAccess).toHaveBeenCalledTimes(1);
+  },
+);
+
+test("external preferences and async battery completion preserve nested focus and panel identity", async () => {
+  const { preferenceStore } = await import("@/lib/preferences");
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const user = userEvent.setup();
+  const settings = screen.getByRole("button", { name: /Settings/ });
+  await user.click(settings);
+  let finish!: (snapshot: Snapshot) => void;
+  vi.mocked(getTelemetry).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  await user.click(screen.getByRole("button", { name: "Refresh battery" }));
+  const light = screen.getByRole("button", { name: "Light" });
+  light.focus();
+  act(() => {
+    preferenceStore.update("theme", "light");
+    preferenceStore.update("unit", "fahrenheit");
+  });
+  expect(light).toHaveFocus();
+  expect(light).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: /Settings/ })).toBe(settings);
+  await act(async () => finish(fixture));
+  expect(light).toHaveFocus();
+  await send("back");
+  expect(settings).toHaveFocus();
+});
+
+test("remount retains unsaved preferences and warns instead of claiming persistence", async () => {
+  const first = render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: /Settings/ }));
+  vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    throw Error("quota");
+  });
+  await user.click(screen.getByRole("button", { name: "Light" }));
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    /may not survive restart/,
+  );
+  first.unmount();
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  await user.click(screen.getByRole("button", { name: /Settings/ }));
+  expect(screen.getByRole("button", { name: "Light" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    /may not survive restart/,
+  );
+});
+
+test("nested missing focus recovers without preference activation; stale epochs cannot activate after reopen", async () => {
+  vi.spyOn(document, "hasFocus").mockReturnValue(true);
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: /Settings/ }));
+  const light = screen.getByRole("button", { name: "Light" });
+  light.focus();
+  light.blur();
+  const saved = localStorage.getItem("nepteer.preferences");
+  await send("activate");
+  expect(localStorage.getItem("nepteer.preferences")).toBe(saved);
+  expect(
+    screen.getByRole("button", { name: "Close Quick Access" }),
+  ).toHaveFocus();
+  await act(async () => changed({ ...status, visible: false }));
+  vi.mocked(quickAccessStatus).mockResolvedValue({ ...status, epoch: 3 });
+  await act(async () => changed({ ...status, epoch: 3 }));
+  expect(
+    screen.getByRole("button", { name: "Close Quick Access" }),
+  ).toHaveFocus();
+  light.focus();
+  await send("activate", 1);
+  expect(light).toHaveAttribute("aria-pressed", "false");
+});
+
+test("Back from a different top-level control collapses Settings and restores its owner", async () => {
+  render(<QuickAccess />);
+  await screen.findByText("78 %");
+  const user = userEvent.setup();
+  const settings = screen.getByRole("button", { name: /Settings/ });
+  await user.click(settings);
+  screen.getByRole("button", { name: /Display/ }).focus();
+  await send("back");
+  expect(settings).toHaveFocus();
+  expect(settings).toHaveAttribute("aria-expanded", "false");
+  expect(
+    screen.queryByRole("button", { name: "Light" }),
+  ).not.toBeInTheDocument();
 });

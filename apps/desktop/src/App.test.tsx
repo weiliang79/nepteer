@@ -122,7 +122,9 @@ test("settings persist units and theme; planned pages are explicit", async () =>
   );
   await user.selectOptions(screen.getByLabelText("Theme"), "light");
   expect(document.documentElement.dataset.theme).toBe("light");
-  expect(JSON.parse(localStorage.getItem("nepteer.preferences")!)).toEqual({
+  expect(
+    JSON.parse(localStorage.getItem("nepteer.preferences")!),
+  ).toMatchObject({
     unit: "fahrenheit",
     theme: "light",
   });
@@ -389,4 +391,25 @@ test("physical shortcut remains app-owned across navigation and minimization; di
   await user.click(screen.getByRole("button", { name: "Disarm Shortcut" }));
   expect(physical.disarmShortcut).toHaveBeenCalledWith(1);
   expect(showQuickAccess).not.toHaveBeenCalled(); // physical status is not a frontend window-visibility cache
+});
+
+test("external preference updates change dashboard selections and supported temperature formatting without remount", async () => {
+  const { act } = await import("@testing-library/react");
+  const { preferenceStore } = await import("./lib/preferences");
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByText("78 %");
+  act(() => {
+    preferenceStore.update("theme", "light");
+    preferenceStore.update("unit", "fahrenheit");
+  });
+  expect(screen.getByText("129 °F")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: /Settings/ }));
+  expect(screen.getByLabelText("Theme")).toHaveValue("light");
+  expect(screen.getByLabelText("Temperature units")).toHaveValue("fahrenheit");
+  await user.selectOptions(screen.getByLabelText("Theme"), "dark");
+  expect(preferenceStore.getSnapshot().preferences).toEqual({
+    theme: "dark",
+    unit: "fahrenheit",
+  });
 });
