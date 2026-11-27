@@ -1,5 +1,9 @@
 # Development
 
+## Step 6B.3 standalone blocked diagnostic
+
+See the [experiment build commands and gate assessment](experiments/step-6b3-hwinfo-shared-memory.md). Run standalone Cargo formatting/Clippy/tests separately from root checks. Windows CI compiles and extracts the asInvoker/uiAccess=false manifest, tests only synthetic CLI admission, and packages source commit/procedure/notices. No CI hardware invocation. Binary fixtures and native lifecycle tests are blocked until the publisher contract is obtained; CLI tests do not substitute for them.
+
 ## Step 6B.1 research development
 
 Branch `research/windows-sensor-feasibility` starts at verified main `8d54db41b8995274ccbe37f57257988bb38dd08f` (merged PR #12). [Post-merge CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732) passed; PR #12 records user-reported Step 6A acceptance, 12/12 LCD/Windows 11 checks. Historical pending text below is retained.

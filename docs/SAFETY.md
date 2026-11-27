@@ -1,5 +1,9 @@
 # Read-only safety boundary
 
+## Step 6B.3 HWiNFO publication boundary
+
+The [HWiNFO experiment](experiments/step-6b3-hwinfo-shared-memory.md) may eventually consume only deliberately published data, with read-only ordinary-user access. Current modes perform no access because the interface contract is unverified. Never elevate, alter ACLs, open publisher processes, acquire hardware directly, bundle/launch/reconfigure HWiNFO or automate sharing-limit circumvention. Physical acceptance is pending; screenshot values are user-reported candidates, not validated telemetry.
+
 ## Step 6B.1 sensor research boundary
 
 The [sensor decision](decisions/step-6b1-windows-sensor-feasibility.md) enables no hardware access. Unattributed ACPI zones, requested fan speed, GPU utilization and plausible numbers must not be presented as CPU/GPU temperatures or measured fan RPM. Windows retains null readings/false capabilities; mock samples remain labeled. User-mode consumers of third-party data do not eliminate a producer's driver/elevation risks.

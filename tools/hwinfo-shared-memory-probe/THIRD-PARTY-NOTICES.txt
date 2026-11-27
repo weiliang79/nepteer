@@ -1,0 +1,9 @@
+Nepteer diagnostic code is original. No project-wide license has been selected.
+See LICENSE-STATUS.md (repository docs/LICENSES.md); no new license grant is made.
+No third-party Rust dependencies. Rust standard library/toolchain components
+retain their upstream licenses (https://www.rust-lang.org/policies/licenses).
+No HWiNFO source, headers, SDK, executable, driver or sample code redistributed.
+HWiNFO is a separate proprietary product of Martin Malik / REALiX, s.r.o.
+Research references are links in PROCEDURE.md, not bundled publisher materials.
+Permission to consume published data does not grant redistribution rights to
+HWiNFO or its SDK. Respect the free edition's 12-hour shared-memory limit.

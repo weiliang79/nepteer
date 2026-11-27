@@ -1,6 +1,10 @@
 # Nepteer · v0.5.0-alpha.2
 
-## Current milestone: Step 6B.1 Windows sensor feasibility research
+## Step 6B.3 — HWiNFO interface investigation
+
+The [HWiNFO shared-memory experiment](docs/experiments/step-6b3-hwinfo-shared-memory.md) is **interface blocked**: official consumer permission was found, but the full authoritative ABI/synchronization contract could not be retrieved. The isolated Windows x86_64 diagnostic builds with an ordinary-user manifest; both access modes report blocked without opening a mapping. No parser, sensor extraction or physical access is claimed. CI runs synthetic CLI tests and packages a clearly labeled standalone artifact only. Production CPU/GPU/fan stay null with false capabilities. HWiNFO is separate and user-managed; its sharing expiry is respected. Hardware testing remains pending a reviewed implementation and deliberate user authorization.
+
+## Historical milestone: Step 6B.1 Windows sensor feasibility research
 
 The [sensor feasibility decision](docs/decisions/step-6b1-windows-sensor-feasibility.md) audits telemetry and evaluates CPU temperature, GPU temperature and fan RPM separately. No sensor access is implemented: Windows keeps all three unavailable. GPU adapter temperature through documented D3DKMT is the first investigation candidate; LCD/Valve-driver support, attribution and freshness remain unknown. CPU/fan and monitoring-tool integration are deferred. [Safe manual discovery](docs/decisions/step-6b1-windows-sensor-feasibility.md#16-proposed-safe-manual-physical-discovery) is pending; no drivers, elevation or register probes.
 
