@@ -1,3 +1,9 @@
+# Step 6B.3 HWiNFO acceptance — pending and blocked
+
+The [manual checklist](experiments/step-6b3-hwinfo-shared-memory.md#12-manual-acceptance--all-pending-physical-modes-blocked) records user-reported HWiNFO64 v8.60 observations separately from untested shared-memory access. Current executable returns interface-blocked and cannot satisfy Test A or B. After a verified implementation is reviewed, use ordinary non-administrator PowerShell; no elevated retry or ACL modification. Candidate extraction requires explicit user approval. Publisher shutdown tests require separate approval. Historical statements below retain their original milestone context.
+
+---
+
 # Step 6B.1 — Manual sensor discovery (pending)
 
 No sensor queries or physical sensor acceptance have been executed. Follow the [safe discovery procedure and evidence template](decisions/step-6b1-windows-sensor-feasibility.md#16-proposed-safe-manual-physical-discovery):

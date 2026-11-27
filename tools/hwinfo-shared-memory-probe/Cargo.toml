@@ -1,0 +1,8 @@
+[package]
+name = "hwinfo-shared-memory-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Deliberately independent of Nepteer's production workspace and lockfile.
+[workspace]

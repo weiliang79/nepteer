@@ -1,11 +1,19 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.1 Windows sensor feasibility research; no production sensor access or native input change.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.3, an isolated HWiNFO shared-memory feasibility investigation; production telemetry remains unchanged.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 6B.1 — Windows sensor feasibility research
+## Current milestone: Step 6B.3 — HWiNFO shared-memory feasibility
+
+Work on `experiment/hwinfo-shared-memory-feasibility` from verified main `82d16da561de11757b30f4f8d03b68e77b04f755` (Step 6B.1 / PR #13, successful post-merge Desktop CI). Step 6B.2 at `f8d4581aa8b5c8896a2adf28e2c029cdcaf3d810` is unmerged; read its procedure only on its own branch, never import it. Follow [the experiment](docs/experiments/step-6b3-hwinfo-shared-memory.md). Commit/push validated work; do not merge automatically.
+
+Only isolated Windows x86_64 Rust diagnostic, interface/licensing research, synthetic tests, documentation and ordinary CI additions are authorized. Separate workspace/lockfile; no app/installer/QAM inclusion. Official ABI/name/synchronization contract remains unverified because publisher pages could not be retrieved. Current executable must fail closed without mapping access or parsing; do not replace missing contracts with community offsets. Obtain authorized publisher materials and review terms before implementing access. Future read-only ordinary-user access must not elevate, change ACLs, open publisher processes, or acquire hardware directly. No polling/retries/background work, HWiNFO bundling/launch/restart/configuration or sharing-limit bypass. Respect the non-Pro 12-hour limit. No hardware invocation in CI. Physical access awaits reviewed implementation and deliberate user choice; --read-once needs explicit user approval, publisher-off testing separate approval.
+
+Preserve production null CPU/GPU/fan and false capabilities, WindowsProvider/get_telemetry, DTO/mock/frontend/preferences/controller/HID/navigation/arming/reader/permissions/installer identity and production dependencies. Screenshot readings are user-reported candidates, never independently verified shared-memory evidence. Freshness, attribution and ordinary-user compatibility remain unresolved. No elevation/helpers/drivers/services, EC/ACPI/MSR/SMU/bus/PCI/register/private IOCTL access, writes, stress load, network or persistent sensor logs. Keep Step 5D desktop-only/pass-through, Step 5F press-edge-only and manual Slow Refresh unchanged. Run all standard checks, inventories, standalone checks, native CI/manifest, links/scope and both QAM output verifiers; restore normal output.
+
+## Historical milestone: Step 6B.1 — Windows sensor feasibility research
 
 Work on `research/windows-sensor-feasibility` from verified main `8d54db41b8995274ccbe37f57257988bb38dd08f` (PR #12). Step 6A is merged; PR #12 records user-reported LCD/Windows 11 acceptance, 12/12 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732) succeeded on that commit. Historical pending statements below retain their original handoff meaning.
 

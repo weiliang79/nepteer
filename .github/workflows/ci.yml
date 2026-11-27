@@ -15,6 +15,7 @@ on:
         feat/qam-controller-navigation,
         research/controller-input-routing,
         research/windows-sensor-feasibility,
+        experiment/hwinfo-shared-memory-feasibility,
         feat/qam-navigation-ux,
         feat/qam-interaction-refinements,
         feat/qam-functional-settings,
@@ -104,3 +105,51 @@ jobs:
           path: |
             javascript-licenses.json
             rust-licenses.json
+
+  hwinfo-probe-build-only:
+    name: Experimental HWiNFO probe — interface blocked, build and synthetic tests only
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: tools/hwinfo-shared-memory-probe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tools/hwinfo-shared-memory-probe -> target
+      - run: cargo fmt -- --check
+      - run: cargo check --locked --target x86_64-pc-windows-msvc
+      - run: cargo clippy --all-targets --locked --target x86_64-pc-windows-msvc -- -D warnings
+      - name: Synthetic CLI tests only — no mapping access or parser
+        run: cargo test --locked --target x86_64-pc-windows-msvc
+      - run: cargo build --release --locked --target x86_64-pc-windows-msvc
+      - name: Verify manifest and stage blocked manual-only artifact
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path "target/x86_64-pc-windows-msvc/release/hwinfo-shared-memory-probe.exe").Path
+          $mt = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/mt.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $mt) { throw "Windows SDK manifest tool not found" }
+          & $mt.FullName "-inputresource:$exe;#1" "-out:target/probe.manifest"
+          if ($LASTEXITCODE -ne 0) { throw "Manifest extraction failed" }
+          [xml]$manifest = Get-Content "target/probe.manifest" -Raw
+          $execution = @($manifest.SelectNodes("//*[local-name()='requestedExecutionLevel']"))
+          if ($execution.Count -ne 1 -or $execution[0].level -ne "asInvoker" -or $execution[0].uiAccess -ne "false") {
+            throw "Probe must run asInvoker, uiAccess=false"
+          }
+          New-Item -ItemType Directory -Path "target/manual-only-artifact" -Force | Out-Null
+          Copy-Item $exe "target/manual-only-artifact/EXPERIMENTAL-HWINFO-SHARED-MEMORY-PROBE-MANUAL-RUN-ONLY.exe"
+          Copy-Item "README.txt", "THIRD-PARTY-NOTICES.txt" "target/manual-only-artifact/"
+          Copy-Item "../../docs/LICENSES.md" "target/manual-only-artifact/LICENSE-STATUS.md"
+          Copy-Item "../../docs/experiments/step-6b3-hwinfo-shared-memory.md" "target/manual-only-artifact/PROCEDURE.md"
+          $env:GITHUB_SHA | Set-Content "target/manual-only-artifact/COMMIT.txt"
+          cargo metadata --locked --format-version 1 | Set-Content "target/manual-only-artifact/dependency-metadata.json"
+          if ($LASTEXITCODE -ne 0) { throw "Probe inventory failed" }
+      - name: Upload blocked HWiNFO experiment — never production telemetry
+        uses: actions/upload-artifact@v4
+        with:
+          name: EXPERIMENTAL-HWINFO-SHARED-MEMORY-PROBE-MANUAL-RUN-ONLY-windows-x86_64-${{ github.sha }}
+          if-no-files-found: error
+          path: tools/hwinfo-shared-memory-probe/target/manual-only-artifact/*

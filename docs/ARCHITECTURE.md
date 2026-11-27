@@ -1,5 +1,9 @@
 # Architecture
 
+## Step 6B.3 isolated HWiNFO diagnostic
+
+Independent workspace/lockfile under `tools/hwinfo-shared-memory-probe`; no production dependency, Tauri command, DTO or permission change. The [experiment](experiments/step-6b3-hwinfo-shared-memory.md) records an unavailable authoritative interface contract. No mapping name/offsets are guessed; access and parsing remain blocked. Native snapshot consistency, freshness and cleanup ownership must be reviewed before future implementation.
+
 ## Step 6B.1 sensor feasibility — proposed only
 
 The [decision record](decisions/step-6b1-windows-sensor-feasibility.md) audits request dispatch, partial failures, timestamps, capabilities, units and QAM permissions. Existing nullable sensor fields and `get_telemetry` can carry a future validated reading without another command; they cannot express typed sensor provenance/freshness. No DTO or implementation changes here. Current synchronous WMI enumeration can block indefinitely despite `spawn_blocking`; frontend stale-result fences do not cancel native work. Any sensor backend needs bounded admission and honest cleanup before production enablement.

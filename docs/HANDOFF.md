@@ -1,3 +1,9 @@
+# Step 6B.3 — HWiNFO shared-memory feasibility handoff
+
+Based on latest verified main `82d16da561de11757b30f4f8d03b68e77b04f755`; Step 6B.2 `f8d4581aa8b5c8896a2adf28e2c029cdcaf3d810` remains unmerged and was not imported. The [experiment](experiments/step-6b3-hwinfo-shared-memory.md) records publisher licensing evidence, inaccessible official ABI/UTF-8 documentation, all user-reported physical observations and a contract-acquisition proposal. The independent no-dependency diagnostic reports interface-blocked without native access. Six CLI tests are not parser/ACL/cleanup evidence. Separate Windows build/test/manifest/artifact CI is added; final-commit results are in the delivery report. Hardware acceptance and all sensor attribution/freshness remain pending. Production sources, bindings, permissions, installer and dependency graph are unchanged. Do not merge automatically. Historical handoffs below are preserved.
+
+---
+
 # Step 6B.1 — Windows sensor feasibility research
 
 Branch `research/windows-sensor-feasibility`, based on verified main `8d54db41b8995274ccbe37f57257988bb38dd08f`. PR #12 merged Step 6A and records user-reported LCD/Windows 11 acceptance, 12/12 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732) succeeded on that SHA. Earlier pending handoffs are historical.
