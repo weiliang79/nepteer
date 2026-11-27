@@ -1,6 +1,12 @@
 # Nepteer · v0.5.0-alpha.2
 
-## Step 6B.3 — HWiNFO interface investigation
+## Step 6B.4 — Standalone sensor architecture
+
+The [standalone sensor decision](docs/decisions/step-6b4-standalone-sensor-architecture.md) evaluates CPU temperature, GPU temperature and measured fan RPM independently. Nepteer must not require another running monitor. CPU and Jupiter fan remain deferred; ADLX is the strongest conditional next GPU experiment, with unverified Valve-driver support and a material SDK licensing gate. No sensor or diagnostic is implemented here. Production readings remain null with false capabilities.
+
+Step 6B.3 merged as [PR #14](https://github.com/weiliang79/nepteer/pull/14) at `8ef71e11c3f770e96ae8c7c3e03aa92e37a904a0`, with successful [post-merge CI](https://github.com/weiliang79/nepteer/actions/runs/46027156422). HWiNFO remains a research reference. Step 6B.2 remains on unmerged `experiment/windows-gpu-temperature-d3dkmt`; its user-reported successful query produced no admissible temperature, with no raw value disclosed. It was not imported. Historical records below retain their original context.
+
+## Historical Step 6B.3 — HWiNFO interface investigation
 
 The [HWiNFO shared-memory experiment](docs/experiments/step-6b3-hwinfo-shared-memory.md) is **interface blocked**: official consumer permission was found, but the full authoritative ABI/synchronization contract could not be retrieved. The isolated Windows x86_64 diagnostic builds with an ordinary-user manifest; both access modes report blocked without opening a mapping. No parser, sensor extraction or physical access is claimed. CI runs synthetic CLI tests and packages a clearly labeled standalone artifact only. Production CPU/GPU/fan stay null with false capabilities. HWiNFO is separate and user-managed; its sharing expiry is respected. Hardware testing remains pending a reviewed implementation and deliberate user authorization.
 

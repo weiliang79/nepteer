@@ -15,6 +15,7 @@ on:
         feat/qam-controller-navigation,
         research/controller-input-routing,
         research/windows-sensor-feasibility,
+        research/standalone-sensor-architecture,
         experiment/hwinfo-shared-memory-feasibility,
         feat/qam-navigation-ux,
         feat/qam-interaction-refinements,
