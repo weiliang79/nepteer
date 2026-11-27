@@ -1,3 +1,17 @@
+# Step 6B.1 — Manual sensor discovery (pending)
+
+No sensor queries or physical sensor acceptance have been executed. Follow the [safe discovery procedure and evidence template](decisions/step-6b1-windows-sensor-feasibility.md#16-proposed-safe-manual-physical-discovery):
+
+- Record only known LCD model, Windows build, display driver provider/version/date and optional WDDM version from ordinary UI; no full reports or device paths.
+- Observe Task Manager GPU temperature availability and sensor labels/units from trusted monitoring apps only if already running/configured. Do not launch/install utilities or change their settings.
+- Optionally execute the decision's three projected, local, ordinary-user WMI queries once. Record missing/denied/ambiguous/timeout outcomes without raw error exports; no elevation retry.
+- Record exact label/category/unit, numeric availability, tool/API version and source semantics if known. ACPI zone values remain unattributed; DesiredSpeed is requested speed, not actual RPM.
+- Do not collect serials/UUIDs/unique paths/account details or sensor history. No register/EC/MSR/PCI/bus/private IOCTL probing, driver changes, protections changes, fan controls or stress experiments.
+
+Step 6B.2 GPU validation is a separate proposal, not a runnable part of this milestone. CPU/GPU/fan remain unavailable in production. CI/browser tests cannot verify physical sensor support.
+
+Step 6A is merged as [PR #12](https://github.com/weiliang79/nepteer/pull/12), with user-reported LCD/Windows 11 acceptance **12/12 passed** and successful [post-merge CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732). The historical Step 6A pending checklist below preserves its original handoff; it does not override that later report.
+
 # Step 6A — Functional Settings acceptance
 
 **Status: pending user testing on Steam Deck LCD / Windows 11.** Step 5F is merged as PR #11 at `a18c6ae47a892c403aff4473c3234fa273b1f1a5`. The PR records user-reported Steam Deck LCD / Windows 11 acceptance, 10/10 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45866445385) completed successfully on that exact commit. Historical pending statements below describe their original handoffs; they do not replace that later evidence. Step 6A hardware acceptance is pending.

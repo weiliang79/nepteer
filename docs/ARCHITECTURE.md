@@ -1,5 +1,11 @@
 # Architecture
 
+## Step 6B.1 sensor feasibility — proposed only
+
+The [decision record](decisions/step-6b1-windows-sensor-feasibility.md) audits request dispatch, partial failures, timestamps, capabilities, units and QAM permissions. Existing nullable sensor fields and `get_telemetry` can carry a future validated reading without another command; they cannot express typed sensor provenance/freshness. No DTO or implementation changes here. Current synchronous WMI enumeration can block indefinitely despite `spawn_blocking`; frontend stale-result fences do not cancel native work. Any sensor backend needs bounded admission and honest cleanup before production enablement.
+
+Documented D3DKMT adapter temperature is the first investigation candidate; no LCD/Valve-driver support or GPU subtype/freshness is verified. ADLX is secondary with compatibility/license gates. CPU-zone attribution and system-fan exposure remain blockers. Real readings stay null with false capabilities. Step 6A is merged as PR #12 with user-reported 12/12 LCD/Windows 11 acceptance and successful post-merge CI; historical pending handoffs below are preserved.
+
 ## Step 6A preference and focus contracts
 
 Step 5F is merged as PR #11 at `a18c6ae47a892c403aff4473c3234fa273b1f1a5`. The PR records user-reported Steam Deck LCD / Windows 11 acceptance, 10/10 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45866445385) completed successfully on that exact commit. Historical pending statements below describe their original handoffs; they do not replace that later evidence. Step 6A hardware acceptance is pending.

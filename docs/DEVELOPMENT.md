@@ -1,5 +1,11 @@
 # Development
 
+## Step 6B.1 research development
+
+Branch `research/windows-sensor-feasibility` starts at verified main `8d54db41b8995274ccbe37f57257988bb38dd08f` (merged PR #12). [Post-merge CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732) passed; PR #12 records user-reported Step 6A acceptance, 12/12 LCD/Windows 11 checks. Historical pending text below is retained.
+
+Read the [sensor feasibility decision](decisions/step-6b1-windows-sensor-feasibility.md). This is documentation-only research; no experimental binaries, production sensors, generated-binding/dependency changes or hardware access. Run the usual format/typecheck/lint/frontend/bindings/Rust checks, license inventories, links and diff-scope verification. The exact research branch is added only to ordinary CI pushes for unchanged Windows/macOS validation/packaging. No diagnostic dispatch, new test build or hardware-enabled CI is required; the manual diagnostic workflow remains unchanged. Physical discovery is manual and pending, and any GPU API experiment needs a separately reviewed procedure before execution.
+
 ## Step 6A settings development
 
 Step 5F is merged as PR #11 at `a18c6ae47a892c403aff4473c3234fa273b1f1a5`. The PR records user-reported Steam Deck LCD / Windows 11 acceptance, 10/10 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45866445385) completed successfully on that exact commit. Historical pending statements below describe their original handoffs; they do not replace that later evidence. Step 6A hardware acceptance is pending.

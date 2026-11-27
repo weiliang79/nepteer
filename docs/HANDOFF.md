@@ -1,3 +1,13 @@
+# Step 6B.1 — Windows sensor feasibility research
+
+Branch `research/windows-sensor-feasibility`, based on verified main `8d54db41b8995274ccbe37f57257988bb38dd08f`. PR #12 merged Step 6A and records user-reported LCD/Windows 11 acceptance, 12/12 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732) succeeded on that SHA. Earlier pending handoffs are historical.
+
+The [decision record](decisions/step-6b1-windows-sensor-feasibility.md) contains the telemetry audit, per-sensor findings, evidence ledger, feasibility/security/license assessment, failure/lifecycle model and safe manual discovery checklist. Decision: retain unavailable values. Investigate GPU adapter temperature via documented D3DKMT first, with ADLX secondary; target driver support, physical attribution, freshness and bounded-call lifecycle remain blockers. CPU/fan and third-party providers are deferred. No hardware experiment executed; no Steam Deck Tools source inspected.
+
+Only the decision, AGENTS/README/architecture/safety/development/Windows testing/this handoff and the ordinary CI branch filter change. No Rust, frontend, bindings, dependency/lockfile, HID/controller, permissions, manifest, version, mock or production capability changes. Diagnostic workflow unchanged. No merge authorized.
+
+Local validation passed: format, TypeScript, ESLint, frontend tests (157), bindings, Rust check/tests (74 passed, one intentionally ignored generator), Clippy, JS/Rust license inventories, 38 local documentation links/anchors and whitespace/scope checks. External primary-source references were reviewed through the research browser; inaccessible full community threads and ADLX license PDF text are explicitly qualified in the ledger. No binding drift or native/dependency/permission/manifest changes. Exact final-commit Windows/macOS CI results are supplied in the delivery report and [branch runs](https://github.com/weiliang79/nepteer/actions?query=branch%3Aresearch%2Fwindows-sensor-feasibility). Local packaging is deferred to unchanged native CI for this documentation-only milestone; no diagnostic artifact is needed. Physical discovery remains pending.
+
 # Step 5F — QAM interaction refinements
 
 ## Step 6A — Functional QAM Settings handoff

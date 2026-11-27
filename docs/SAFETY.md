@@ -1,5 +1,11 @@
 # Read-only safety boundary
 
+## Step 6B.1 sensor research boundary
+
+The [sensor decision](decisions/step-6b1-windows-sensor-feasibility.md) enables no hardware access. Unattributed ACPI zones, requested fan speed, GPU utilization and plausible numbers must not be presented as CPU/GPU temperatures or measured fan RPM. Windows retains null readings/false capabilities; mock samples remain labeled. User-mode consumers of third-party data do not eliminate a producer's driver/elevation risks.
+
+No EC/MSR/PCI/bus/register probes, private driver calls, driver/service installation, elevation, firmware changes or hardware writes are authorized. No Steam Deck Tools source inspection/reuse. Manual observation may stop at denied/ambiguous/unavailable; never change protections or tool configuration. A future D3DKMT/AMD experiment needs explicit scope review, target attribution, freshness, bounded lifecycle and license assessment. No input/controller/permissions/manifest behavior changes. Step 6A PR #12 records 12/12 LCD/Windows 11 acceptance; historical pending statements below are original handoffs, not current evidence.
+
 ## Step 6A frontend preferences
 
 Step 5F is merged as PR #11 at `a18c6ae47a892c403aff4473c3234fa273b1f1a5`. The PR records user-reported Steam Deck LCD / Windows 11 acceptance, 10/10 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45866445385) completed successfully on that exact commit. Historical pending statements below describe their original handoffs; they do not replace that later evidence. Step 6A hardware acceptance is pending.
