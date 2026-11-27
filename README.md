@@ -1,6 +1,12 @@
 # Nepteer · v0.5.0-alpha.2
 
-## Current milestone: Step 6A functional QAM Settings
+## Current milestone: Step 6B.1 Windows sensor feasibility research
+
+The [sensor feasibility decision](docs/decisions/step-6b1-windows-sensor-feasibility.md) audits telemetry and evaluates CPU temperature, GPU temperature and fan RPM separately. No sensor access is implemented: Windows keeps all three unavailable. GPU adapter temperature through documented D3DKMT is the first investigation candidate; LCD/Valve-driver support, attribution and freshness remain unknown. CPU/fan and monitoring-tool integration are deferred. [Safe manual discovery](docs/decisions/step-6b1-windows-sensor-feasibility.md#16-proposed-safe-manual-physical-discovery) is pending; no drivers, elevation or register probes.
+
+Step 6A merged as [PR #12](https://github.com/weiliang79/nepteer/pull/12) at `8d54db41b8995274ccbe37f57257988bb38dd08f`, recording user-reported LCD/Windows 11 acceptance, 12/12 passed. [Post-merge CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732) succeeded. Earlier pending text below is historical and does not replace this evidence. Research does not validate new sensors.
+
+## Historical milestone: Step 6A functional QAM Settings
 
 Step 5F is merged as PR #11 at `a18c6ae47a892c403aff4473c3234fa273b1f1a5`. The PR records user-reported Steam Deck LCD / Windows 11 acceptance, 10/10 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45866445385) completed successfully on that exact commit. Historical pending statements below describe their original handoffs; they do not replace that later evidence. Step 6A hardware acceptance is pending.
 
