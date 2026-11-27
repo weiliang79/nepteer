@@ -1,5 +1,13 @@
 # Development
 
+## Step 6B.2 standalone probe development
+
+See the [experiment and manual prerequisites](experiments/step-6b2-d3dkmt-gpu-temperature.md). Root Cargo builds deliberately exclude `tools/windows-gpu-temp-probe`; its independent lockfile pins Microsoft `windows` 0.62.2 without changing production dependencies. Run `cargo fmt --manifest-path tools/windows-gpu-temp-probe/Cargo.toml -- --check`, `cargo check --manifest-path tools/windows-gpu-temp-probe/Cargo.toml --locked`, `cargo test --manifest-path tools/windows-gpu-temp-probe/Cargo.toml --locked` and `cargo clippy --manifest-path tools/windows-gpu-temp-probe/Cargo.toml --all-targets --locked -- -D warnings`. macOS exercises portable synthetic logic only.
+
+On a prepared Windows x64 MSVC/SDK development machine, add `--target x86_64-pc-windows-msvc` to check/test/clippy/build. In the x64 Native Tools shell, from the probe directory compile `cl /nologo /std:c++17 /WX /c abi-check.cpp /Fotarget\abi-check.obj`. This only compiles official SDK assertions. Build with `cargo build --release --locked --target x86_64-pc-windows-msvc`; do not run the executable as part of validation. Set `NEPTEER_PROBE_COMMIT` to the reviewed SHA at build time; CI does this automatically and verifies the embedded asInvoker manifest.
+
+The separate ordinary CI job uploads an EXPERIMENTAL manual-only executable, procedure, commit and dependency metadata/notices. It never invokes the probe, including help, and never changes normal installers or the Slow Refresh workflow. Root standard checks, license inventories, scope/links and both frontend diagnostic-output verifiers still apply. No physical query is needed for compilation/tests. Installed driver context, attribution/freshness and Windows acceptance remain pending; CPU/fan deferred.
+
 ## Step 6B.1 research development
 
 Branch `research/windows-sensor-feasibility` starts at verified main `8d54db41b8995274ccbe37f57257988bb38dd08f` (merged PR #12). [Post-merge CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732) passed; PR #12 records user-reported Step 6A acceptance, 12/12 LCD/Windows 11 checks. Historical pending text below is retained.

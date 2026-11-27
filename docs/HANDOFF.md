@@ -1,3 +1,15 @@
+# Step 6B.2 — Bounded GPU diagnostic handoff
+
+Branch `experiment/windows-gpu-temperature-d3dkmt`, base `82d16da561de11757b30f4f8d03b68e77b04f755` (merged Step 6B.1 / PR #13). [Post-merge Desktop CI 45937693567](https://github.com/weiliang79/nepteer/actions/runs/45937693567) was completed/success before implementation. Do not merge automatically.
+
+The [experiment record](experiments/step-6b2-d3dkmt-gpu-temperature.md) describes the independent Windows x86_64 console package, documented Microsoft API contracts, SDK/binding validation, adapter selection, deci-Celsius candidate semantics, failure/RAII handling and blocking limitation. Exact `--run-once` is manual; no production integration. Bounded enumeration, one performance attempt, metadata guards, no retries/workers/polling/fallback; SDK comparison is compile-only and Rust tests use mocks. Ordinary CI retains Windows/macOS packaging and adds only the exact branch plus a separate experimental build/test/artifact job. The existing manual Slow Refresh workflow is unchanged.
+
+Installed driver version/provider/date/WDDM/build, standard-user target support, physical attribution, freshness and acceptance remain pending. No physical probe run by the agent or CI. The user must review prerequisites and deliberately choose execution. A completed numeric/API response is experimental evidence only. Production null CPU/GPU/fan and false capabilities, mock/DTO/preferences, HID/controller/navigation, permissions and installer contracts remain unchanged. CPU/fan deferred. No new privileged dependency, elevation, driver/service, hardware writes, source reuse, stress workload, identifiers/network/history. Next decision: review the artifact/procedure and, if chosen, one ordinary-user observation; retain production deferral.
+
+Local validation passed: all ten requested standard commands, 157 frontend tests, 74 application Rust tests (one intentionally ignored generator), 20 portable probe tests, standalone check/format/Clippy, both root license inventories plus the isolated 15-package license review, 47 local documentation links/anchors, both Slow Refresh output verifiers (normal output restored) and whitespace/scope checks. Windows-specific compilation/23 probe tests/SDK ABI/manifest verification and native Windows/macOS packaging are delegated to CI; exact final-commit results and artifact links are supplied in the delivery report. Historical handoffs below are preserved.
+
+---
+
 # Step 6B.1 — Windows sensor feasibility research
 
 Branch `research/windows-sensor-feasibility`, based on verified main `8d54db41b8995274ccbe37f57257988bb38dd08f`. PR #12 merged Step 6A and records user-reported LCD/Windows 11 acceptance, 12/12 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732) succeeded on that SHA. Earlier pending handoffs are historical.

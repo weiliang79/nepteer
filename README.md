@@ -1,6 +1,12 @@
 # Nepteer · v0.5.0-alpha.2
 
-## Current milestone: Step 6B.1 Windows sensor feasibility research
+## Step 6B.2 — Experimental GPU diagnostic
+
+The [bounded GPU temperature experiment](docs/experiments/step-6b2-d3dkmt-gpu-temperature.md) adds an isolated Windows x86_64 console probe under `tools/windows-gpu-temp-probe`. It is outside normal Nepteer builds/installers and runs only after procedure review and explicit `--run-once`. CI compiles it and runs synthetic/SDK ABI checks without a hardware query. Its separately labeled **EXPERIMENTAL — GPU TEMPERATURE PROBE — MANUAL RUN ONLY** artifact may return unsupported or inconclusive.
+
+Step 6B.1 merged as PR #13 at `82d16da561de11757b30f4f8d03b68e77b04f755`; [post-merge CI](https://github.com/weiliang79/nepteer/actions/runs/45937693567) succeeded. Physical driver context, query execution, attribution and freshness remain pending. API success does not validate GPU telemetry. Production CPU/GPU/fan stay unavailable with false capabilities; CPU/fan are deferred. Native calls have no hard timeout; stop further experiments after a stall. No elevation, drivers, controls, background collection or automatic retries.
+
+## Historical milestone: Step 6B.1 Windows sensor feasibility research
 
 The [sensor feasibility decision](docs/decisions/step-6b1-windows-sensor-feasibility.md) audits telemetry and evaluates CPU temperature, GPU temperature and fan RPM separately. No sensor access is implemented: Windows keeps all three unavailable. GPU adapter temperature through documented D3DKMT is the first investigation candidate; LCD/Valve-driver support, attribution and freshness remain unknown. CPU/fan and monitoring-tool integration are deferred. [Safe manual discovery](docs/decisions/step-6b1-windows-sensor-feasibility.md#16-proposed-safe-manual-physical-discovery) is pending; no drivers, elevation or register probes.
 

@@ -15,6 +15,7 @@ on:
         feat/qam-controller-navigation,
         research/controller-input-routing,
         research/windows-sensor-feasibility,
+        experiment/windows-gpu-temperature-d3dkmt,
         feat/qam-navigation-ux,
         feat/qam-interaction-refinements,
         feat/qam-functional-settings,
@@ -104,3 +105,59 @@ jobs:
           path: |
             javascript-licenses.json
             rust-licenses.json
+
+  gpu-probe-build-only:
+    name: Experimental GPU probe — build and synthetic tests only
+    runs-on: windows-latest
+    env:
+      NEPTEER_PROBE_COMMIT: ${{ github.sha }}
+    defaults:
+      run:
+        working-directory: tools/windows-gpu-temp-probe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tools/windows-gpu-temp-probe -> target
+      - run: cargo fmt -- --check
+      - run: cargo check --locked --target x86_64-pc-windows-msvc
+      - run: cargo clippy --all-targets --locked --target x86_64-pc-windows-msvc -- -D warnings
+      - name: Synthetic logic and Windows ABI tests — no hardware API calls
+        run: cargo test --locked --target x86_64-pc-windows-msvc
+      - name: Compile official SDK ABI assertions — no linking or execution
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw "MSVC not found" }
+          & cmd /c "`"$vs\Common7\Tools\VsDevCmd.bat`" -arch=x64 && cl /nologo /std:c++17 /WX /c abi-check.cpp /Fotarget\abi-check.obj"
+          if ($LASTEXITCODE -ne 0) { throw "Official SDK ABI comparison failed" }
+      - run: cargo build --release --locked --target x86_64-pc-windows-msvc
+      - name: Stage manual-only executable and verify ordinary-user manifest
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path "target/x86_64-pc-windows-msvc/release/windows-gpu-temp-probe.exe").Path
+          $mt = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/mt.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $mt) { throw "Windows SDK manifest tool not found" }
+          & $mt.FullName "-inputresource:$exe;#1" "-out:target/probe.manifest"
+          if ($LASTEXITCODE -ne 0) { throw "Manifest extraction failed" }
+          [xml]$manifest = Get-Content "target/probe.manifest" -Raw
+          $execution = $manifest.SelectSingleNode("//*[local-name()='requestedExecutionLevel']")
+          if ($execution.level -ne "asInvoker" -or $execution.uiAccess -ne "false") { throw "Probe must run asInvoker, uiAccess=false" }
+          New-Item -ItemType Directory -Path "target/manual-only-artifact" -Force | Out-Null
+          Copy-Item $exe "target/manual-only-artifact/EXPERIMENTAL-GPU-TEMPERATURE-PROBE-MANUAL-RUN-ONLY.exe"
+          Copy-Item "README.txt" "target/manual-only-artifact/README.txt"
+          Copy-Item "THIRD-PARTY-NOTICES.txt" "target/manual-only-artifact/THIRD-PARTY-NOTICES.txt"
+          Copy-Item "../../docs/experiments/step-6b2-d3dkmt-gpu-temperature.md" "target/manual-only-artifact/PROCEDURE.md"
+          $env:GITHUB_SHA | Set-Content "target/manual-only-artifact/COMMIT.txt"
+          cargo metadata --locked --format-version 1 | Set-Content "target/manual-only-artifact/dependency-metadata.json"
+          if ($LASTEXITCODE -ne 0) { throw "Probe license inventory failed" }
+      - name: Upload EXPERIMENTAL manual-only GPU probe — never production telemetry
+        uses: actions/upload-artifact@v4
+        with:
+          name: EXPERIMENTAL-GPU-TEMPERATURE-PROBE-MANUAL-RUN-ONLY-windows-x86_64-${{ github.sha }}
+          if-no-files-found: error
+          path: tools/windows-gpu-temp-probe/target/manual-only-artifact/*

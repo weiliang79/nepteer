@@ -1,0 +1,12 @@
+[package]
+name = "windows-gpu-temp-probe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "EXPERIMENTAL GPU TEMPERATURE PROBE - MANUAL RUN ONLY"
+
+# Deliberately independent: normal workspace builds/installers cannot include this binary.
+[workspace]
+
+[target.'cfg(all(windows, target_arch = "x86_64"))'.dependencies]
+windows = { version = "=0.62.2", default-features = false, features = ["std", "Wdk_Graphics_Direct3D", "Win32_Foundation", "Win32_Graphics_Dxgi", "Win32_Security", "Win32_System_Threading"] }

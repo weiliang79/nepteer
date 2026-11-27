@@ -1,5 +1,11 @@
 # Architecture
 
+## Step 6B.2 isolated GPU experiment
+
+The [experiment](experiments/step-6b2-d3dkmt-gpu-temperature.md) uses its own Cargo workspace and lockfile under `tools/windows-gpu-temp-probe`, with no application dependency, IPC, QAM control or installer inclusion. Windows x86_64 only; exact manual `--run-once`, one local-session admission mutex, synchronous bounded DXGI enumeration, sole AMD hardware candidate, documented D3DKMT open, adapter-type/physical-count guards, one performance query and RAII close. No worker, polling, retry or native-call timeout/cancellation claim. Microsoft bindings are checked against the installed Windows SDK by compile-only assertions; all tests avoid display API calls.
+
+API success is separate from numeric admission, physical attribution and freshness. Only a candidate deci-Celsius conversion may be printed with unresolved source/age; no fan/power/clock field is exposed. Physical support/installed driver context remain pending. Production telemetry/DTO/mock/preferences, HID/controller/navigation, permissions and normal installer remain unchanged. CPU/fan remain deferred; no source is promoted to production.
+
 ## Step 6B.1 sensor feasibility — proposed only
 
 The [decision record](decisions/step-6b1-windows-sensor-feasibility.md) audits request dispatch, partial failures, timestamps, capabilities, units and QAM permissions. Existing nullable sensor fields and `get_telemetry` can carry a future validated reading without another command; they cannot express typed sensor provenance/freshness. No DTO or implementation changes here. Current synchronous WMI enumeration can block indefinitely despite `spawn_blocking`; frontend stale-result fences do not cancel native work. Any sensor backend needs bounded admission and honest cleanup before production enablement.

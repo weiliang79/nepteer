@@ -1,11 +1,19 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.1 Windows sensor feasibility research; no production sensor access or native input change.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.2, an isolated manual GPU diagnostic experiment; production sensors and native input remain unchanged.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 6B.1 — Windows sensor feasibility research
+## Current milestone: Step 6B.2 — Bounded GPU temperature experiment
+
+Work on `experiment/windows-gpu-temperature-d3dkmt` from verified main `82d16da561de11757b30f4f8d03b68e77b04f755` (Step 6B.1 / PR #13). [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45937693567) succeeded on that exact SHA. Follow the [experiment procedure](docs/experiments/step-6b2-d3dkmt-gpu-temperature.md) and preserve the [6B.1 decision](docs/decisions/step-6b1-windows-sensor-feasibility.md). Commit/push validated work; do not merge automatically.
+
+Only the isolated Windows x86_64 console probe, hardware-free tests/SDK ABI compilation, documentation and ordinary CI additions are authorized. Separate Cargo workspace/lockfile under `tools/windows-gpu-temp-probe`; no normal app/installer inclusion. Exact `--run-once` after procedure review permits one synchronous performance attempt; no default execution, polling, retries, queue, background worker or fallback. Bounded DXGI enumeration, unambiguous candidate policy, private LUID, documented open/query/close, RAII and honest failed-close reporting. Native calls have no hard timeout/cancellation guarantee; stop further experiments after a stall. No CI hardware invocation. Physical execution requires the user's reviewed, deliberate choice and remains pending, as do installed driver context, attribution and freshness.
+
+API success and plausible numbers are experimental, never validated GPU telemetry. Retain production null CPU/GPU/fan, false capabilities, unchanged mock/DTOs/preferences/controller/HID/navigation/permissions/installer identity. CPU temperature and fan RPM remain deferred. No elevation, driver/service installation, EC/ACPI execution/MSR/SMU/bus/PCI/register/private IOCTL probing, controls, Steam/Tools changes, source reuse, stress workload, network or persistent hardware logs. Preserve Step 5D desktop-only/pass-through, Step 5F press-edge-only and the unchanged manual Slow Refresh workflow. Run all standard checks, both inventories, standalone tests/Windows SDK ABI/native compilation, links/scope and production diagnostic exclusion.
+
+## Historical milestone: Step 6B.1 — Windows sensor feasibility research
 
 Work on `research/windows-sensor-feasibility` from verified main `8d54db41b8995274ccbe37f57257988bb38dd08f` (PR #12). Step 6A is merged; PR #12 records user-reported LCD/Windows 11 acceptance, 12/12 passed. [Post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/45934968732) succeeded on that commit. Historical pending statements below retain their original handoff meaning.
 

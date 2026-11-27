@@ -1,3 +1,13 @@
+# Step 6B.2 — GPU probe acceptance (pending)
+
+Use the independent [discovery prerequisites, deliberate execution procedure and evidence template](experiments/step-6b2-d3dkmt-gpu-temperature.md#13-independent-manual-discovery-prerequisites--pending). Record Windows version/build, installed display-driver provider/version/date, optional WDDM, Task Manager's exact GPU-temperature label/presence, and labels from already-running trusted tools. No software installation, elevation, identifiers or complete exports. Driver context is currently unknown.
+
+Do not run until you review the exact source/artifact and explicitly choose one ordinary-user invocation. No active game or stress load; do not change Steam/Tools settings. Run only the labeled standalone EXPERIMENTAL artifact with `--run-once` as documented. Record selection, API category, candidate if any, completed query duration, close outcome and Windows/Nepteer responsiveness. Stop after errors, stalls, unexpected behavior/prompts or failed cleanup; no automatic retries or alternative hardware API. A second observation needs a separate deliberate choice after a successful responsive first run.
+
+All physical acceptance remains **not tested**. Windows ABI/CI tests are hardware-free. A numeric/API success remains inconclusive with attribution and freshness unresolved. Production CPU/GPU/fan remain null with false capabilities, CPU/fan deferred, and controller/HID/navigation/preferences/permissions/installer contracts unchanged. Historical Step 6B.1 instructions below retain their original research scope.
+
+---
+
 # Step 6B.1 — Manual sensor discovery (pending)
 
 No sensor queries or physical sensor acceptance have been executed. Follow the [safe discovery procedure and evidence template](decisions/step-6b1-windows-sensor-feasibility.md#16-proposed-safe-manual-physical-discovery):

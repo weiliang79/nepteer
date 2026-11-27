@@ -1,5 +1,11 @@
 # Read-only safety boundary
 
+## Step 6B.2 manual diagnostic exception
+
+Only the separately authorized [standalone GPU experiment](experiments/step-6b2-d3dkmt-gpu-temperature.md) may use documented DXGI adapter metadata and D3DKMT open/query/close, manually and without elevation. It is not part of Nepteer runtime or installers. Physical execution remains pending the user's reviewed choice. CI executes only hardware-free tests and SDK compilation. There is no hard native-call timeout, watchdog, unsafe cancellation, automatic retry or fallback; stalled calls require stopping further experiments.
+
+One candidate value never validates sensor attribution/freshness or authorizes production integration. CPU temperature and fan RPM remain deferred; production null/false contracts and all input/permissions/installer behavior stay unchanged. The probe exports only fixed safe outcomes, candidate, elapsed time and cleanup; IDs/paths/raw structures/history are forbidden. No privileged dependency, driver/service, controls, stress workload, security changes, Steam/Tools changes or other hardware API fallback.
+
 ## Step 6B.1 sensor research boundary
 
 The [sensor decision](decisions/step-6b1-windows-sensor-feasibility.md) enables no hardware access. Unattributed ACPI zones, requested fan speed, GPU utilization and plausible numbers must not be presented as CPU/GPU temperatures or measured fan RPM. Windows retains null readings/false capabilities; mock samples remain labeled. User-mode consumers of third-party data do not eliminate a producer's driver/elevation risks.
