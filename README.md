@@ -2,7 +2,7 @@
 
 ## Step 6B.7 — Standalone GPU telemetry alternative paths
 
-The [focused alternatives decision](docs/decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) records **Decision B** retains MIT-only ADLX as the best specified technical candidate, with complete-consumer distribution/runtime clearance unresolved. ADL adds MIT headers alongside a restrictive SDK EULA, without verified Deck compatibility. DXCore documents a distinct temperature state, but its typed temperature output, sensor meaning and target support remain unverified. No provider is cleared to implement or ship.
+The [focused alternatives decision](docs/decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) records **Decision B**. MIT-only ADLX remains MIT-only ADLX as the best specified technical candidate, with complete-consumer distribution/runtime clearance unresolved. ADL adds MIT headers alongside a restrictive SDK EULA, without verified Deck compatibility. DXCore documents a distinct temperature state, but its typed temperature output, sensor meaning and target support remain unverified. No provider is cleared to implement or ship.
 
 Recommend one next milestone: **Step 6C — Battery telemetry resilience design**, explicitly deferring GPU temperature and ending the general sensor-research loop. No implementation, dependency, SDK execution or hardware access is added. Production CPU/GPU/fan remain null/false and no external monitoring application is required.
 
