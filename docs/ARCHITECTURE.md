@@ -1,6 +1,12 @@
 # Architecture
 
-## Step 6B.5 — ADLX gates stop before implementation
+## Step 6B.6 — MIT component path and integration gates
+
+The [clearance decision](decisions/step-6b6-adlx-rust-licensing-clearance.md) distinguishes official MIT raw Rust bindings from root-licensed headers/helpers and separately installed runtime binaries. The required GPU-temperature methods and static vtable order are present, not compiled ABI-certified. The helper requests 1.5.0.124 while the SDK headers identify 2.0.0.125; its bare-name loader and ignored teardown results cannot satisfy the proposed trust/lifecycle policy.
+
+Decision B blocks implementation pending scoped source/artifact/runtime clarification, supported trusted-runtime discovery/dependencies, compile-only x64 ABI verification and partial-init/failed-termination contracts. A future private read allowlist would retain one runtime owner, release counted interfaces before termination, and never Release the runtime-owned system interface. No loader, workspace, production integration or physical execution is authorized here. CPU/fan, provenance/DTO changes and target-driver support remain deferred or unverified.
+
+## Historical Step 6B.5 — ADLX gates stop before implementation
 
 The [blocker report](experiments/step-6b5-adlx-gpu-temperature.md) reviews pinned ADLX 2.0.0.125 contracts under the 6B.4 section 21 design. Root agreement restrictions and a component-specific MIT notice require scoped clarification before public implementation/artifact distribution. There is no ADLX workspace, shim, binding, runtime load or native call. Installed-runtime authenticity/loading and timestamp clock correspondence also need further review; general API availability does not establish Valve-driver support.
 

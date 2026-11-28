@@ -1,6 +1,10 @@
 # Nepteer · v0.5.0-alpha.2
 
-## Step 6B.5 — ADLX experiment blocked by licensing
+## Step 6B.6 — ADLX Rust licensing and integration clearance
+
+The [ADLX Rust clearance decision](docs/decisions/step-6b6-adlx-rust-licensing-clearance.md) recommends **B — conditional, further clarification required**. AMD's official Rust component has an explicit MIT grant; root §7 recognizes separately licensed components. The remaining questions concern ABI-only SDK header use, original consumer/executable obligations and installed-runtime terms. Raw bindings cover the GPU edge-temperature path, but the default loader needs hardening; compiled ABI and Valve-driver compatibility remain unverified. No diagnostic, dependency or hardware query is added. Production sensors remain null/false, with no external monitor requirement.
+
+## Historical Step 6B.5 — ADLX experiment blocked by licensing
 
 The [ADLX feasibility report](docs/experiments/step-6b5-adlx-gpu-temperature.md) delivers Outcome B: the pinned SDK agreement and official Rust component's MIT notice leave public source/artifact permission unresolved. No ADLX implementation, executable or artifact is delivered. The report records the official edge-temperature API, trusted-loading and freshness gaps, and a future manual procedure that remains blocked and separately authorized. Custom APU 0405 / Valve-driver compatibility is unknown. Production CPU/GPU/fan remain null with false capabilities; standalone Nepteer requires no external monitor.
 

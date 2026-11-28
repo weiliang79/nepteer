@@ -1,4 +1,12 @@
-# Step 6B.5 — ADLX physical acceptance blocked and pending
+# Step 6B.6 — No ADLX physical execution authorized
+
+The [Rust clearance decision](decisions/step-6b6-adlx-rust-licensing-clearance.md) is **B — conditional**. No ADLX executable exists. MIT component permissions do not settle the exact header/consumer/runtime workflow; trusted runtime discovery, compiled ABI and failure lifecycle also remain gates. Do not load ADLX, run a hardware probe, install an SDK, change the driver or retry elevated. No new physical test is authorized.
+
+A future Step 6B.7 implementation would be separately reviewed before any matching artifact and explicit ordinary-user --run-once authorization. Existing Windows/macOS CI and manifests validate unchanged application/blocked HWiNFO packaging, not ADLX compatibility. Historical user-reported LCD/Custom APU/Valve-driver observations and checklists below retain their original scope.
+
+---
+
+# Historical Step 6B.5 — ADLX physical acceptance blocked and pending
 
 Outcome B is documented in the [ADLX report and future procedure](experiments/step-6b5-adlx-gpu-temperature.md#20-manual-physical-acceptance--blocked-and-pending). No ADLX executable exists. Do not run another experiment, substitute the D3DKMT/HWiNFO artifact, install an SDK, update the Valve driver or retry elevated. Licensing, exact ABI, trusted loading, synthetic checks and reviewed source/artifact must pass before separate explicit approval for at most one ordinary-user `--run-once` invocation.
 
