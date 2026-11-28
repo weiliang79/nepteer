@@ -1,4 +1,16 @@
-# Step 6B.5 — ADLX feasibility blocker handoff
+# Step 6B.6 — ADLX Rust clearance handoff
+
+Branch `research/adlx-rust-integration-clearance` starts at verified main `bddc50de6059409610dfb454c21a913eb2132efc`, merged [PR #16](https://github.com/weiliang79/nepteer/pull/16). Actual [post-merge Desktop CI 46127732100](https://github.com/weiliang79/nepteer/actions/runs/46127732100) passed on that SHA. The [decision](decisions/step-6b6-adlx-rust-licensing-clearance.md) recommends **B — conditional, further clarification required**.
+
+Official `amd-adlx` at pinned AMD revision `32b5a740d42295c5dfe9026b9f52683da0f3af91` is MIT, supported by root §7's component exception. Required temperature APIs are represented; the component is unsafe raw FFI with writes, not a safe wrapper. Static six-vtable method order matches headers, but no ABI compilation or runtime test occurred. Bare-name loading, ignored version query/teardown outcomes, helper 1.5.0.124 versus SDK 2.0.0.125 and failure ownership require explicit design work.
+
+Clarify root §§1.10/3/12 scope for MIT-only consumer plus ABI-only header use, public executable/downstream distribution and installed-runtime linking. Four precise questions are prepared, not sent. Proposed Step 6B.7 is gated isolated implementation only after clearance and authorization; physical execution remains separately authorized. No ADLX code/workspace/dependency/artifact, hardware query, driver/service/helper/elevation or external monitor is introduced. Production telemetry and all controller/QAM/permission/manifest/dependency contracts remain unchanged. Preserve historical experiments and do not import Step 6B.2.
+
+Local validation and final-SHA native CI/manifest evidence are recorded in the decision/delivery report. Only the exact ordinary-CI branch filter changes. No manual diagnostic/ref authorization change; no automatic merge.
+
+---
+
+# Historical Step 6B.5 — ADLX feasibility blocker handoff
 
 Branch `experiment/windows-adlx-gpu-temperature` starts at verified main `caf71d01d9a1a3af1bf641e170660b20a77a0be4`, merged [PR #15](https://github.com/weiliang79/nepteer/pull/15). Actual push-triggered [post-merge Desktop CI 46112493280](https://github.com/weiliang79/nepteer/actions/runs/46112493280) completed successfully on that SHA. The [report](experiments/step-6b5-adlx-gpu-temperature.md) delivers **Outcome B**, not a working GPU-temperature probe.
 

@@ -2,11 +2,23 @@
 
 ## Mission
 
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.5, ADLX GPU edge-temperature feasibility; licensing blocks implementation and production telemetry remains unchanged.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.6, ADLX Rust licensing and integration clearance; decision B keeps implementation blocked and production telemetry unchanged.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 6B.5 — ADLX feasibility, distribution blocked
+## Current milestone: Step 6B.6 — ADLX Rust licensing and integration clearance
+
+Work on `research/adlx-rust-integration-clearance` from verified main `bddc50de6059409610dfb454c21a913eb2132efc`, merged Step 6B.5 / [PR #16](https://github.com/weiliang79/nepteer/pull/16). Actual [post-merge Desktop CI 46127732100](https://github.com/weiliang79/nepteer/actions/runs/46127732100) passed on that exact SHA. Follow the [6B.6 decision](docs/decisions/step-6b6-adlx-rust-licensing-clearance.md). Commit/push validated research and the exact ordinary-CI branch filter; do not merge automatically.
+
+Decision B recognizes the official `amd-adlx` component's substantive MIT permissions and root agreement §7 component exception. Do not assume the root agreement invalidates MIT or that MIT covers all SDK/runtime materials. Remaining clearance concerns root §§1.10/3/12 applicability to the original consumer after ABI-only header use, public executable/downstream terms and installed-runtime linking. Prepare precise questions only; no AMD messages/tickets. No project-wide license is chosen.
+
+Research only: no ADLX workspace/dependency, loader adaptation, generated bindings, ABI build, executable/artifact job, SDK installation/execution, runtime loading/initialization or hardware query. Trusted runtime location/authenticity/dependencies, Windows x64 compiled ABI, initialization-version choice and partial-init/failed-termination contracts remain gates. MIT raw FFI is write-capable and is not a safe wrapper. Implementation and physical execution each require separate authorization; no new physical test is authorized.
+
+Preserve WindowsProvider/get_telemetry, null CPU/GPU/fan and false capabilities, DTOs/bindings/mocks/frontend/QAM/preferences, controller/HID/navigation/arming/reader, permissions, installer identity/privileges, manifests/packaging and production dependencies/lockfiles. CPU/fan stay deferred; no mandatory external monitor or HWiNFO fallback. No driver/service/helper, elevation, direct EC/register/MSR/SMU/I²C/SMBus/PCI/private IOCTL, tuning/writes, polling/retries or persistent sensor logs. No Steam Deck Tools source reuse or Step 6B.2 implementation import; preserve historical evidence/decisions.
+
+Run all standard checks, both inventories, Markdown/local links/anchors/scope, existing standalone synthetic checks, both QAM output verifiers and restored normal output. Verify final Windows/macOS CI, packaging and existing extracted manifests. Do not change manual diagnostic triggers/ref authorization. Keep Step 5D desktop-only/pass-through, Step 5F press-edge-only and exact-true/manual-only Slow Refresh unchanged.
+
+## Historical milestone: Step 6B.5 — ADLX feasibility, distribution blocked
 
 Work on `experiment/windows-adlx-gpu-temperature` from verified main `caf71d01d9a1a3af1bf641e170660b20a77a0be4`, merged Step 6B.4 / [PR #15](https://github.com/weiliang79/nepteer/pull/15). Actual [post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/46112493280) passed on that exact SHA. Follow the [6B.5 blocker report](docs/experiments/step-6b5-adlx-gpu-temperature.md) and [6B.4 section 21](docs/decisions/step-6b4-standalone-sensor-architecture.md#21-one-recommended-next-experiment--conditional-adlx-gpu-read). Commit/push validated documentation and the exact ordinary-CI branch filter; do not merge automatically.
 

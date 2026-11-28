@@ -1,6 +1,12 @@
 # Read-only safety boundary
 
-## Step 6B.5 — Licensing stop and physical execution gate
+## Step 6B.6 — Clearance research only
+
+The [decision](decisions/step-6b6-adlx-rust-licensing-clearance.md) acknowledges MIT component permissions without extending them to SDK headers or runtime DLLs. Decision B leaves combined public-source/artifact and installed-runtime obligations unresolved. No implementation, SDK execution, runtime loading/initialization, hardware query or new physical test. No AMD contact is sent.
+
+The MIT crate exposes unsafe and write-capable interfaces. Future design must replace/bypass its bare-name loader, validate a documented protected installation/provenance/dependency path before executable loading, and enforce a private fixed read allowlist. Missing trust/version/lifecycle contracts mean unavailable. A timeout cannot stop native work; failed termination cannot justify blind unload. No drivers/services/helpers, elevation, direct hardware/bus/private IOCTL, writes, polling/retries, persistent logs or external-monitor fallback. Production telemetry, controller behavior, permissions and installer privileges remain unchanged.
+
+## Historical Step 6B.5 — Licensing stop and physical execution gate
 
 The [ADLX blocker report](experiments/step-6b5-adlx-gpu-temperature.md) contains research only. Unresolved source/artifact rights stop SDK-derived code and executable publication. No installed runtime is loaded, initialized or queried; no hardware execution occurs in CI or by Codex. No AMD DLL, SDK installation, driver update, elevation, service/helper or third-party monitor fallback. Production null sensors/false capabilities, permissions and installer privileges remain unchanged.
 
