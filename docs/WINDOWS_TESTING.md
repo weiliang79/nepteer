@@ -1,4 +1,12 @@
-# Step 6B.4 — No new physical execution
+# Step 6B.5 — ADLX physical acceptance blocked and pending
+
+Outcome B is documented in the [ADLX report and future procedure](experiments/step-6b5-adlx-gpu-temperature.md#20-manual-physical-acceptance--blocked-and-pending). No ADLX executable exists. Do not run another experiment, substitute the D3DKMT/HWiNFO artifact, install an SDK, update the Valve driver or retry elevated. Licensing, exact ABI, trusted loading, synthetic checks and reviewed source/artifact must pass before separate explicit approval for at most one ordinary-user `--run-once` invocation.
+
+Known user-reported LCD/Jupiter context: Custom APU 0405, Windows 11 26H2 build 26300.9974, AMD driver 31.0.21020.1014 dated June 9, 2023, WDDM 3.1. D3DKMT API success/rejected undisclosed temperature, Task Manager N/A and HWiNFO's 48.6°C candidate do not predict ADLX compatibility. No new physical evidence is claimed. All earlier checklists retain their original scope and do not authorize Step 6B.5 execution.
+
+---
+
+# Historical Step 6B.4 — No new physical execution
 
 This milestone is research-only; do not run a sensor SDK, WMI discovery, firmware method or hardware diagnostic. The [decision](decisions/step-6b4-standalone-sensor-architecture.md) preserves the user's LCD/Jupiter/Custom APU 0405, Windows 11 26H2/build 26300.9974, AMD driver 31.0.21020.1014 (June 9, 2023), WDDM 3.1 observations. These are user reports, not fresh hardware interrogation.
 

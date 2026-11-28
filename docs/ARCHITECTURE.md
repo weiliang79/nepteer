@@ -1,6 +1,12 @@
 # Architecture
 
-## Step 6B.4 — Standalone acquisition design, not implementation
+## Step 6B.5 — ADLX gates stop before implementation
+
+The [blocker report](experiments/step-6b5-adlx-gpu-temperature.md) reviews pinned ADLX 2.0.0.125 contracts under the 6B.4 section 21 design. Root agreement restrictions and a component-specific MIT notice require scoped clarification before public implementation/artifact distribution. There is no ADLX workspace, shim, binding, runtime load or native call. Installed-runtime authenticity/loading and timestamp clock correspondence also need further review; general API availability does not establish Valve-driver support.
+
+Future design remains one synchronous owner, explicit one-shot admission, unambiguous internal AMD GPU selection, temperature support before at most one current-metrics call, and released interfaces before termination/unload. These are unimplemented requirements, not tested guarantees. No production provider, DTO, UI, dependency, permission or packaging change; CPU/fan remain deferred and no privileged architecture or external-monitor requirement is selected.
+
+## Historical Step 6B.4 — Standalone acquisition design, not implementation
 
 The [decision](decisions/step-6b4-standalone-sensor-architecture.md) proposes independently resolved battery/CPU/GPU/fan fields with explicit identity, measured/requested semantics, origin, native units, provider sample-clock provenance, acquisition age and sanitized per-field failure. A partial sensor failure must preserve working battery telemetry. Existing Snapshot/source/capability/retrieval time cannot express mixed origins and freshness: a future DTO/status review is recommended before integration, with no DTO change now.
 

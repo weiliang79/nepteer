@@ -1,6 +1,10 @@
 # Nepteer · v0.5.0-alpha.2
 
-## Step 6B.4 — Standalone sensor architecture
+## Step 6B.5 — ADLX experiment blocked by licensing
+
+The [ADLX feasibility report](docs/experiments/step-6b5-adlx-gpu-temperature.md) delivers Outcome B: the pinned SDK agreement and official Rust component's MIT notice leave public source/artifact permission unresolved. No ADLX implementation, executable or artifact is delivered. The report records the official edge-temperature API, trusted-loading and freshness gaps, and a future manual procedure that remains blocked and separately authorized. Custom APU 0405 / Valve-driver compatibility is unknown. Production CPU/GPU/fan remain null with false capabilities; standalone Nepteer requires no external monitor.
+
+## Historical Step 6B.4 — Standalone sensor architecture
 
 The [standalone sensor decision](docs/decisions/step-6b4-standalone-sensor-architecture.md) evaluates CPU temperature, GPU temperature and measured fan RPM independently. Nepteer must not require another running monitor. CPU and Jupiter fan remain deferred; ADLX is the strongest conditional next GPU experiment, with unverified Valve-driver support and a material SDK licensing gate. No sensor or diagnostic is implemented here. Production readings remain null with false capabilities.
 

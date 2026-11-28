@@ -1,6 +1,12 @@
 # Development
 
-## Step 6B.4 — Research-only standalone architecture
+## Step 6B.5 — Documented blocker validation
+
+Read the [ADLX licensing/API report](experiments/step-6b5-adlx-gpu-temperature.md). Outcome B creates no ADLX Cargo workspace, lockfile, FFI fixture or executable. Do not install/execute the SDK or treat upstream Rust MIT metadata as resolution of the root agreement's applicability. ABI/header checks and ADLX synthetic tests are not applicable to this deliverable and must not be claimed passed.
+
+Run all standard root checks, both license inventories, existing HWiNFO standalone format/check/Clippy/six synthetic CLI tests, Markdown/local links and scope audit. Verify normal QAM output, exact-true test output, then restore false/normal output and verify exclusion again. Only `experiment/windows-adlx-gpu-temperature` is added to ordinary CI push filters. Existing Windows/macOS native packaging and extracted Windows manifests remain required; manual diagnostic workflow and release authorization are unchanged. No ADLX artifact or hardware execution in CI.
+
+## Historical Step 6B.4 — Research-only standalone architecture
 
 Read the [decision and gated next-experiment proposal](decisions/step-6b4-standalone-sensor-architecture.md). No new executable, binding, dependency, DTO or native access code belongs to this milestone. Review the ADLX license before any future SDK/header/helper/derived-binding publication; public SDK hosting is not a permissive redistribution grant. Ryzen package acquisition-chain documentation remains unavailable. Do not install/run either SDK or query target hardware.
 
