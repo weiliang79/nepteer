@@ -1,6 +1,12 @@
 # Read-only safety boundary
 
-## Step 6B.7 — Research only; no provider or execution clearance
+## Step 6B.8 — Read-only interoperability research
+
+**Decision D** leaves the observed installation’s exact acquisition chain unresolved. The official overlay elevates unconditionally; its kernel-driver option changes runtime behavior, not the process token. LibreHardwareMonitor 0.9.1 has credible ADL temperature branches, but its `GPU Core` sensor differs from the overlay’s `GPU Temperature` lookup. Ordinary-user ADL support is plausible but unverified (classification B); no GPU-specific administrator requirement is established. See the [evidence and boundaries](decisions/step-6b8-steam-deck-tools-gpu-temperature-path.md).
+
+This milestone narrowly authorizes public Steam Deck Tools source inspection for factual research, superseding earlier inspection prohibitions only for that purpose. No copying, translation, adaptation, vendoring, runtime loading or execution. No UAC bypass/manifest patch/elevation test, driver/helper/service installation, hardware query, direct EC/MSR/SMU/PCI/bus/private IOCTL, tuning/write, polling/retry or persistent sensor log. No AMD contact or project-wide license selection. One recommended next investigation: reconcile the installed Steam Deck Tools version/build and four relevant file hashes with official archives and matching immutable source, without launching monitoring or changing settings. No diagnostic implementation or physical execution is authorized. Preserve production/controller/QAM/permission/installer contracts.
+
+## Historical Step 6B.7 — Research only; no provider or execution clearance
 
 The [decision](decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) is B. No ADLX/ADL/DXCore implementation, loading, initialization, query, SDK execution, artifact or new physical test. No AMD contact, ticket or message. MIT source grants do not extend automatically to a full SDK/runtime workflow; missing DXCore output representation must not be guessed.
 

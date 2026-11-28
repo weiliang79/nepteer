@@ -1,4 +1,12 @@
-# Step 6B.7 — No GPU diagnostic or physical execution authorized
+# Step 6B.8 — Observation recorded; no new physical test authorized
+
+The [source/privilege report](decisions/step-6b8-steam-deck-tools-gpu-temperature-path.md) preserves the user’s Steam Deck LCD / Windows 11 / Custom APU 0405 / AMD 31.0.21020.1014 observations: GPU temperature is visible in Performance Overlay with Use Kernel Drivers disabled, and launch requests elevation. These are user reports, not new agent hardware tests. **Decision D** leaves the observed installation’s exact acquisition chain unresolved. The official overlay elevates unconditionally; its kernel-driver option changes runtime behavior, not the process token. LibreHardwareMonitor 0.9.1 has credible ADL temperature branches, but its `GPU Core` sensor differs from the overlay’s `GPU Temperature` lookup. Ordinary-user ADL support is plausible but unverified (classification B); no GPU-specific administrator requirement is established.
+
+One recommended next investigation: reconcile the installed Steam Deck Tools version/build and four relevant file hashes with official archives and matching immutable source, without launching monitoring or changing settings. No diagnostic implementation or physical execution is authorized. Do not patch Steam Deck Tools manifests, bypass UAC, retry elevated, change driver/tool settings, install drivers/SDKs or run substitute probes. Future original asInvoker/uiAccess=false diagnostic implementation requires separate review/authorization; physical execution requires another explicit authorization after code/artifact review. Existing Windows/macOS CI/packaging/extracted manifests verify unchanged outputs, not ADL target support. Historical checklists below retain their original scope.
+
+---
+
+# Historical Step 6B.7 — No GPU diagnostic or physical execution authorized
 
 The [alternatives decision](decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) is **B — clearance incomplete**. No ADLX, ADL or DXCore diagnostic exists. No hardware query, runtime load/initialization, SDK/driver installation, elevated retry or substitute probe is authorized. New DXCore documentation does not validate this driver or a temperature buffer type. General ADL integrated-GPU support is not Custom APU 0405 certification.
 

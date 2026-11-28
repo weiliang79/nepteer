@@ -2,11 +2,23 @@
 
 ## Mission
 
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.7, standalone GPU telemetry alternative paths; decision B keeps implementation blocked and recommends battery resilience design with GPU deferred.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.8, Steam Deck Tools GPU temperature acquisition and privilege analysis; Decision D requires installed-build provenance reconciliation before any diagnostic selection.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 6B.7 — Standalone GPU telemetry alternative paths
+## Current milestone: Step 6B.8 — Steam Deck Tools GPU temperature path
+
+Work on `research/steam-deck-tools-gpu-temperature-path` from verified main `585031f696623cbc8651e87db836cf91ec27a9fb`, merged Step 6B.7 / [PR #18](https://github.com/weiliang79/nepteer/pull/18). Actual [post-merge Desktop CI 46154118540](https://github.com/weiliang79/nepteer/actions/runs/46154118540) passed on that SHA. Follow the [6B.8 decision](docs/decisions/step-6b8-steam-deck-tools-gpu-temperature-path.md). Commit/push validated research and only the exact ordinary-CI branch filter; do not merge automatically.
+
+Decision D: the observed installed acquisition chain remains unresolved. Official SDT main/0.7.4 elevates unconditionally; its runtime kernel-driver option does not change the manifest/token or prove Ring0 absence. LHM 0.9.1 release source has legacy OD5, N edge and PMLog edge paths, but GPU Core versus GPU Temperature lookup differs. Ordinary-user ADL candidate classification B is not a demonstrated target path or GPU-specific admin requirement. Exactly one next investigation: reconcile installed version/build and relevant hashes against official archives/matching source without monitoring execution or settings changes. No diagnostic implementation is authorized.
+
+Public Steam Deck Tools source inspection is permitted only for read-only factual interoperability research in this milestone, superseding earlier inspection prohibitions narrowly. No copying, translation, adaptation or vendoring of SDT/LHM implementation. Preserve historical decisions/evidence, licensing gates and 6B.2 unmerged status. No AMD contact or project-wide license selection.
+
+No executable, Cargo workspace, dependency, loader adaptation, generated binding, shim, ABI fixture, artifact job, SDK install/execution, runtime loading/initialization or hardware query. Implementation and physical execution need separate authorization. No UAC bypass, manifest patch/elevation experiment, driver/service/helper installation, direct EC/register/MSR/SMU/PCI/bus/private IOCTL, tuning/writes, polling/retries or persistent sensor logs. No mandatory external monitor. CPU/fan remain deferred.
+
+Preserve WindowsProvider/get_telemetry and battery behavior, null CPU/GPU/fan and false capabilities, DTOs/bindings/mocks/frontend/QAM/preferences, controller/HID/navigation/arming/reader, permissions, installer identity/privileges, manifests/packaging and production dependencies/lockfiles. Keep Step 5D desktop-only/pass-through, Step 5F press-edge-only and exact-true/manual-only Slow Refresh unchanged. Run all standard checks, both inventories, Markdown/local links/anchors/scope, existing standalone synthetic checks, both QAM output verifiers and restored normal output. Verify final Windows/macOS CI, packaging and existing extracted manifests. Do not change manual diagnostic triggers/ref authorization. No new physical test.
+
+## Historical milestone: Step 6B.7 — Standalone GPU telemetry alternative paths
 
 Work on `research/standalone-gpu-telemetry-alternatives` from verified main `ea352589cce68316948611dd9e200ff1b27c7c03`, merged Step 6B.6 / [PR #17](https://github.com/weiliang79/nepteer/pull/17). Actual [post-merge Desktop CI 46136874511](https://github.com/weiliang79/nepteer/actions/runs/46136874511) passed on that SHA. Follow the [6B.7 decision](docs/decisions/step-6b7-standalone-gpu-telemetry-alternatives.md). Commit/push validated research and only the exact ordinary-CI branch filter; do not merge automatically.
 

@@ -1,6 +1,12 @@
 # Development
 
-## Step 6B.7 — Alternatives research validation
+## Step 6B.8 — Source and package research validation
+
+Read the [decision and provenance ledger](decisions/step-6b8-steam-deck-tools-gpu-temperature-path.md). **Decision D** leaves the observed installation’s exact acquisition chain unresolved. The official overlay elevates unconditionally; its kernel-driver option changes runtime behavior, not the process token. LibreHardwareMonitor 0.9.1 has credible ADL temperature branches, but its `GPU Core` sensor differs from the overlay’s `GPU Temperature` lookup. Ordinary-user ADL support is plausible but unverified (classification B); no GPU-specific administrator requirement is established.
+
+No new executable, Cargo workspace, dependency, loader, generated binding, native shim, ABI fixture or artifact job. Run all standard checks, both license inventories, existing standalone HWiNFO synthetic format/check/test/Clippy, changed Markdown/local links/anchors/scope and both QAM output modes; restore false/normal output. Add only `research/steam-deck-tools-gpu-temperature-path` to ordinary CI push filters. Preserve manual diagnostic triggers/refs, native Windows/macOS packaging and existing extracted manifest checks. One recommended next investigation: reconcile the installed Steam Deck Tools version/build and four relevant file hashes with official archives and matching immutable source, without launching monitoring or changing settings. No diagnostic implementation or physical execution is authorized.
+
+## Historical Step 6B.7 — Alternatives research validation
 
 Read the [decision and evidence ledger](decisions/step-6b7-standalone-gpu-telemetry-alternatives.md). **Decision B** retains MIT-only ADLX as the best specified technical candidate, with complete-consumer distribution/runtime clearance unresolved. ADL adds MIT headers alongside a restrictive SDK EULA, without verified Deck compatibility. DXCore documents a distinct temperature state, but its typed temperature output, sensor meaning and target support remain unverified. No provider is cleared to implement or ship.
 

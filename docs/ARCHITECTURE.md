@@ -1,6 +1,12 @@
 # Architecture
 
-## Step 6B.7 — Alternative paths remain gated
+## Step 6B.8 — Application elevation versus ADL acquisition
+
+**Decision D** leaves the observed installation’s exact acquisition chain unresolved. The official overlay elevates unconditionally; its kernel-driver option changes runtime behavior, not the process token. LibreHardwareMonitor 0.9.1 has credible ADL temperature branches, but its `GPU Core` sensor differs from the overlay’s `GPU Temperature` lookup. Ordinary-user ADL support is plausible but unverified (classification B); no GPU-specific administrator requirement is established. See the [trace and matrix](decisions/step-6b8-steam-deck-tools-gpu-temperature-path.md).
+
+The likely 0.9.1 provider uses legacy OD5, Overdrive N edge and PMLog edge in sequential overwrite order. Current upstream ADL2 OD5/GFX fallback is not the release path. Generic Computer.Open attempts Ring0 independently of the option; this is not proof that the temperature helpers depend on it. No native provider, DTO, capability or dependency changes. One recommended next investigation: reconcile the installed Steam Deck Tools version/build and four relevant file hashes with official archives and matching immutable source, without launching monitoring or changing settings. No diagnostic implementation or physical execution is authorized.
+
+## Historical Step 6B.7 — Alternative paths remain gated
 
 The [comparison](decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) keeps standalone acquisition through existing OS/vendor components conditional on complete rights, trusted loading, ABI and target support. **Decision B** retains MIT-only ADLX as the best specified technical candidate, with complete-consumer distribution/runtime clearance unresolved. ADL adds MIT headers alongside a restrictive SDK EULA, without verified Deck compatibility. DXCore documents a distinct temperature state, but its typed temperature output, sensor meaning and target support remain unverified. No provider is cleared to implement or ship.
 

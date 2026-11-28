@@ -1,6 +1,12 @@
 # Nepteer · v0.5.0-alpha.2
 
-## Step 6B.7 — Standalone GPU telemetry alternative paths
+## Step 6B.8 — Steam Deck Tools GPU temperature path
+
+**Decision D** leaves the observed installation’s exact acquisition chain unresolved. The official overlay elevates unconditionally; its kernel-driver option changes runtime behavior, not the process token. LibreHardwareMonitor 0.9.1 has credible ADL temperature branches, but its `GPU Core` sensor differs from the overlay’s `GPU Temperature` lookup. Ordinary-user ADL support is plausible but unverified (classification B); no GPU-specific administrator requirement is established. See the [source/privilege decision](docs/decisions/step-6b8-steam-deck-tools-gpu-temperature-path.md).
+
+One recommended next investigation: reconcile the installed Steam Deck Tools version/build and four relevant file hashes with official archives and matching immutable source, without launching monitoring or changing settings. No diagnostic implementation or physical execution is authorized. Production CPU/GPU/fan remain null/false, existing battery telemetry is unchanged, and no external monitor is required.
+
+## Historical Step 6B.7 — Standalone GPU telemetry alternative paths
 
 The [focused alternatives decision](docs/decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) records **Decision B**. MIT-only ADLX remains MIT-only ADLX as the best specified technical candidate, with complete-consumer distribution/runtime clearance unresolved. ADL adds MIT headers alongside a restrictive SDK EULA, without verified Deck compatibility. DXCore documents a distinct temperature state, but its typed temperature output, sensor meaning and target support remain unverified. No provider is cleared to implement or ship.
 
