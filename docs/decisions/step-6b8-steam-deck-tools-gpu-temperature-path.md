@@ -27,25 +27,26 @@ Reviewed AGENTS, README, architecture, safety, development, handoff, Windows tes
 
 These are user reports, not agent measurements:
 
-| Observation                                                  | Established scope                                                    |
-| ------------------------------------------------------------ | -------------------------------------------------------------------- |
-| Steam Deck LCD, Windows 11, AMD Custom APU 0405              | Target context; no fresh identity query                              |
-| Installed AMD driver 31.0.21020.1014                         | Reported installed version, not a generic Adrenalin version          |
-| Performance Overlay displays GPU temperature                 | The user's installed monitoring stack produces a displayed candidate |
-| Temperature remains visible with Use Kernel Drivers disabled | That menu state does not prevent the displayed reading               |
-| Launch requests administrator elevation                      | Consistent with the inspected application manifest                   |
+| Observation                                                  | Established scope                                                                                         |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Steam Deck LCD, Windows 11, AMD Custom APU 0405              | Target context; no fresh identity query                                                                   |
+| Installed Steam Deck Tools version 0.7.4                     | User confirmed during this research; installed file hashes and custom/replaced-file status remain unknown |
+| Installed AMD driver 31.0.21020.1014                         | Reported installed version, not a generic Adrenalin version                                               |
+| Performance Overlay displays GPU temperature                 | The user's installed monitoring stack produces a displayed candidate                                      |
+| Temperature remains visible with Use Kernel Drivers disabled | That menu state does not prevent the displayed reading                                                    |
+| Launch requests administrator elevation                      | Consistent with the inspected application manifest                                                        |
 
-The report does not identify the installed overlay version, exact binaries, runtime-loaded modules, successful getter, raw native sample, sensor age or driver access permissions. The elevated observation is useful new evidence beyond 6B.7; it is not an isolated standard-user ADL test or proof of kernel-driver absence. Do not reinterpret it as CPU/APU die attribution, independently calibrated temperature or a freshness guarantee.
+The user subsequently confirmed installed version 0.7.4, matching the reviewed official release label. Exact installed binaries, custom/replaced-file status, runtime-loaded modules, successful getter, raw native sample, sensor age and driver access permissions remain unidentified. The elevated observation is useful new evidence beyond 6B.7; it is not an isolated standard-user ADL test or proof of kernel-driver absence. Do not reinterpret it as CPU/APU die attribution, independently calibrated temperature or a freshness guarantee.
 
 ## 4. Immutable upstream revisions and review method
 
-| Material                            | Pinned identity                            | Evidence limit                                                                      |
-| ----------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
-| Steam Deck Tools main and 0.7.4 tag | `deee7fa887c2864ee3b54eba2c32b2f58b547349` | GitHub tag ref points directly at this commit; not the unidentified installed build |
-| LibreHardwareMonitor v0.9.1 tag     | `612083fabeea6aaae709591601451d9793ffce78` | Likely matching release source, not a reproducibly verified package build           |
-| Current LibreHardwareMonitor master | `9e2d677cefff5c614ecc38da88fbc447eb478e2a` | Comparison only; never substituted for 0.9.1                                        |
-| Official ADL documentation/headers  | `84c881cb2136f04287eb3af12de00a9e2867aa9e` | Reused 6B.7 evidence; not the installed driver's internal implementation            |
-| Official MIT ADLX Rust component    | `32b5a740d42295c5dfe9026b9f52683da0f3af91` | Prior research retained; no new clearance                                           |
+| Material                            | Pinned identity                            | Evidence limit                                                                                                                   |
+| ----------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Steam Deck Tools main and 0.7.4 tag | `deee7fa887c2864ee3b54eba2c32b2f58b547349` | GitHub tag ref points directly at this commit; matches the reported installed version label, without installed hash verification |
+| LibreHardwareMonitor v0.9.1 tag     | `612083fabeea6aaae709591601451d9793ffce78` | Likely matching release source, not a reproducibly verified package build                                                        |
+| Current LibreHardwareMonitor master | `9e2d677cefff5c614ecc38da88fbc447eb478e2a` | Comparison only; never substituted for 0.9.1                                                                                     |
+| Official ADL documentation/headers  | `84c881cb2136f04287eb3af12de00a9e2867aa9e` | Reused 6B.7 evidence; not the installed driver's internal implementation                                                         |
+| Official MIT ADLX Rust component    | `32b5a740d42295c5dfe9026b9f52683da0f3af91` | Prior research retained; no new clearance                                                                                        |
 
 Read-only GitHub source retrieval and archive/metadata/string inspection occurred in OS temporary directories. No downloaded assembly, apphost, native DLL, SDK or driver was loaded or executed. No .NET restore/build, decompiler execution, ABI fixture or hardware access occurred. Archive hashes identify reviewed bytes; signatures were not independently authenticated and source-to-binary reproducibility is not claimed. No third-party source or binary is committed.
 
@@ -80,7 +81,7 @@ Both overlay and CommonHelpers declare `LibreHardwareMonitorLib` 0.9.1. The offi
 | Its `PerformanceOverlay.dll`                 | `4867f2db2fccddf1eafb1b90c7121a6964851b78adcea6af287a2e8ba4127bf9` |
 | Its `CommonHelpers.dll`                      | `e1822ca51c21156875b63694859a62442d4ccc1efb5440c0fa5b6c855445e619` |
 
-The release archive's LHM DLL is **byte-for-byte identical** to the NuGet net6.0 DLL. `PerformanceOverlay.deps.json` also records `LibreHardwareMonitorLib/0.9.1`. This establishes an independently identifiable shipped dependency for that official archive, stronger than a csproj version alone. It does not establish what the user installed. The deps.json package SHA-512 differs from the downloaded nupkg SHA-512; archive-level identity is therefore not claimed. Package signing/repackaging differences were not resolved; the DLL-byte identity is the independent comparison actually established.
+The release archive's LHM DLL is **byte-for-byte identical** to the NuGet net6.0 DLL. `PerformanceOverlay.deps.json` also records `LibreHardwareMonitorLib/0.9.1`. This establishes an independently identifiable shipped dependency for that official archive, stronger than a csproj version alone. The user confirms version 0.7.4; identical installed files are not yet established. The deps.json package SHA-512 differs from the downloaded nupkg SHA-512; archive-level identity is therefore not claimed. Package signing/repackaging differences were not resolved; the DLL-byte identity is the independent comparison actually established.
 
 NuGet dependencies for net6.0 are HidSharp 2.1.0, Microsoft.Win32.Registry 5.0.0, Mono.Posix.NETStandard 1.0.0, System.IO.FileSystem.AccessControl 5.0.0, System.IO.Ports 6.0.0 and System.Management 5.0.0. None identifies another mandatory temperature-monitor service. The nuspec's repository omission and absence of build provenance prevent claiming exact tag-to-package correspondence. The v0.9.1 release was published 2022-09-14; its source and package metadata/method names/sensor strings are consistent, not a reproducibility proof. The pinned `Directory.Build.props` even contains malformed version markup, so a tag-only rebuild is not claimed. [L1, L2]
 
@@ -209,9 +210,9 @@ The [6B.2 unmerged experiment](https://github.com/weiliang79/nepteer/commit/f8d4
 
 ## 17. Final decision and one next action
 
-Select **Decision D** under the requested conservative rule: a complete reliable chain for the observed installation has not been established. The known 0.9.1 dependency is identifiable for official release 0.7.4, but the source-to-package build correspondence is not fully proven and its overlay/provider sensor names disagree. A list of plausible native getters cannot substitute for resolving that boundary. No evidence supports Decision A (ordinary-user acquisition established) or C (GPU-specific privilege required). The isolated ADL candidate remains classification B; that narrower classification does not promote the whole result to final Decision B.
+Select **Decision D** under the requested conservative rule: a complete reliable chain for the observed installation has not been established. The user confirms version 0.7.4, and the known 0.9.1 dependency is identifiable for its official archive, but the source-to-package build correspondence is not fully proven and its overlay/provider sensor names disagree. A list of plausible native getters cannot substitute for resolving that boundary. No evidence supports Decision A (ordinary-user acquisition established) or C (GPU-specific privilege required). The isolated ADL candidate remains classification B; that narrower classification does not promote the whole result to final Decision B.
 
-**Recommend exactly one next investigation: installed-build provenance reconciliation.** Obtain the version/build and four file hashes described in section 1 through a user-supplied, read-only file review; compare against official published archives and corresponding immutable source. Determine whether a renamed sensor, different/custom dependency or different display source explains the observation. This review must not launch a monitor, change its options/security model, inspect private driver interfaces or query sensors. Do not substitute a broad new sensor survey or an ADLX implementation.
+**Recommend exactly one next investigation: installed-build provenance reconciliation.** Confirm the build provenance and obtain the four file hashes described in section 1, using the now-confirmed version 0.7.4 as the comparison target through a user-supplied, read-only file review; compare against official published archives and corresponding immutable source. Determine whether a renamed sensor, different/custom dependency or different display source explains the observation. This review must not launch a monitor, change its options/security model, inspect private driver interfaces or query sensors. Do not substitute a broad new sensor survey or an ADLX implementation.
 
 ## 18. Conditional future diagnostic and production boundaries
 
