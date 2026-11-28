@@ -1,6 +1,12 @@
 # Read-only safety boundary
 
-## Step 6B.4 — Standalone sensor research boundaries
+## Step 6B.5 — Licensing stop and physical execution gate
+
+The [ADLX blocker report](experiments/step-6b5-adlx-gpu-temperature.md) contains research only. Unresolved source/artifact rights stop SDK-derived code and executable publication. No installed runtime is loaded, initialized or queried; no hardware execution occurs in CI or by Codex. No AMD DLL, SDK installation, driver update, elevation, service/helper or third-party monitor fallback. Production null sensors/false capabilities, permissions and installer privileges remain unchanged.
+
+A future probe requires cleared licensing, verified ABI/trusted loading and reviewed synthetic lifecycle/admission tests before separate explicit physical approval. Default initialization only; no incompatible-driver fallback, controls, polling, retry, stress, logging or direct hardware/firmware/private IOCTL access. A native stall has no assumed cancellation; no replacement worker, forced resource close or process-kill cleanup claim. The future procedure is preparation, not permission to run it.
+
+## Historical Step 6B.4 — Standalone sensor research boundaries
 
 The [architecture decision](decisions/step-6b4-standalone-sensor-architecture.md) authorizes documentation and implementation planning only. No hardware access, broad WMI discovery, firmware methods, SDK execution/installation, new diagnostic, elevation, helper/service/driver, direct hardware access, controls, polling or persistent sensor logs. Production CPU/GPU/fan remain unavailable; capabilities, WindowsProvider/get_telemetry, DTOs, permissions and installer privileges stay unchanged.
 

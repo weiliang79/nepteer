@@ -1,4 +1,16 @@
-# Step 6B.4 — Standalone sensor architecture handoff
+# Step 6B.5 — ADLX feasibility blocker handoff
+
+Branch `experiment/windows-adlx-gpu-temperature` starts at verified main `caf71d01d9a1a3af1bf641e170660b20a77a0be4`, merged [PR #15](https://github.com/weiliang79/nepteer/pull/15). Actual push-triggered [post-merge Desktop CI 46112493280](https://github.com/weiliang79/nepteer/actions/runs/46112493280) completed successfully on that SHA. The [report](experiments/step-6b5-adlx-gpu-temperature.md) delivers **Outcome B**, not a working GPU-temperature probe.
+
+Gate A: public source/artifact permission remains unresolved between the pinned restrictive SDK agreement and official Rust component's MIT notice. The report distinguishes seven permission questions and identifies the clarification required. Gate B records inspected official API facts without claiming complete ABI, trusted loading, concurrency or target-runtime verification. No ADLX executable/workspace/bindings/fixture/job/artifact, runtime initialization, hardware query, DLL redistribution or SDK execution. No Step 6B.2 code imported; its immutable procedure was read and its commit remains outside main ancestry. Step 6B.3 evidence/blocker and 6B.4 decision are preserved.
+
+Changes are the report, seven current project documents and one exact ordinary-CI branch entry. Production runtime, DTOs/bindings, dependencies, QAM/controller/HID, permissions and installer identity/privileges remain unchanged. CPU/fan stay deferred. Manual physical acceptance is prepared but blocked and needs separate explicit user approval after all implementation gates. Next: clarify licensing scope before a separately reviewed contract-completion/implementation milestone; no publisher contact is authorized. Commit/push authorized; do not merge.
+
+Validation details are recorded in the report; exact final SHA, native CI status and manifest evidence are supplied at delivery. Earlier milestone instructions and pending handoffs below retain their historical meaning.
+
+---
+
+# Historical Step 6B.4 — Standalone sensor architecture handoff
 
 Branch `research/standalone-sensor-architecture` starts at verified main `8ef71e11c3f770e96ae8c7c3e03aa92e37a904a0`, merged [PR #14](https://github.com/weiliang79/nepteer/pull/14), with actual successful [post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/46027156422). The [decision](decisions/step-6b4-standalone-sensor-architecture.md) separates sensor matrices, deployment classes A–E, vendor/Windows/Valve evidence, privileges/licenses, provenance/freshness, lifecycle and a single conditional next ADLX GPU experiment. CPU and measured fan RPM stay deferred. No sensor is validated on target.
 

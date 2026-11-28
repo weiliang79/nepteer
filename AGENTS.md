@@ -2,11 +2,21 @@
 
 ## Mission
 
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.4, standalone Windows sensor acquisition research and architecture; production telemetry remains unchanged.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.5, ADLX GPU edge-temperature feasibility; licensing blocks implementation and production telemetry remains unchanged.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 6B.4 — Standalone sensor architecture
+## Current milestone: Step 6B.5 — ADLX feasibility, distribution blocked
+
+Work on `experiment/windows-adlx-gpu-temperature` from verified main `caf71d01d9a1a3af1bf641e170660b20a77a0be4`, merged Step 6B.4 / [PR #15](https://github.com/weiliang79/nepteer/pull/15). Actual [post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/46112493280) passed on that exact SHA. Follow the [6B.5 blocker report](docs/experiments/step-6b5-adlx-gpu-temperature.md) and [6B.4 section 21](docs/decisions/step-6b4-standalone-sensor-architecture.md#21-one-recommended-next-experiment--conditional-adlx-gpu-read). Commit/push validated documentation and the exact ordinary-CI branch filter; do not merge automatically.
+
+The user conditionally authorized an isolated one-shot diagnostic only after licensing and API gates. Gate A remains unresolved: the pinned SDK agreement restricts source/distribution, while the official Rust component has an MIT license whose relationship to the root agreement needs clarification. Deliver Outcome B; no ADLX workspace, bindings, SDK-derived implementation, shim, executable, DLL redistribution or artifact job. Public hosting and a component license do not by themselves resolve the applicable combined terms. No SDK installation/execution or hardware queries by Codex/CI. Obtain scoped licensing clarification before implementation; physical execution still requires separate explicit user approval after reviewed code/artifact/ABI gates.
+
+Preserve WindowsProvider/get_telemetry, null CPU/GPU/fan and false capabilities, DTOs/bindings/mocks/frontend/QAM/preferences, controller/HID/navigation/arming/reader, permissions, installer identity/privileges, packaging and production dependencies. CPU/fan stay deferred; standalone excludes a mandatory external monitor. No elevation, new driver/service/helper, firmware/direct EC/MSR/SMU/bus/PCI/register/private IOCTL access, controls, polling/retries or persistent sensor logs. Do not import 6B.2 at `f8d4581aa8b5c8896a2adf28e2c029cdcaf3d810`; its undisclosed rejected raw value establishes no ADLX conclusion. Preserve 6B.3 evidence and historical decisions.
+
+Run all standard checks, both inventories, links/anchors/Markdown/scope, existing standalone synthetic checks, both QAM output verifiers and restored normal output. Verify final Windows/macOS CI and existing extracted-manifest checks. Do not change manual diagnostic triggers/ref authorization. Keep Step 5D desktop-only/pass-through, Step 5F press-edge-only and exact-true/manual-only Slow Refresh unchanged. No new physical test is authorized.
+
+## Historical milestone: Step 6B.4 — Standalone sensor architecture
 
 Work on `research/standalone-sensor-architecture` from verified main `8ef71e11c3f770e96ae8c7c3e03aa92e37a904a0`, merged Step 6B.3 / [PR #14](https://github.com/weiliang79/nepteer/pull/14). Actual [post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/46027156422) completed successfully. Follow [the architecture decision](docs/decisions/step-6b4-standalone-sensor-architecture.md). Commit/push validated documentation and exact ordinary-CI branch filter only; do not merge automatically.
 
