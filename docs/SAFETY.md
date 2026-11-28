@@ -1,5 +1,11 @@
 # Read-only safety boundary
 
+## Step 6B.4 — Standalone sensor research boundaries
+
+The [architecture decision](decisions/step-6b4-standalone-sensor-architecture.md) authorizes documentation and implementation planning only. No hardware access, broad WMI discovery, firmware methods, SDK execution/installation, new diagnostic, elevation, helper/service/driver, direct hardware access, controls, polling or persistent sensor logs. Production CPU/GPU/fan remain unavailable; capabilities, WindowsProvider/get_telemetry, DTOs, permissions and installer privileges stay unchanged.
+
+An ordinary-user client is not proof of an unprivileged acquisition chain. ADLX licensing and installed-driver compatibility must pass independent gates before any future diagnostic; physical execution requires separate explicit user authorization. CPU die/zone, GPU edge/hotspot/intake/APU GFX and measured/requested fan values cannot substitute for one another. HWiNFO screenshots are unverified candidates, not independent sensor evidence. No new privileged architecture is justified. Historical experiment boundaries remain in their own records; this research grants no execution permission.
+
 ## Step 6B.3 HWiNFO publication boundary
 
 The [HWiNFO experiment](experiments/step-6b3-hwinfo-shared-memory.md) may eventually consume only deliberately published data, with read-only ordinary-user access. Current modes perform no access because the interface contract is unverified. Never elevate, alter ACLs, open publisher processes, acquire hardware directly, bundle/launch/reconfigure HWiNFO or automate sharing-limit circumvention. Physical acceptance is pending; screenshot values are user-reported candidates, not validated telemetry.

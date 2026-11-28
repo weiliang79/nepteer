@@ -1,5 +1,11 @@
 # Development
 
+## Step 6B.4 — Research-only standalone architecture
+
+Read the [decision and gated next-experiment proposal](decisions/step-6b4-standalone-sensor-architecture.md). No new executable, binding, dependency, DTO or native access code belongs to this milestone. Review the ADLX license before any future SDK/header/helper/derived-binding publication; public SDK hosting is not a permissive redistribution grant. Ryzen package acquisition-chain documentation remains unavailable. Do not install/run either SDK or query target hardware.
+
+Run all standard root checks, both license inventories, Markdown/local links and scope audit. Build web output with the exact diagnostic flag true and verify enabled, then build with false and verify disabled to restore normal output. Run the existing 6B.3 standalone synthetic checks separately. Only `research/standalone-sensor-architecture` is added to ordinary push CI; native Windows/macOS packaging and existing manifest checks remain authoritative. Manual QAM diagnostic authorization and release behavior are unchanged. Future ADLX implementation and physical testing are separate milestones, not instructions to execute now.
+
 ## Step 6B.3 standalone blocked diagnostic
 
 See the [experiment build commands and gate assessment](experiments/step-6b3-hwinfo-shared-memory.md). Run standalone Cargo formatting/Clippy/tests separately from root checks. Windows CI compiles and extracts the asInvoker/uiAccess=false manifest, tests only synthetic CLI admission, and packages source commit/procedure/notices. No CI hardware invocation. Binary fixtures and native lifecycle tests are blocked until the publisher contract is obtained; CLI tests do not substitute for them.

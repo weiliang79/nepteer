@@ -1,11 +1,22 @@
 # AGENTS.md — Nepteer
 
 ## Mission
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.3, an isolated HWiNFO shared-memory feasibility investigation; production telemetry remains unchanged.**
+
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.4, standalone Windows sensor acquisition research and architecture; production telemetry remains unchanged.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 6B.3 — HWiNFO shared-memory feasibility
+## Current milestone: Step 6B.4 — Standalone sensor architecture
+
+Work on `research/standalone-sensor-architecture` from verified main `8ef71e11c3f770e96ae8c7c3e03aa92e37a904a0`, merged Step 6B.3 / [PR #14](https://github.com/weiliang79/nepteer/pull/14). Actual [post-merge Desktop CI](https://github.com/weiliang79/nepteer/actions/runs/46027156422) completed successfully. Follow [the architecture decision](docs/decisions/step-6b4-standalone-sensor-architecture.md). Commit/push validated documentation and exact ordinary-CI branch filter only; do not merge automatically.
+
+Standalone Nepteer must not require a separately running monitor. CPU and measured Jupiter fan RPM remain deferred; ADLX is only a conditional next GPU experiment after license/documentation review and separate implementation/physical authorization. Its API existence is not Custom APU 0405/Valve-driver compatibility. The ADLX SDK agreement is a material source/distribution gate; no SDK-derived bindings, redistributable or hardware diagnostic is authorized here. Ryzen SDK acquisition privileges, custom-APU coverage and applicable redistribution terms remain unresolved. No privileged architecture is selected.
+
+Preserve WindowsProvider/get_telemetry, null CPU/GPU/fan and false capabilities, DTO/bindings, mocks, frontend/QAM, preferences, controller/HID/navigation/arming/reader, permissions, installer identity/privileges and production dependencies. Conceptual per-field provenance/freshness/admission changes require a future scope; do not implement them. No sensors, new executable, polling, hardware queries in CI/on target, SDK installation/execution, driver/service/helper, elevation, firmware methods, direct EC/MSR/SMU/bus/PCI/register/private IOCTL access, writes or persistent sensor logs. Read-only marketing does not establish an unprivileged acquisition chain.
+
+Step 6B.2 remains on unmerged `experiment/windows-gpu-temperature-d3dkmt` at `f8d4581aa8b5c8896a2adf28e2c029cdcaf3d810`; read its procedure there only, never import it. User-reported API success with rejected temperature discloses no raw value/sentinel and rules out no other native API. Preserve 6B.3 screenshot evidence and interface blocker unchanged; HWiNFO is research reference, not production provider. Historical pending language below retains its original context. Keep Step 5D desktop-only/pass-through, Step 5F press-edge-only and exact-true/manual-only Slow Refresh unchanged. Run standard checks, both inventories, links/Markdown/scope, existing standalone synthetic checks, both QAM output verifiers, restore normal output, and verify final Windows/macOS CI/manifest checks. No new physical test is authorized.
+
+## Historical milestone: Step 6B.3 — HWiNFO shared-memory feasibility
 
 Work on `experiment/hwinfo-shared-memory-feasibility` from verified main `82d16da561de11757b30f4f8d03b68e77b04f755` (Step 6B.1 / PR #13, successful post-merge Desktop CI). Step 6B.2 at `f8d4581aa8b5c8896a2adf28e2c029cdcaf3d810` is unmerged; read its procedure only on its own branch, never import it. Follow [the experiment](docs/experiments/step-6b3-hwinfo-shared-memory.md). Commit/push validated work; do not merge automatically.
 
@@ -138,9 +149,11 @@ Step 1 is complete: native macOS/Windows CI passed and the user reported all eig
 Keep the existing shared read-only trait, one typed IPC command, generated bindings, cross-platform tests and native Windows packaging. CPU/GPU temperatures and fan RPM stay unavailable in the real provider. No hardware writes, input mapping/injection, overlays, drivers or new services. Work on `feat/windows-telemetry`, commit/push to that branch as authorized, and do not merge to `main` before review. Report new hardware verification separately from the completed Step 1 smoke test.
 
 ## Completed milestone: Step 1 — Foundation
+
 Produce a genuinely runnable Tauri **v2** desktop application with **Rust, React, TypeScript, Vite, pnpm, Tailwind CSS, and shadcn/ui**. macOS is the primary authoring environment; Windows x86_64 is the primary shipping target. Use a **mock-only hardware provider** to demonstrate a safe UI-to-Rust data path. Add CI that verifies the project on Windows and macOS (where supported by hosted runners).
 
 ### Required acceptance criteria
+
 - A clean checkout installs dependencies and launches on a correctly prepared macOS development machine with documented commands.
 - An x86_64 Windows build succeeds on GitHub Actions; its installable or runnable output is uploaded as a workflow artifact, if supported by the selected Tauri bundling configuration.
 - A responsive desktop dashboard renders battery, temperatures, fan RPM and hardware capabilities from explicitly labeled **mock** data; unsupported metrics render as unavailable, never as zero.
@@ -150,6 +163,7 @@ Produce a genuinely runnable Tauri **v2** desktop application with **Rust, React
 - No administrator requirement, kernel-driver installation, privileged helper, or dependency on Steam Deck Tools.
 
 ## Engineering priorities
+
 1. Safety and reversible behavior over feature breadth.
 2. Correct and maintainable Rust/TypeScript interfaces over premature abstractions.
 3. A working end-to-end vertical slice over placeholders that only look complete.
@@ -157,6 +171,7 @@ Produce a genuinely runnable Tauri **v2** desktop application with **Rust, React
 5. Code that a solo developer can understand and iterate on.
 
 ## Implementation boundaries
+
 - **Read-only/mock only in Step 1.** Never write fan duty, EC registers, TDP, GPU/CPU frequencies, BIOS/firmware settings, display modes, or input-injection controls. Do not install drivers.
 - Do not claim mock readings are live. Label every sample value and data source in UI and API.
 - Rust is the authority for device capability and telemetry models. Frontend communicates through typed Tauri IPC, not direct host hardware access.
@@ -169,6 +184,7 @@ Produce a genuinely runnable Tauri **v2** desktop application with **Rust, React
 - Steam button, ⋯ button, rear buttons, trackpads, Neptune HID, Lizard Mode, virtual gamepads, RTSS, FPS limiting, TDP, fan control, and per-game profiles are **future work**, not Step 1 acceptance criteria.
 
 ## Design and architecture
+
 Use a small pnpm workspace, with Tauri and the React app co-located to minimize friction. A reasonable starting shape:
 
 ```text
@@ -189,6 +205,7 @@ Initial domain model should support: platform/device identification, battery per
 For the UI, create a restrained, controller/touch-friendly dashboard with a clear source indicator, responsive layout, simple navigation, and a future Quick Access Menu entry point. A production game overlay is **not** required now. Prepare navigation and design tokens without implementing OS-level overlay management.
 
 ## Development workflow
+
 - Prefer a `feat/foundation` branch and a focused pull request to `main`; do not force-push or rewrite unrelated history.
 - Before coding, inspect the repository and current upstream documentation for Tauri v2 and installed toolchain versions. Do not assume an existing project or fabricate passing commands.
 - Implement in small checkpoints. Keep formatting, lint, type checks, Rust checks and unit tests executable from documented root scripts.
@@ -199,7 +216,9 @@ For the UI, create a restrained, controller/touch-friendly dashboard with a clea
 - If you lack a Windows Steam Deck, mark hardware verification as pending; never imply CI proves hardware correctness.
 
 ## Agent reporting contract
+
 At the end of each milestone, summarize:
+
 1. Files/components added or changed and the reasoning.
 2. Exact commands run and whether they passed; separately list commands not run.
 3. CI status and the Windows artifact location, if available.
@@ -210,6 +229,7 @@ At the end of each milestone, summarize:
 Do not silently expand scope. Ask before introducing native kernel access, admin privileges, game injection, or external copyrighted source reuse. Avoid committing/pushing unless the user explicitly requests it in the coding session.
 
 ## Planned future phases (not part of Step 1)
+
 - Quick Access Menu: normally hidden controller-friendly window; Win32 focus/fullscreen behavior tested on Windows.
 - Windows telemetry: documented Windows APIs and read-only sensors, with LCD/OLED detection.
 - Input: Neptune HID observation; Steam/⋯, rear buttons, trackpads; investigate firmware Lizard Mode for UAC cursor fallback.
@@ -218,6 +238,7 @@ Do not silently expand scope. Ask before introducing native kernel access, admin
 - Profiles: per-game capability-aware settings and safe restoration.
 
 ## Background references
+
 - Tauri v2: https://v2.tauri.app/
 - Steam Deck Windows driver support: https://help.steampowered.com/en/faqs/view/6121-ECCD-D643-BAA8/
 - Existing project studied for functionality only (do not copy): https://github.com/ayufan/steam-deck-tools

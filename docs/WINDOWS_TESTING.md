@@ -1,3 +1,13 @@
+# Step 6B.4 — No new physical execution
+
+This milestone is research-only; do not run a sensor SDK, WMI discovery, firmware method or hardware diagnostic. The [decision](decisions/step-6b4-standalone-sensor-architecture.md) preserves the user's LCD/Jupiter/Custom APU 0405, Windows 11 26H2/build 26300.9974, AMD driver 31.0.21020.1014 (June 9, 2023), WDDM 3.1 observations. These are user reports, not fresh hardware interrogation.
+
+Step 6B.2 on unmerged `experiment/windows-gpu-temperature-d3dkmt` reportedly selected one adapter/physical adapter and returned API success but rejected its temperature. No raw value was disclosed; do not infer zero or a sentinel. Reported completed timings were 0.020 ms query and 25.199 ms invocation, successful cleanup, no unexpected UAC and responsive Windows/Nepteer. This is not a validated sensor or a verdict on all native GPU interfaces.
+
+Step 6B.3 merged as [PR #14](https://github.com/weiliang79/nepteer/pull/14); its HWiNFO screenshot candidates, elevated launch, suspicious historical minimum and questioned fan reading remain unverified. No shared-memory read occurred. HWiNFO is not selected as a required runtime. A future one-shot ADLX test needs license/contract/code/artifact review and separate explicit physical approval. No checklist below authorizes new Step 6B.4 execution; earlier pending statements retain their historical context.
+
+---
+
 # Step 6B.3 HWiNFO acceptance — pending and blocked
 
 The [manual checklist](experiments/step-6b3-hwinfo-shared-memory.md#12-manual-acceptance--all-pending-physical-modes-blocked) records user-reported HWiNFO64 v8.60 observations separately from untested shared-memory access. Current executable returns interface-blocked and cannot satisfy Test A or B. After a verified implementation is reviewed, use ordinary non-administrator PowerShell; no elevated retry or ACL modification. Candidate extraction requires explicit user approval. Publisher shutdown tests require separate approval. Historical statements below retain their original milestone context.

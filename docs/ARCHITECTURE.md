@@ -1,5 +1,11 @@
 # Architecture
 
+## Step 6B.4 — Standalone acquisition design, not implementation
+
+The [decision](decisions/step-6b4-standalone-sensor-architecture.md) proposes independently resolved battery/CPU/GPU/fan fields with explicit identity, measured/requested semantics, origin, native units, provider sample-clock provenance, acquisition age and sanitized per-field failure. A partial sensor failure must preserve working battery telemetry. Existing Snapshot/source/capability/retrieval time cannot express mixed origins and freshness: a future DTO/status review is recommended before integration, with no DTO change now.
+
+Native admission and cleanup must remain bounded across dashboard/QAM requests. A timed-out future does not cancel a vendor/WMI call; no replacement workers or false cleanup success. No polling is proposed. ADLX through the existing driver is conditional on target/runtime/license validation; CPU/fan are deferred and no privileged component is selected. Production providers, commands, frontend, dependencies and lifecycle remain unchanged. Step 6B.3 is merged in PR #14; Step 6B.2 remains unmerged on its own experimental branch. Earlier proposals below are historical.
+
 ## Step 6B.3 isolated HWiNFO diagnostic
 
 Independent workspace/lockfile under `tools/hwinfo-shared-memory-probe`; no production dependency, Tauri command, DTO or permission change. The [experiment](experiments/step-6b3-hwinfo-shared-memory.md) records an unavailable authoritative interface contract. No mapping name/offsets are guessed; access and parsing remain blocked. Native snapshot consistency, freshness and cleanup ownership must be reviewed before future implementation.
