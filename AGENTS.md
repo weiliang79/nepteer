@@ -2,11 +2,23 @@
 
 ## Mission
 
-Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.6, ADLX Rust licensing and integration clearance; decision B keeps implementation blocked and production telemetry unchanged.**
+Nepteer is an independently implemented, open-source-oriented Windows handheld companion, initially targeting the **Steam Deck LCD running Windows 11**. It aims to provide SteamOS-inspired system telemetry, quick controls, input mapping, power/fan profiles, and a controller-friendly Quick Access Menu. **The current milestone is Step 6B.7, standalone GPU telemetry alternative paths; decision B keeps implementation blocked and recommends battery resilience design with GPU deferred.**
 
 Repository: https://github.com/weiliang79/nepteer
 
-## Current milestone: Step 6B.6 — ADLX Rust licensing and integration clearance
+## Current milestone: Step 6B.7 — Standalone GPU telemetry alternative paths
+
+Work on `research/standalone-gpu-telemetry-alternatives` from verified main `ea352589cce68316948611dd9e200ff1b27c7c03`, merged Step 6B.6 / [PR #17](https://github.com/weiliang79/nepteer/pull/17). Actual [post-merge Desktop CI 46136874511](https://github.com/weiliang79/nepteer/actions/runs/46136874511) passed on that SHA. Follow the [6B.7 decision](docs/decisions/step-6b7-standalone-gpu-telemetry-alternatives.md). Commit/push validated research and only the exact ordinary-CI branch filter; do not merge automatically.
+
+Decision B retains MIT-only ADLX as best specified technical candidate, without complete-consumer/public-binary/runtime clearance. Header-free builds avoid one root-licensed activity, not all obligations. ADL has MIT headers plus restrictive SDK terms and no verified Deck advantage. DXCore documents temperature/support/physical index, but typed temperature output, semantics/freshness and target compatibility remain unresolved. Do not guess buffers or repeat D3DKMT. Exactly one proposed next milestone: Step 6C battery telemetry resilience design, with GPU deferred; no new sensor survey without authoritative evidence. This is a future proposal, not implementation authorization.
+
+Research only: no ADLX/ADL/DXCore workspace/dependency, loader adaptation, generated bindings, ABI fixture/build, executable/artifact job, SDK install/execution, runtime loading/initialization or hardware query. No AMD contact/messages/tickets; no project-wide license selection. Preserve historical decisions/evidence and Step 6B.2 unmerged status; no Steam Deck Tools source reuse. Implementation and physical execution need separate authorization.
+
+Preserve WindowsProvider/get_telemetry, null CPU/GPU/fan and false capabilities, DTOs/bindings/mocks/frontend/QAM/preferences, controller/HID/navigation/arming/reader, permissions, installer identity/privileges, manifests/packaging, production dependencies/lockfiles. CPU/fan remain deferred; no mandatory external monitor or fallback. No driver/service/helper, elevation, direct EC/register/MSR/SMU/I²C/SMBus/PCI/private IOCTL, tuning/writes, polling/retries or persistent sensor logs. Keep Step 5D desktop-only/pass-through, Step 5F press-edge-only and exact-true/manual-only Slow Refresh unchanged.
+
+Run all standard checks, both inventories, Markdown/local links/anchors/scope, existing standalone synthetic checks, both QAM output verifiers and restored normal output. Verify final Windows/macOS CI, packaging and existing extracted manifests. Do not change manual diagnostic triggers/ref authorization. No new physical test.
+
+## Historical milestone: Step 6B.6 — ADLX Rust licensing and integration clearance
 
 Work on `research/adlx-rust-integration-clearance` from verified main `bddc50de6059409610dfb454c21a913eb2132efc`, merged Step 6B.5 / [PR #16](https://github.com/weiliang79/nepteer/pull/16). Actual [post-merge Desktop CI 46127732100](https://github.com/weiliang79/nepteer/actions/runs/46127732100) passed on that exact SHA. Follow the [6B.6 decision](docs/decisions/step-6b6-adlx-rust-licensing-clearance.md). Commit/push validated research and the exact ordinary-CI branch filter; do not merge automatically.
 

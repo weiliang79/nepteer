@@ -1,6 +1,12 @@
 # Architecture
 
-## Step 6B.6 — MIT component path and integration gates
+## Step 6B.7 — Alternative paths remain gated
+
+The [comparison](decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) keeps standalone acquisition through existing OS/vendor components conditional on complete rights, trusted loading, ABI and target support. **Decision B** retains MIT-only ADLX as the best specified technical candidate, with complete-consumer distribution/runtime clearance unresolved. ADL adds MIT headers alongside a restrictive SDK EULA, without verified Deck compatibility. DXCore documents a distinct temperature state, but its typed temperature output, sensor meaning and target support remain unverified. No provider is cleared to implement or ship.
+
+Header-free ADLX builds remove a root-header build activity, not all possible consumer obligations; the bare-name helper remains unsuitable. ADL adds allocator/context/versioned-API complexity. DXCore has simpler COM lifetime but no verified temperature result schema; do not guess a buffer type. No native provider, DTO, capability or dependency changes. Proposed Step 6C designs battery resilience against optional WMI identity blocking, without promising native cancellation or implementing it here.
+
+## Historical Step 6B.6 — MIT component path and integration gates
 
 The [clearance decision](decisions/step-6b6-adlx-rust-licensing-clearance.md) distinguishes official MIT raw Rust bindings from root-licensed headers/helpers and separately installed runtime binaries. The required GPU-temperature methods and static vtable order are present, not compiled ABI-certified. The helper requests 1.5.0.124 while the SDK headers identify 2.0.0.125; its bare-name loader and ignored teardown results cannot satisfy the proposed trust/lifecycle policy.
 

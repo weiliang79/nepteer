@@ -1,6 +1,12 @@
 # Nepteer · v0.5.0-alpha.2
 
-## Step 6B.6 — ADLX Rust licensing and integration clearance
+## Step 6B.7 — Standalone GPU telemetry alternative paths
+
+The [focused alternatives decision](docs/decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) records **Decision B** retains MIT-only ADLX as the best specified technical candidate, with complete-consumer distribution/runtime clearance unresolved. ADL adds MIT headers alongside a restrictive SDK EULA, without verified Deck compatibility. DXCore documents a distinct temperature state, but its typed temperature output, sensor meaning and target support remain unverified. No provider is cleared to implement or ship.
+
+Recommend one next milestone: **Step 6C — Battery telemetry resilience design**, explicitly deferring GPU temperature and ending the general sensor-research loop. No implementation, dependency, SDK execution or hardware access is added. Production CPU/GPU/fan remain null/false and no external monitoring application is required.
+
+## Historical Step 6B.6 — ADLX Rust licensing and integration clearance
 
 The [ADLX Rust clearance decision](docs/decisions/step-6b6-adlx-rust-licensing-clearance.md) recommends **B — conditional, further clarification required**. AMD's official Rust component has an explicit MIT grant; root §7 recognizes separately licensed components. The remaining questions concern ABI-only SDK header use, original consumer/executable obligations and installed-runtime terms. Raw bindings cover the GPU edge-temperature path, but the default loader needs hardening; compiled ABI and Valve-driver compatibility remain unverified. No diagnostic, dependency or hardware query is added. Production sensors remain null/false, with no external monitor requirement.
 

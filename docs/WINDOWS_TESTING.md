@@ -1,4 +1,12 @@
-# Step 6B.6 — No ADLX physical execution authorized
+# Step 6B.7 — No GPU diagnostic or physical execution authorized
+
+The [alternatives decision](decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) is **B — clearance incomplete**. No ADLX, ADL or DXCore diagnostic exists. No hardware query, runtime load/initialization, SDK/driver installation, elevated retry or substitute probe is authorized. New DXCore documentation does not validate this driver or a temperature buffer type. General ADL integrated-GPU support is not Custom APU 0405 certification.
+
+User-reported LCD / Custom APU 0405 / Windows 11 26H2 build 26300.9974 / AMD 31.0.21020.1014 (June 9, 2023) / WDDM 3.1 context is preserved. D3DKMT succeeded but its undisclosed temperature was rejected; no valid reading, no unexpected UAC. No new physical evidence. Existing CI verifies unchanged Windows/macOS packaging and extracted application/blocked-HWiNFO manifests, not sensor compatibility. Future implementation and execution require separate authorization. Proposed Step 6C is battery resilience design with GPU deferred. Historical checklists below retain their original scope.
+
+---
+
+# Historical Step 6B.6 — No ADLX physical execution authorized
 
 The [Rust clearance decision](decisions/step-6b6-adlx-rust-licensing-clearance.md) is **B — conditional**. No ADLX executable exists. MIT component permissions do not settle the exact header/consumer/runtime workflow; trusted runtime discovery, compiled ABI and failure lifecycle also remain gates. Do not load ADLX, run a hardware probe, install an SDK, change the driver or retry elevated. No new physical test is authorized.
 

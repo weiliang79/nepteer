@@ -1,6 +1,12 @@
 # Development
 
-## Step 6B.6 — Licensing and integration research validation
+## Step 6B.7 — Alternatives research validation
+
+Read the [decision and evidence ledger](decisions/step-6b7-standalone-gpu-telemetry-alternatives.md). **Decision B** retains MIT-only ADLX as the best specified technical candidate, with complete-consumer distribution/runtime clearance unresolved. ADL adds MIT headers alongside a restrictive SDK EULA, without verified Deck compatibility. DXCore documents a distinct temperature state, but its typed temperature output, sensor meaning and target support remain unverified. No provider is cleared to implement or ship.
+
+No ADLX/ADL/DXCore workspace, dependency, loader adaptation, generated binding, ABI fixture, executable or artifact job. No SDK install/execution, runtime loading, publisher contact or project-license selection. Run all standard checks, both inventories, standalone HWiNFO synthetic format/check/test/Clippy, Markdown/local links/anchors/scope and both QAM output modes; restore false/normal output. Add only `research/standalone-gpu-telemetry-alternatives` to ordinary CI push filters. Preserve manual diagnostic triggers/refs and native Windows/macOS packaging/extracted-manifest verification. Proposed next milestone is Step 6C battery resilience design, not another sensor survey.
+
+## Historical Step 6B.6 — Licensing and integration research validation
 
 Read the [clearance decision and gated Step 6B.7 proposal](decisions/step-6b6-adlx-rust-licensing-clearance.md). Official Rust MIT permissions are real; combined root/runtime obligations remain scoped questions. Do not create an ADLX workspace, dependency, loader adaptation, ABI fixture, executable or artifact job during this milestone. No SDK or installed-runtime execution; no license selection or publisher contact.
 

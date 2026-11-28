@@ -1,4 +1,14 @@
-# Step 6B.6 — ADLX Rust clearance handoff
+# Step 6B.7 — Standalone GPU alternatives handoff
+
+Branch `research/standalone-gpu-telemetry-alternatives` starts at verified latest main `ea352589cce68316948611dd9e200ff1b27c7c03`, merged [PR #17](https://github.com/weiliang79/nepteer/pull/17). Actual [post-merge Desktop CI 46136874511](https://github.com/weiliang79/nepteer/actions/runs/46136874511) passed on that SHA. The [report](decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) selects **Decision B** retains MIT-only ADLX as the best specified technical candidate, with complete-consumer distribution/runtime clearance unresolved. ADL adds MIT headers alongside a restrictive SDK EULA, without verified Deck compatibility. DXCore documents a distinct temperature state, but its typed temperature output, sensor meaning and target support remain unverified. No provider is cleared to implement or ship.
+
+New evidence: pinned ADL file-level MIT grants and restrictive SDK/downstream terms, 18.1 PMLog deprecation, publicly available general AMD runtime EULAs with unverified Valve-package applicability, and Microsoft DXCore temperature/support/physical-index contracts with missing typed result. Header-free ADLX builds were already known; they supply no new complete-consumer permission. D3DKMT API success/rejected undisclosed temperature remains unchanged; no repeat/import.
+
+Exactly one next milestone: **Step 6C — Battery telemetry resilience design**, with GPU deferred. It can specify how optional WMI identity work stops withholding battery data, with bounded admission and honest native-call lifetime; no implementation is authorized here. Resume sensors only on concrete authoritative clearance/contract evidence. No AMD messages, SDK/runtime execution, hardware access, new privileged component or external monitor dependency. All production/controller/QAM/permission/manifest/dependency contracts remain unchanged. Commit/push validated research; do not merge. Local and final-SHA native CI/packaging/manifest results are supplied in the report/delivery.
+
+---
+
+# Historical Step 6B.6 — ADLX Rust clearance handoff
 
 Branch `research/adlx-rust-integration-clearance` starts at verified main `bddc50de6059409610dfb454c21a913eb2132efc`, merged [PR #16](https://github.com/weiliang79/nepteer/pull/16). Actual [post-merge Desktop CI 46127732100](https://github.com/weiliang79/nepteer/actions/runs/46127732100) passed on that SHA. The [decision](decisions/step-6b6-adlx-rust-licensing-clearance.md) recommends **B — conditional, further clarification required**.
 
