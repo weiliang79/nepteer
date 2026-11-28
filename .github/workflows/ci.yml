@@ -19,6 +19,7 @@ on:
         experiment/hwinfo-shared-memory-feasibility,
         experiment/windows-adlx-gpu-temperature,
         research/adlx-rust-integration-clearance,
+        research/standalone-gpu-telemetry-alternatives,
         feat/qam-navigation-ux,
         feat/qam-interaction-refinements,
         feat/qam-functional-settings,

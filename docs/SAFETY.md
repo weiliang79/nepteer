@@ -1,6 +1,12 @@
 # Read-only safety boundary
 
-## Step 6B.6 — Clearance research only
+## Step 6B.7 — Research only; no provider or execution clearance
+
+The [decision](decisions/step-6b7-standalone-gpu-telemetry-alternatives.md) is B. No ADLX/ADL/DXCore implementation, loading, initialization, query, SDK execution, artifact or new physical test. No AMD contact, ticket or message. MIT source grants do not extend automatically to a full SDK/runtime workflow; missing DXCore output representation must not be guessed.
+
+Keep production null sensors/false capabilities, permissions and installer privileges unchanged. No driver/service/helper, elevation, runtime download, external-monitor fallback, direct hardware/private IOCTL, writes, polling/retries or persistent logs. A synchronous timeout is not cancellation; partial-init/failed-teardown and trusted dependency loading remain gates. Proposed Step 6C is battery resilience design only until separately scoped; controller/QAM/manual diagnostics retain their existing authorization.
+
+## Historical Step 6B.6 — Clearance research only
 
 The [decision](decisions/step-6b6-adlx-rust-licensing-clearance.md) acknowledges MIT component permissions without extending them to SDK headers or runtime DLLs. Decision B leaves combined public-source/artifact and installed-runtime obligations unresolved. No implementation, SDK execution, runtime loading/initialization, hardware query or new physical test. No AMD contact is sent.
 
